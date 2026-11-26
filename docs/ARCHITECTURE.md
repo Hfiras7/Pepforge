@@ -16,6 +16,7 @@
 8. [Modifier un module isolément](#8-modifier-un-module-isolément)
 9. [Décisions ouvertes et compromis](#9-décisions-ouvertes-et-compromis)
 10. [Cas d'usage central : substitution aza-β³](#10-cas-dusage-central--substituer-un-acide-aminé-par-un-résidu-aza-β³)
+11. [Contraintes venues du projet de thèse](#11-contraintes-venues-du-projet-de-thèse)
 
 ---
 
@@ -423,16 +424,19 @@ Si une modification oblige à toucher deux modules qui ne devraient pas se conna
 
 ### 9.1 Décisions scientifiques en attente (Firas)
 
+> Mise à jour du 26 novembre 2026 : le descriptif de thèse (section 11) tranche le moteur, le système simulé et la variante pseudopeptidique. Les lignes barrées ci-dessous sont résolues.
+
 | Décision | Bloque | Où elle s'enregistre |
 |---|---|---|
-| Moteur principal (AMBER, GROMACS, NAMD) | étapes 7 et suivantes du plan | `PrepConfig.engine` |
-| Champ de force principal (ff14SB, ff19SB, CHARMM36m...) | étape 6 du plan | `PrepConfig.forcefield` |
-| Système simulé (peptide libre, complexe, les deux) | étapes 10 et 12 du plan | `PrepConfig.goal` |
+| ~~Moteur principal~~ → **NAMD**, d'après le projet de thèse | étapes 7 et suivantes du plan | `PrepConfig.engine = namd` |
+| Champ de force principal : **CHARMM36m + CGenFF recommandé** (cohérent avec NAMD), à confirmer par Firas | étape 6 du plan | `PrepConfig.forcefield` |
+| ~~Système simulé~~ → **les deux**, le complexe peptide–récepteur étant le cas principal | étapes 10 et 12 du plan | `PrepConfig.goal` |
+| Périmètre du radiomarquage : peptide nu, peptide + chélateur, ou peptide + chélateur + métal (section 11.2) | volet chélateurs | `PrepConfig` (champ à ajouter) |
 | Outil de construction 3D | étape 5 du plan | composant de `build` |
 | Bibliothèque chimique pour SMILES / SDF (RDKit ou autre) | étape 11A du plan | dépendance optionnelle de `pyproject.toml` |
 | Variante aza exacte : aza-β³ `-NH-N(R)-CH2-CO-` ou azapeptide α `-NH-N(R)-CO-` | tout le fil aza (section 10) | `ResidueTemplate` de la bibliothèque |
 | Méthode de charges et niveau de théorie quantique | étape 11C du plan | procédure de dérivation, consignée dans le rapport |
-| Logiciel de calcul quantique disponible | étapes 11C et 11D du plan | `ExternalTool` dédié |
+| Logiciel de calcul quantique disponible — **non mentionné dans le projet de thèse, reste le principal inconnu** | étapes 11C et 11D du plan | `ExternalTool` dédié |
 
 ### 9.2 Compromis d'architecture assumés
 
@@ -528,3 +532,44 @@ Ces ajouts ne changent **aucune** règle de dépendance de la section 3 : `Resid
 | Méthode de charges et niveau de théorie (AM1-BCC, RESP sur HF/6-31G\*, autre) | Doit être fixée une fois pour toute la bibliothèque, sinon les résidus ne sont pas comparables entre eux |
 | Logiciel de calcul quantique disponible | Conditionne la faisabilité de A3 et A7 |
 | Substitution d'un seul résidu à la fois, ou plusieurs simultanément | Change `MutateResidue` et le mode lot |
+
+---
+
+## 11. Contraintes venues du projet de thèse
+
+Section ajoutée le 26 novembre 2026 après lecture du descriptif de thèse de Firas (« Conception, synthèse, activité et validation in vitro de pseudopeptides théranostiques contenant des acides aminés aza-β³, spécifiques aux récepteurs à dépendance »). Les éléments ci-dessous viennent de ce document et remplacent plusieurs suppositions laissées ouvertes.
+
+### 11.1 Ce que le document tranche
+
+| Point | Ce que dit le projet de thèse | Conséquence pour PepForge |
+|---|---|---|
+| Variante pseudopeptidique | acides aminés **aza-β³** | confirmée par Firas ; la section 10 s'applique telle quelle |
+| Moteur de dynamique moléculaire | **NAMD**, cité pour l'affinement des modèles, la dynamique moléculaire et la minimisation d'énergie, avec **VMD** | le premier `EngineWriter` est NAMD (`psfgen` : `.psf`, `.pdb`, plus `.prm`/`.rtf`/`.str`) |
+| Visualisation | PyMOL, VMD | hors périmètre de PepForge, mais les fichiers produits doivent s'ouvrir dans ces outils |
+| Système simulé | docking (AutoDock4, Vina, HADDOCK, PatchDock, FireDock) **puis** dynamique moléculaire pour évaluer affinité et spécificité | les **deux** scénarios sont nécessaires, et le **complexe peptide–récepteur** est le cas principal, pas une extension |
+| Peptides de départ | régions de la **nétrine-1** et de la **NT-3**, séquences et structures tirées de la PDB et d'UniProt | les peptides de référence doivent venir de ces séquences ; à demander à Firas (deux projets de master déjà réalisés) |
+| Récepteurs | DCC, TrkC, UNC5, récepteur de la nétrine-1 | structures à récupérer dans la PDB, à préparer avec les mêmes contrôles que le peptide |
+| Structures expérimentales | RMN (CARA, ARIA), validation SAVES 6.0 | `io` doit lire un **ensemble RMN** (PDB multi-modèles) et pas seulement un modèle unique |
+
+### 11.2 Ce que le document ajoute au périmètre : chélateurs et radiométaux
+
+Les peptides de la thèse ne sont pas de simples peptides : ils portent un **chélateur** greffé à l'extrémité N-terminale ou C-terminale amide, et sont **radiomarqués**.
+
+- Chélateurs prévus : DOTA (sous forme protégée DOTA(tBu)₃), N4 (6-carboxy-1,4,8,11-tétraazaundécane, (Boc)₄-N4), HYNIC (acide 6-hydrazinonicotinique, Boc-HYNIC).
+- Radiométaux prévus : **gallium, rhénium, lutécium, technétium-99m**.
+- Des groupes fonctionnels (DOTA, maléimide ou autres) peuvent être greffés sur la chaîne principale **ou sur une chaîne latérale**.
+
+Conséquences, à trancher avec Firas avant d'écrire du code pour ce volet :
+
+1. Un chélateur est, du point de vue de l'architecture, un **`ResidueTemplate` terminal ou latéral** : même mécanique de greffage et de dérivation que pour un résidu aza-β³ (section 10.5). L'architecture le couvre sans changement.
+2. Le **complexe métallique est un problème distinct et plus difficile**. Les champs de force classiques ne décrivent pas les métaux de transition de façon transférable ; paramétrer un complexe Tc, Re, Lu ou Ga demande une approche dédiée (modèle de liaison, modèle de points cationiques factices, ou contraintes), chacune avec ses limites. Rien ne sera écrit sans source ni procédure.
+3. **Question de périmètre** : PepForge doit-il simuler le peptide **marqué** (métal compris), ou le peptide **portant le chélateur libre** (sans métal), ou seulement le peptide **nu** ? Les trois sont des travaux de taille très différente. Tant que ce n'est pas tranché, aucun développement n'est engagé sur le métal, et le chélateur sans métal est traité comme un simple fragment greffé.
+
+### 11.3 Cohérence avec le reste de l'architecture
+
+Aucune règle de dépendance de la section 3 ne change :
+
+- le chélateur et le résidu aza-β³ passent tous deux par `core.ResidueTemplate`, la bibliothèque de `residues/` et la dérivation de `forcefields` ;
+- NAMD devient une implémentation de `EngineWriter` dans `engines`, sans effet sur `forcefields` ni sur `build` ;
+- l'ensemble RMN multi-modèles est une capacité de lecture de `io`, avec un contrôle qui impose le choix explicite du modèle à préparer ;
+- le complexe peptide–récepteur reste l'étape 12 du plan, mais devient prioritaire au même titre que le peptide libre.

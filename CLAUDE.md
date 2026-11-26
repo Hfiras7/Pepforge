@@ -34,7 +34,15 @@ Assistant scientifique et technique du projet **PepForge** (*Universal Peptide D
 
 ## Décisions encore ouvertes
 
-Le **moteur de simulation**, le **champ de force** et le **système simulé** (peptide libre, complexe peptide–récepteur, ou les deux) ne sont pas encore choisis. Le code doit les garder configurables (`pepforge.config.PrepConfig`) et ne jamais en supposer un par défaut. Si une tâche en dépend, poser la question.
+Mise à jour du 26 novembre 2026, d'après le descriptif de thèse (voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), section 11) :
+
+- **Moteur** : **NAMD** est retenu (affinement, dynamique moléculaire et minimisation ; VMD pour l'outillage).
+- **Système simulé** : **les deux**, le complexe peptide–récepteur étant le cas principal (docking puis dynamique).
+- **Variante pseudopeptidique** : **aza-β³**, squelette `-NH-N(R)-CH2-CO-`. C'est la fonction centrale de l'outil (section 10 de l'architecture).
+- **Champ de force** : **CHARMM36m + CGenFF recommandé**, cohérent avec NAMD, mais **pas encore confirmé** par Firas.
+- **Restent ouverts** : logiciel de calcul quantique pour la dérivation des charges et les balayages dièdres, et le périmètre du radiomarquage (peptide nu, avec chélateur, ou avec radiométal).
+
+Malgré ces choix, le code garde moteur, champ de force et objectif **configurables** (`pepforge.config.PrepConfig`) et n'en suppose jamais un par défaut. Si une tâche dépend d'une décision encore ouverte, poser la question.
 
 ## Architecture du code
 

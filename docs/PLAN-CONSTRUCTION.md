@@ -25,7 +25,7 @@ flowchart LR
     E3 --> E4[4. Contrôles structure]
     E2 & E4 --> E5["5. Construction 3D 🔒"]
     E2 --> E6["6. Champ de force 🔒"]
-    E5 & E6 --> E7["7. Topologie moteur 🔒"]
+    E5 & E6 --> E7["7. Topologie NAMD"]
     E7 --> E8[8. Solvatation]
     E8 --> E9[9. Protocole]
     E9 --> E10[10. Rapport et peptide libre de bout en bout]
@@ -176,7 +176,7 @@ flowchart LR
 
 ## Étape 6 — Premier adaptateur de champ de force 🔒
 
-**Décision requise** : champ de force principal (ff14SB, ff19SB, CHARMM36m...) et modèle d'eau associé.
+**Décision requise** : champ de force principal et modèle d'eau associé. **CHARMM36m + CGenFF est recommandé**, parce que le projet de thèse retient NAMD comme moteur (voir [ARCHITECTURE.md, section 11](ARCHITECTURE.md#11-contraintes-venues-du-projet-de-thèse)) ; à confirmer par Firas.
 
 **Objectif** : traduire un `Peptide` protoné dans la nomenclature du champ de force et produire un `ParameterSet` complet et sourcé.
 
@@ -197,9 +197,9 @@ flowchart LR
 
 ---
 
-## Étape 7 — Topologie pour un premier moteur 🔒
+## Étape 7 — Topologie pour NAMD
 
-**Décision requise** : moteur principal.
+**Moteur retenu : NAMD**, d'après le projet de thèse (NAMD pour l'affinement des modèles, la dynamique moléculaire et la minimisation d'énergie, VMD pour l'outillage). Fichiers visés : `.psf` et `.pdb` via `psfgen`, plus les `.prm`, `.rtf` et `.str` du champ de force. Rappel : un `.str` CHARMM est un *stream file* de topologie et de paramètres, pas un fichier de coordonnées.
 
 **Objectif** : écrire topologie, paramètres et coordonnées du soluté dans le vide.
 
@@ -353,9 +353,35 @@ Ce fil réalise la substitution d'un acide aminé par un résidu aza-β³ et la 
 
 ---
 
+## Étape 11F — Chélateurs et radiomarquage 🔒
+
+**Décision requise, de périmètre** : PepForge prépare-t-il le peptide **nu**, le peptide **portant le chélateur sans métal**, ou le peptide **marqué avec son radiométal** ? Les trois sont des travaux de tailles très différentes (voir [ARCHITECTURE.md, section 11.2](ARCHITECTURE.md#112-ce-que-le-document-ajoute-au-périmètre--chélateurs-et-radiométaux)). Rien n'est engagé sur le métal avant cette décision.
+
+**Contexte** : les peptides de la thèse portent un chélateur greffé à l'extrémité N-terminale ou C-terminale amide, voire sur une chaîne latérale : DOTA (DOTA(tBu)₃), N4 ((Boc)₄-N4), HYNIC (Boc-HYNIC). Radiométaux visés : gallium, rhénium, lutécium, technétium-99m.
+
+**Modules** : `residues/data/` (chélateurs comme `ResidueTemplate`), `forcefields` (dérivation), `checks`.
+
+**Critères d'acceptation, volet chélateur sans métal**
+
+- [ ] Un chélateur est décrit comme un `ResidueTemplate` terminal ou latéral, avec ses points d'ancrage : même mécanique que l'étape 11A, aucun code spécifique.
+- [ ] Greffage en N-terminal, en C-terminal amide et sur une chaîne latérale, chacun testé.
+- [ ] Forme protégée (tBu, Boc) et forme déprotégée distinguées explicitement : seule la forme présente dans le peptide final est simulée.
+- [ ] Charge nette du chélateur conforme à son état de protonation au pH de l'étude.
+
+**Critères d'acceptation, volet radiométal (seulement si la décision de périmètre l'inclut)**
+
+- [ ] Approche de paramétrisation du centre métallique choisie et justifiée avec sa source (modèle de liaison, points cationiques factices, ou contraintes), avec ses limites écrites dans le rapport.
+- [ ] Géométrie de coordination contrôlée après construction.
+- [ ] Charge totale du complexe vérifiée contre la charge théorique attendue.
+- [ ] Limites de l'approche signalées dans le rapport de chaque préparation concernée.
+
+**Tests** : U, K ; V : comparaison avec une structure de complexe publiée pour le même chélateur et le même métal, relue par Firas.
+
+---
+
 ## Étape 12 — Complexe peptide–récepteur
 
-**Objectif** : préparer le récepteur (DCC, TrkC, UNC5), placer le peptide issu du docking, paramétrer l'ensemble.
+**Objectif** : préparer le récepteur (DCC, TrkC, UNC5, récepteur de la nétrine-1), placer le peptide issu du docking, paramétrer l'ensemble. **Priorité relevée** : le projet de thèse enchaîne docking puis dynamique moléculaire pour évaluer affinité et spécificité, donc le complexe est un cas principal et non une extension.
 
 **Modules** : `core` (plusieurs chaînes), `io`, `build`, `pipeline` (variante de chaîne selon `PrepConfig.goal`).
 
