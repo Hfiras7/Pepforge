@@ -47,15 +47,19 @@ mypy                                    # typage strict
 
 ```
 src/pepforge/
-├── core/         représentation interne du peptide
+├── core/         représentation interne (Peptide, Structure)
+├── config.py     configuration d'une préparation (sans valeur par défaut)
+├── tools/        encapsulation des exécutables externes
+├── checks/       contrôles qualité après chaque étape
+├── build/        construction et correction 3D (interfaces)
 ├── io/           séquences, puis PDB, mmCIF, SMILES, MOL/SDF
 ├── residues/     bibliothèque de résidus et extrémités (données YAML sourcées)
 ├── forcefields/  adaptateurs de champ de force (interface commune)
 ├── engines/      fichiers d'entrée AMBER, GROMACS, NAMD (interface commune)
-├── pipeline/     enchaînement des étapes, outils externes
+├── pipeline/     enchaînement des étapes et contrôles
 ├── report/       journal et rapport reproductible
 └── cli/          commande `pepforge`
-docs/             instructions et spécifications du projet
+docs/             instructions, spécifications, ARCHITECTURE.md, PLAN-CONSTRUCTION.md
 tests/            tests pytest
 ```
 

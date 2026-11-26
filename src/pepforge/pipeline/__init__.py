@@ -1,5 +1,10 @@
-"""Enchaînement des étapes de préparation et appels aux outils externes."""
+"""Enchaînement des étapes de préparation.
 
-from pepforge.pipeline.external import ExternalTool, ToolResult
+Les outils externes sont dans `pepforge.tools` (module feuille, utilisable par
+les adaptateurs et générateurs sans dépendance circulaire).
+"""
 
-__all__ = ["ExternalTool", "ToolResult"]
+from pepforge.pipeline.stage import Stage, StageContext, run_stage
+from pepforge.pipeline.stages import SequenceInputStage
+
+__all__ = ["SequenceInputStage", "Stage", "StageContext", "run_stage"]

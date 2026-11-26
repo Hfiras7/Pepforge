@@ -5,7 +5,7 @@ import sys
 import pytest
 
 from pepforge.exceptions import ExternalToolError
-from pepforge.pipeline import ExternalTool
+from pepforge.tools import ExternalTool
 
 
 def _python_tool(failure_patterns: tuple[str, ...] = ()) -> ExternalTool:

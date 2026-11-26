@@ -36,6 +36,36 @@ class SimulationGoal(StrEnum):
     """Complexe peptide–récepteur (DCC, TrkC, UNC5)."""
 
 
+@dataclass(frozen=True)
+class SolvationSpec:
+    """Paramètres de solvatation et de neutralisation, tous à décider.
+
+    Aucune valeur par défaut : la marge de boîte et la concentration en sel
+    dépendent de l'objectif (peptide libre ou complexe) et doivent être
+    justifiées dans la configuration (`PrepConfig.notes`).
+    """
+
+    box_shape: str | None = None
+    """Forme de la boîte périodique (ex. octaèdre tronqué, cube)."""
+
+    margin_angstrom: float | None = None
+    """Distance minimale soluté–bord de boîte, en angströms."""
+
+    salt_concentration_molar: float | None = None
+    """Concentration en sel visée, en mol/L."""
+
+    neutralize: bool | None = None
+
+    def missing_decisions(self) -> list[str]:
+        labels = {
+            "box_shape": "forme de la boîte",
+            "margin_angstrom": "marge de la boîte",
+            "salt_concentration_molar": "concentration en sel",
+            "neutralize": "neutralisation",
+        }
+        return [label for key, label in labels.items() if getattr(self, key) is None]
+
+
 @dataclass
 class PrepConfig:
     """Paramètres d'une préparation, sérialisables en YAML pour la reproductibilité."""
@@ -48,6 +78,9 @@ class PrepConfig:
     goal: SimulationGoal | None = None
     ph: float | None = None
     receptor: str | None = None
+    solvation: SolvationSpec = field(default_factory=SolvationSpec)
+    """Vérifiée par l'étape de solvatation elle-même (`SolvationSpec.missing_decisions`)."""
+
     notes: dict[str, str] = field(default_factory=dict)
 
     def missing_decisions(self) -> list[str]:
@@ -93,7 +126,12 @@ class PrepConfig:
                 values["engine"] = Engine(values["engine"])
             if values.get("goal") is not None:
                 values["goal"] = SimulationGoal(values["goal"])
-        except ValueError as exc:
+            if "solvation" in values:
+                solvation = values["solvation"] or {}
+                if not isinstance(solvation, dict):
+                    raise ConfigurationError("`solvation` doit être un dictionnaire")
+                values["solvation"] = SolvationSpec(**solvation)
+        except (ValueError, TypeError) as exc:
             raise ConfigurationError(str(exc)) from exc
         return cls(**values)
 

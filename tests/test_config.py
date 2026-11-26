@@ -50,3 +50,20 @@ def test_unknown_keys_and_values_are_rejected() -> None:
         PrepConfig.from_dict({"moteur": "amber"})
     with pytest.raises(ConfigurationError):
         PrepConfig.from_dict({"engine": "openmm"})
+
+
+def test_solvation_has_no_default_and_round_trips(tmp_path: Path) -> None:
+    config = PrepConfig()
+    assert len(config.solvation.missing_decisions()) == 4
+    config = PrepConfig.from_dict(
+        {"solvation": {"box_shape": "truncated_octahedron", "margin_angstrom": 12.0}}
+    )
+    assert config.solvation.missing_decisions() == ["concentration en sel", "neutralisation"]
+    path = tmp_path / "prep.yaml"
+    config.to_yaml(path)
+    assert PrepConfig.from_yaml(path) == config
+
+
+def test_unknown_solvation_key_is_rejected() -> None:
+    with pytest.raises(ConfigurationError):
+        PrepConfig.from_dict({"solvation": {"padding": 10}})

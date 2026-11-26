@@ -35,3 +35,17 @@ class ConfigurationError(PepForgeError):
 
 class ExternalToolError(PepForgeError):
     """Un exécutable externe (tleap, antechamber, gmx, psfgen...) a échoué."""
+
+
+class StructureError(PepForgeError):
+    """Structure 3D incohérente (atomes manquants, chevauchements, chaîne rompue...)."""
+
+
+class QualityCheckError(PepForgeError):
+    """Un contrôle qualité bloquant a échoué à la sortie d'une étape du pipeline."""
+
+    def __init__(self, stage: str, failures: list[str]) -> None:
+        self.stage = stage
+        self.failures = failures
+        details = "; ".join(failures)
+        super().__init__(f"Étape « {stage} » : contrôle(s) en échec : {details}")

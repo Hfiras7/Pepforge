@@ -40,15 +40,21 @@ Le **moteur de simulation**, le **champ de force** et le **système simulé** (p
 
 | Module | Rôle |
 |---|---|
-| `src/pepforge/core/` | Représentation interne du peptide (résidus, extrémités), indépendante de tout champ de force |
+| `src/pepforge/core/` | Représentation interne (`Peptide`, `Structure`), indépendante de tout champ de force |
+| `src/pepforge/config.py` | `PrepConfig`, `SolvationSpec` : choix de l'utilisateur, sans valeur par défaut |
+| `src/pepforge/tools/` | `ExternalTool` : exécutables externes (module feuille) |
+| `src/pepforge/checks/` | Contrôles qualité appliqués à la sortie de chaque étape |
 | `src/pepforge/io/` | Lecture et écriture PDB, mmCIF, SMILES, MOL/SDF, et analyse des séquences |
 | `src/pepforge/residues/` | Bibliothèque de résidus versionnée, avec la provenance de chaque donnée (`residues/data/`) |
+| `src/pepforge/build/` | Construction et correction 3D, conformes à `StructureBuilder` / `StructureModifier` |
 | `src/pepforge/forcefields/` | Adaptateurs de champ de force, tous conformes à `ForceFieldAdapter` |
 | `src/pepforge/engines/` | Écriture des fichiers d'entrée par moteur, conformes à `EngineWriter` |
-| `src/pepforge/pipeline/` | Enchaînement des étapes et encapsulation des exécutables externes |
+| `src/pepforge/pipeline/` | Enchaînement des étapes (`Stage`, `run_stage`) et contrôles après chaque étape |
 | `src/pepforge/report/` | Journal des modifications et rapport reproductible |
 | `src/pepforge/cli/` | Interface en ligne de commande (`pepforge`) |
-| `tests/` | Tests pytest |
+| `tests/` | Tests pytest ; `test_architecture.py` vérifie la matrice de dépendances, `contracts.py` fournit les tests de contrat |
+
+L'architecture détaillée (contrats, matrice de dépendances, flux, stratégie de tests) est dans [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), et l'ordre de construction dans [docs/PLAN-CONSTRUCTION.md](docs/PLAN-CONSTRUCTION.md). Toute modification d'un contrat ou d'une dépendance entre modules met ces documents à jour.
 
 ## Règles de code
 
@@ -57,8 +63,8 @@ Le **moteur de simulation**, le **champ de force** et le **système simulé** (p
 3. Aucun paramètre numérique codé en dur dans la logique : tout vient des fichiers de données de `residues/` ou `forcefields/`, avec sa source.
 4. Toute opération modifiant la structure enregistre une entrée dans le journal (`pepforge.report.Journal`) : quoi, pourquoi, avec quels paramètres.
 5. Les erreurs de chimie (valence incohérente, paramètre manquant, charge nette inattendue) lèvent une exception dédiée de `pepforge.exceptions`, jamais un avertissement silencieux.
-6. Les appels à `tleap`, `antechamber`, `parmchk2`, `gmx`, `psfgen` passent par `pepforge.pipeline.external.ExternalTool` : version enregistrée, sortie analysée pour détecter les échecs.
-7. Chaque nouveau résidu non standard ou champ de force est accompagné d'un test vérifiant la charge nette et l'absence de paramètre manquant.
+6. Les appels à `tleap`, `antechamber`, `parmchk2`, `gmx`, `psfgen` passent par `pepforge.tools.ExternalTool` : version enregistrée, sortie analysée pour détecter les échecs.
+7. Chaque nouveau résidu non standard ou champ de force est accompagné d'un test vérifiant la charge nette et l'absence de paramètre manquant. Chaque implémentation d'interface passe sa fonction de contrat de `tests/contracts.py`.
 8. Une préparation complète doit pouvoir être relancée à partir du seul fichier de configuration produit par le rapport.
 9. Explications, commentaires et documentation en français ; code et identifiants en anglais.
 
@@ -87,3 +93,5 @@ pepforge parse "Ac-RGDS-NH2"   # essai de la CLI
 - [docs/02-prompt-generation-fichiers-md.md](docs/02-prompt-generation-fichiers-md.md) : génération des fichiers d'entrée de DM
 - [docs/03-prompt-developpement-logiciel.md](docs/03-prompt-developpement-logiciel.md) : développement du code
 - [docs/04-checklist-qualite.md](docs/04-checklist-qualite.md) : contrôles avant toute simulation
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) : modules, contrats, dépendances, flux et stratégie de vérification
+- [docs/PLAN-CONSTRUCTION.md](docs/PLAN-CONSTRUCTION.md) : étapes de construction, critères d'acceptation et tests
