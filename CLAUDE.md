@@ -31,6 +31,9 @@ Assistant scientifique et technique du projet **PepForge** (*Universal Peptide D
 - **Extrémités du peptide** : les modifications terminales doivent être conservées lors de la construction 3D. Dans AMBER, le résidu `NHE` représente une extrémité `-CO-NH2` ; `NME` (`-CO-NH-CH3`) n'est pas équivalent et ne doit pas s'y substituer.
 - **Protonation** : les états de protonation de l'amine N-terminale et des chaînes latérales ionisables sont choisis en fonction du pH de l'étude, puis vérifiés contre la charge nette calculée.
 - **Deux scénarios de simulation** à ne jamais confondre : peptide libre en solution (stabilité conformationnelle) et complexe peptide–récepteur (préparation structurale et paramétrisation de l'ensemble). Cette distinction est essentielle dans le travail de thèse.
+- **Fichiers CHARMM** : un `.str` est un *stream file* portant topologie **et** paramètres, jamais des coordonnées. Les coordonnées sont dans le `.pdb` ou le `.crd`.
+- **Sortie de CGenFF** : elle décrit une **molécule isolée**, pas un résidu de chaîne. Pour intégrer un résidu aza-β³, il faut en tirer un `RESI` ou un `PRES` avec ses atomes de liaison, puis ajuster les charges pour obtenir une charge entière compatible avec les résidus CHARMM36m voisins. Les pénalités CGenFF sont conservées et reportées.
+- **Centre métallique** : ne jamais mélanger champ de force protéique CHARMM et paramètres métalliques AMBER dans un même système. Soit des paramètres compatibles CHARMM, soit tout le système marqué au format AMBER lu par NAMD, comme préparation distincte et vérifiée.
 
 ## Décisions encore ouvertes
 
@@ -39,8 +42,9 @@ Mise à jour du 26 novembre 2026, d'après le descriptif de thèse (voir [docs/A
 - **Moteur** : **NAMD** est retenu (affinement, dynamique moléculaire et minimisation ; VMD pour l'outillage).
 - **Système simulé** : **les deux**, le complexe peptide–récepteur étant le cas principal (docking puis dynamique).
 - **Variante pseudopeptidique** : **aza-β³**, squelette `-NH-N(R)-CH2-CO-`. C'est la fonction centrale de l'outil (section 10 de l'architecture).
-- **Champ de force** : **CHARMM36m + CGenFF recommandé**, cohérent avec NAMD, mais **pas encore confirmé** par Firas.
-- **Restent ouverts** : logiciel de calcul quantique pour la dérivation des charges et les balayages dièdres, et le périmètre du radiomarquage (peptide nu, avec chélateur, ou avec radiométal).
+- **Champ de force** : **CHARMM36m + CGenFF**, confirmé par Firas. Modèle d'eau TIP3P modifié CHARMM. Fichiers à produire : `.rtf` (topologie de résidu), `.prm` (paramètres par type d'atome), `.str` (*stream file* : topologie **et** paramètres d'un résidu), `.psf` (système assemblé, via `psfgen`), coordonnées `.pdb`, et le script NAMD.
+- **Radiomarquage** : les **deux** cas sont au périmètre, le peptide avec son chélateur sans métal **et** le peptide marqué (Ga, Re, Lu, Tc-99m).
+- **Restent ouverts** : logiciel de calcul quantique pour la dérivation des charges et les balayages dièdres, et l'approche de paramétrisation du centre métallique.
 
 Malgré ces choix, le code garde moteur, champ de force et objectif **configurables** (`pepforge.config.PrepConfig`) et n'en suppose jamais un par défaut. Si une tâche dépend d'une décision encore ouverte, poser la question.
 

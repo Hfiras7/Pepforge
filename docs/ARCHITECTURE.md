@@ -429,9 +429,10 @@ Si une modification oblige à toucher deux modules qui ne devraient pas se conna
 | Décision | Bloque | Où elle s'enregistre |
 |---|---|---|
 | ~~Moteur principal~~ → **NAMD**, d'après le projet de thèse | étapes 7 et suivantes du plan | `PrepConfig.engine = namd` |
-| Champ de force principal : **CHARMM36m + CGenFF recommandé** (cohérent avec NAMD), à confirmer par Firas | étape 6 du plan | `PrepConfig.forcefield` |
+| ~~Champ de force principal~~ → **CHARMM36m + CGenFF**, confirmé par Firas le 26 novembre 2026 | étape 6 du plan | `PrepConfig.forcefield` |
 | ~~Système simulé~~ → **les deux**, le complexe peptide–récepteur étant le cas principal | étapes 10 et 12 du plan | `PrepConfig.goal` |
-| Périmètre du radiomarquage : peptide nu, peptide + chélateur, ou peptide + chélateur + métal (section 11.2) | volet chélateurs | `PrepConfig` (champ à ajouter) |
+| ~~Périmètre du radiomarquage~~ → **les deux** : peptide + chélateur sans métal, **et** peptide marqué (section 11.2) | volet chélateurs | `PrepConfig` (champ à ajouter) |
+| Approche de paramétrisation du centre métallique (non lié, lié, atomes factices) et format retenu pour le système marqué (section 11.4) | étape 11F du plan | procédure de dérivation + `PrepConfig.forcefield` |
 | Outil de construction 3D | étape 5 du plan | composant de `build` |
 | Bibliothèque chimique pour SMILES / SDF (RDKit ou autre) | étape 11A du plan | dépendance optionnelle de `pyproject.toml` |
 | Variante aza exacte : aza-β³ `-NH-N(R)-CH2-CO-` ou azapeptide α `-NH-N(R)-CO-` | tout le fil aza (section 10) | `ResidueTemplate` de la bibliothèque |
@@ -544,6 +545,7 @@ Section ajoutée le 26 novembre 2026 après lecture du descriptif de thèse de F
 | Point | Ce que dit le projet de thèse | Conséquence pour PepForge |
 |---|---|---|
 | Variante pseudopeptidique | acides aminés **aza-β³** | confirmée par Firas ; la section 10 s'applique telle quelle |
+| Champ de force | déduit du moteur NAMD | **CHARMM36m + CGenFF**, confirmé par Firas le 26 novembre 2026 ; fichiers détaillés en 11.3 |
 | Moteur de dynamique moléculaire | **NAMD**, cité pour l'affinement des modèles, la dynamique moléculaire et la minimisation d'énergie, avec **VMD** | le premier `EngineWriter` est NAMD (`psfgen` : `.psf`, `.pdb`, plus `.prm`/`.rtf`/`.str`) |
 | Visualisation | PyMOL, VMD | hors périmètre de PepForge, mais les fichiers produits doivent s'ouvrir dans ces outils |
 | Système simulé | docking (AutoDock4, Vina, HADDOCK, PatchDock, FireDock) **puis** dynamique moléculaire pour évaluer affinité et spécificité | les **deux** scénarios sont nécessaires, et le **complexe peptide–récepteur** est le cas principal, pas une extension |
@@ -563,9 +565,47 @@ Conséquences, à trancher avec Firas avant d'écrire du code pour ce volet :
 
 1. Un chélateur est, du point de vue de l'architecture, un **`ResidueTemplate` terminal ou latéral** : même mécanique de greffage et de dérivation que pour un résidu aza-β³ (section 10.5). L'architecture le couvre sans changement.
 2. Le **complexe métallique est un problème distinct et plus difficile**. Les champs de force classiques ne décrivent pas les métaux de transition de façon transférable ; paramétrer un complexe Tc, Re, Lu ou Ga demande une approche dédiée (modèle de liaison, modèle de points cationiques factices, ou contraintes), chacune avec ses limites. Rien ne sera écrit sans source ni procédure.
-3. **Question de périmètre** : PepForge doit-il simuler le peptide **marqué** (métal compris), ou le peptide **portant le chélateur libre** (sans métal), ou seulement le peptide **nu** ? Les trois sont des travaux de taille très différente. Tant que ce n'est pas tranché, aucun développement n'est engagé sur le métal, et le chélateur sans métal est traité comme un simple fragment greffé.
+3. **Périmètre tranché par Firas le 26 novembre 2026 : les deux cas.** PepForge doit préparer le peptide **portant son chélateur sans métal** et le peptide **marqué, métal compris**. Le premier cas est une extension directe de la section 10 ; le second est traité en 11.4, parce qu'il pose un problème de nature différente. C'est cohérent avec le projet de thèse, qui teste les peptides « marqués ou non ».
 
-### 11.3 Cohérence avec le reste de l'architecture
+### 11.3 Les fichiers CHARMM et NAMD à produire
+
+Le couple retenu est **CHARMM36m + CGenFF, moteur NAMD** (confirmé par Firas le 26 novembre 2026). Voici ce que PepForge doit produire, et qui le produit. La règle 2 du projet s'applique : l'adaptateur de champ de force décrit les paramètres, le module `engines` écrit les fichiers.
+
+| Fichier | Ce qu'il contient | Produit par |
+|---|---|---|
+| `.rtf` (*residue topology file*) | pour chaque résidu : noms et types d'atomes, charges partielles, connectivité, et les *patches* (`PRES`) de liaison et d'extrémité | `forcefields` décrit, `engines` écrit |
+| `.prm` ou `.par` (*parameter file*) | paramètres liés et non liés **par type d'atome** : liaisons, angles, dièdres, impropres, termes de Lennard-Jones | fourni par CHARMM36m pour les résidus standards ; complété pour les résidus dérivés |
+| `.str` (*stream file*) | un fichier qui porte **à la fois** une section de topologie et une section de paramètres, pour une molécule ou un résidu donné. C'est la sortie de CGenFF pour un fragment personnalisé | `forcefields.derivation` |
+| `.psf` (*protein structure file*) | la description du système assemblé : tous les atomes, leurs types, leurs charges, et les listes de liaisons, angles, dièdres et impropres | `engines` via `psfgen` |
+| `.pdb` ou `.crd` | les coordonnées | `engines` |
+| fichier de configuration NAMD | le script de la simulation : minimisation, équilibration, production, traitement de l'électrostatique, rayons de coupure | `engines.write_protocol` |
+
+Deux pièges à éviter, inscrits comme contrôles :
+
+1. **Un `.str` n'est pas un fichier de coordonnées.** La spécification fonctionnelle le signalait déjà ; le contrôle refuse un `.str` présenté comme tel.
+2. **La sortie de CGenFF décrit une molécule isolée, pas un résidu de chaîne.** Pour intégrer un résidu aza-β³ dans un peptide, il faut en tirer une entrée `RESI` avec ses atomes de liaison, ou un `PRES`, puis **ajuster les charges pour que le résidu porte une charge entière et que ses atomes de jonction restent compatibles avec les résidus CHARMM36m voisins**. C'est le cœur de l'étape 11C, et c'est là que se joue la qualité du résultat. Les **pénalités CGenFF** (pénalité de charge et pénalité de paramètre) sont conservées et reportées dans le rapport : au-delà d'un seuil à fixer avec Firas, elles imposent une dérivation quantique.
+
+### 11.4 Le centre métallique : un problème de nature différente
+
+Le périmètre inclut le peptide marqué (gallium, rhénium, lutécium, technétium-99m). Il faut dire clairement pourquoi c'est plus difficile que le reste : les champs de force classiques décrivent mal les métaux de transition, parce que la coordination est directionnelle et partiellement covalente, alors que ces champs de force reposent sur des charges ponctuelles et des termes non liés isotropes.
+
+Trois familles d'approches existent, et **le choix doit être documenté avec sa source** ; aucune n'est retenue par défaut :
+
+| Approche | Principe | Limite principale |
+|---|---|---|
+| Modèle non lié | le métal est un ion ponctuel, charge et termes de Lennard-Jones | ne tient pas la géométrie de coordination : le métal peut quitter le chélateur |
+| Modèle lié | liaisons explicites métal–ligand, paramètres ajustés sur un calcul quantique du complexe | demande un calcul quantique par complexe, et interdit tout échange de ligand |
+| Atomes factices cationiques | des pseudo-atomes autour du métal imposent la géométrie | paramétrisation délicate, et dépend de la géométrie de coordination supposée |
+
+Deux points d'honnêteté à porter dans la thèse :
+
+- Le **technétium et le rhénium** sous forme de cœurs oxo (typiquement rencontrés avec HYNIC et des co-ligands) sont les cas les plus difficiles : la nature exacte du complexe formé lors du radiomarquage n'est pas toujours établie. Si elle ne l'est pas, le système simulé repose sur une hypothèse structurale qu'il faut énoncer comme telle. Le gallium et le lutécium, cations durs dans un DOTA, sont plus traitables.
+- **Tension de format à surveiller.** L'outillage de construction des modèles liés métal–ligand est historiquement plus développé du côté AMBER que du côté CHARMM. Or NAMD lit aussi les topologies AMBER. Si un modèle lié s'avère nécessaire, il y a deux voies acceptables, et une interdite :
+  - dériver ou trouver des paramètres **compatibles CHARMM**, et rester en `.psf` / `.prm` ;
+  - préparer **tout le système marqué** au format AMBER, lu par NAMD, en traitant cela comme une préparation distincte et vérifiée ;
+  - **interdit** : mélanger un champ de force protéique CHARMM et des paramètres métalliques AMBER dans un même système. C'est la règle 4 du projet, et un contrôle doit le refuser.
+
+### 11.5 Cohérence avec le reste de l'architecture
 
 Aucune règle de dépendance de la section 3 ne change :
 

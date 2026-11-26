@@ -24,7 +24,7 @@ flowchart LR
     E1 --> E3[3. PDB / mmCIF]
     E3 --> E4[4. Contrôles structure]
     E2 & E4 --> E5["5. Construction 3D 🔒"]
-    E2 --> E6["6. Champ de force 🔒"]
+    E2 --> E6[6. Adaptateur CHARMM36m]
     E5 & E6 --> E7["7. Topologie NAMD"]
     E7 --> E8[8. Solvatation]
     E8 --> E9[9. Protocole]
@@ -174,9 +174,9 @@ flowchart LR
 
 ---
 
-## Étape 6 — Premier adaptateur de champ de force 🔒
+## Étape 6 — Adaptateur CHARMM36m
 
-**Décision requise** : champ de force principal et modèle d'eau associé. **CHARMM36m + CGenFF est recommandé**, parce que le projet de thèse retient NAMD comme moteur (voir [ARCHITECTURE.md, section 11](ARCHITECTURE.md#11-contraintes-venues-du-projet-de-thèse)) ; à confirmer par Firas.
+**Champ de force retenu : CHARMM36m + CGenFF**, confirmé par Firas le 26 novembre 2026, cohérent avec NAMD. Modèle d'eau : TIP3P modifié CHARMM. Les fichiers à produire (`.rtf`, `.prm`, `.str`, `.psf`) et les deux pièges à éviter sont décrits en [ARCHITECTURE.md, section 11.3](ARCHITECTURE.md#113-les-fichiers-charmm-et-namd-à-produire).
 
 **Objectif** : traduire un `Peptide` protoné dans la nomenclature du champ de force et produire un `ParameterSet` complet et sourcé.
 
@@ -355,7 +355,9 @@ Ce fil réalise la substitution d'un acide aminé par un résidu aza-β³ et la 
 
 ## Étape 11F — Chélateurs et radiomarquage 🔒
 
-**Décision requise, de périmètre** : PepForge prépare-t-il le peptide **nu**, le peptide **portant le chélateur sans métal**, ou le peptide **marqué avec son radiométal** ? Les trois sont des travaux de tailles très différentes (voir [ARCHITECTURE.md, section 11.2](ARCHITECTURE.md#112-ce-que-le-document-ajoute-au-périmètre--chélateurs-et-radiométaux)). Rien n'est engagé sur le métal avant cette décision.
+**Périmètre retenu : les deux cas**, décidé par Firas le 26 novembre 2026 — le peptide portant son chélateur **sans métal**, et le peptide **marqué**. Le volet sans métal suit la mécanique de l'étape 11A. Le volet métal est d'une autre nature : voir [ARCHITECTURE.md, section 11.4](ARCHITECTURE.md#114-le-centre-métallique--un-problème-de-nature-différente).
+
+**Décision encore requise** : l'approche de paramétrisation du centre métallique (non lié, lié, atomes factices cationiques) et le format retenu pour le système marqué. Elle se prend après la recherche bibliographique, pas avant.
 
 **Contexte** : les peptides de la thèse portent un chélateur greffé à l'extrémité N-terminale ou C-terminale amide, voire sur une chaîne latérale : DOTA (DOTA(tBu)₃), N4 ((Boc)₄-N4), HYNIC (Boc-HYNIC). Radiométaux visés : gallium, rhénium, lutécium, technétium-99m.
 
@@ -370,7 +372,9 @@ Ce fil réalise la substitution d'un acide aminé par un résidu aza-β³ et la 
 
 **Critères d'acceptation, volet radiométal (seulement si la décision de périmètre l'inclut)**
 
-- [ ] Approche de paramétrisation du centre métallique choisie et justifiée avec sa source (modèle de liaison, points cationiques factices, ou contraintes), avec ses limites écrites dans le rapport.
+- [ ] Approche de paramétrisation du centre métallique choisie et justifiée avec sa source parmi les trois familles de la section 11.4, avec ses limites écrites dans le rapport.
+- [ ] Aucun mélange entre champ de force protéique CHARMM et paramètres métalliques AMBER dans un même système : un contrôle le refuse (règle 4 du projet).
+- [ ] Pour un cœur oxo de technétium ou de rhénium, l'hypothèse structurale retenue est énoncée explicitement dans le rapport, puisque la nature du complexe formé au radiomarquage n'est pas toujours établie.
 - [ ] Géométrie de coordination contrôlée après construction.
 - [ ] Charge totale du complexe vérifiée contre la charge théorique attendue.
 - [ ] Limites de l'approche signalées dans le rapport de chaque préparation concernée.
