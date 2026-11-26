@@ -15,6 +15,7 @@
 7. [Vérification : revue, contrôles et tests](#7-vérification--revue-contrôles-et-tests)
 8. [Modifier un module isolément](#8-modifier-un-module-isolément)
 9. [Décisions ouvertes et compromis](#9-décisions-ouvertes-et-compromis)
+10. [Cas d'usage central : substitution aza-β³](#10-cas-dusage-central--substituer-un-acide-aminé-par-un-résidu-aza-β³)
 
 ---
 
@@ -382,7 +383,8 @@ Jeu commun à toutes les étapes de validation, enrichi au fil du plan. Les vale
 | `Ac-RGDS-NHMe` | N-méthylamide : vérifie que `NME` n'est pas confondu avec `NHE` |
 | Peptide avec His | choix du tautomère et de l'état de protonation selon le pH |
 | Peptide avec Cys–Cys | pont disulfure (quand `core` le prendra en charge) |
-| Peptide avec un résidu non standard | chaîne complète de dérivation des paramètres (étape 11) |
+| `Ac-RGDS-NH2` avec une position substituée en aza-β³ | **cas d'usage central** : greffage, paramètres dérivés, torsion N–N (section 10) |
+| Le même peptide substitué en chaque position | mode lot, comparaison entre positions |
 | Peptides de la thèse (ciblant DCC, TrkC, UNC5) | à fournir par Firas |
 
 ### 7.3 Contrôles d'exécution
@@ -427,7 +429,10 @@ Si une modification oblige à toucher deux modules qui ne devraient pas se conna
 | Champ de force principal (ff14SB, ff19SB, CHARMM36m...) | étape 6 du plan | `PrepConfig.forcefield` |
 | Système simulé (peptide libre, complexe, les deux) | étapes 10 et 12 du plan | `PrepConfig.goal` |
 | Outil de construction 3D | étape 5 du plan | composant de `build` |
-| Bibliothèque chimique pour SMILES / SDF (RDKit ou autre) | étape 11 du plan | dépendance optionnelle de `pyproject.toml` |
+| Bibliothèque chimique pour SMILES / SDF (RDKit ou autre) | étape 11A du plan | dépendance optionnelle de `pyproject.toml` |
+| Variante aza exacte : aza-β³ `-NH-N(R)-CH2-CO-` ou azapeptide α `-NH-N(R)-CO-` | tout le fil aza (section 10) | `ResidueTemplate` de la bibliothèque |
+| Méthode de charges et niveau de théorie quantique | étape 11C du plan | procédure de dérivation, consignée dans le rapport |
+| Logiciel de calcul quantique disponible | étapes 11C et 11D du plan | `ExternalTool` dédié |
 
 ### 9.2 Compromis d'architecture assumés
 
@@ -436,3 +441,90 @@ Si une modification oblige à toucher deux modules qui ne devraient pas se conna
 - **`Protocol` plutôt que classes abstraites.** Une implémentation n'hérite de rien : elle est remplaçable par n'importe quel objet de même forme. Les tests de contrat compensent l'absence de vérification à l'héritage.
 - **Contrôles séparés des composants.** Un même contrôle (charge nette, extrémités) s'applique à tous les moteurs et champs de force, au lieu d'être réécrit dans chaque implémentation.
 - **`solvation` hors de `missing_decisions()`.** Les paramètres de solvatation ne sont exigés qu'au lancement de l'étape de solvatation, pour pouvoir utiliser PepForge sur les premières étapes sans les avoir fixés.
+
+---
+
+## 10. Cas d'usage central : substituer un acide aminé par un résidu aza-β³
+
+Cette section a été ajoutée après la précision de Firas (26 novembre 2026) : la fonction centrale de PepForge est de **remplacer un acide aminé d'un peptide par le résidu pseudopeptidique aza-β³ correspondant, pour n'importe quel acide aminé et n'importe quelle position, puis de produire les fichiers de dynamique moléculaire**. Ce n'est donc pas un cas particulier du mode « structure chimique personnalisée » : c'est le chemin principal, et le reste de l'outil doit le servir.
+
+### 10.1 Chaîne attendue
+
+```mermaid
+flowchart LR
+    pep["Peptide de départ<br/>séquence ou structure 3D"] --> sub["Substitution<br/>position i → aza-β³"]
+    lib[("Bibliothèque aza-β³<br/>un résidu par chaîne latérale<br/>× état de protonation")] --> sub
+    sub --> st["Structure 3D du pseudopeptide"]
+    st --> par["Paramétrisation<br/>résidu dérivé + champ de force du reste"]
+    par --> files["Topologie, paramètres,<br/>coordonnées, scripts"]
+    sub -.->|mode lot| scan["Scan de toutes les positions<br/>i = 1..n"]
+```
+
+### 10.2 Ce que la substitution change, du point de vue du modèle
+
+> **À confirmer par Firas** : la variante visée est bien l'aza-β³, c'est-à-dire un squelette `-NH-N(R)-CH2-CO-`. L'azapeptide « α » classique (`-NH-N(R)-CO-`, semicarbazide, sans le CH2) est une autre famille. Les conséquences ci-dessous sont écrites pour l'aza-β³ ; elles changent si c'est l'autre variante.
+
+| | Résidu α standard | Résidu aza-β³ |
+|---|---|---|
+| Squelette | `-NH-CαH(R)-CO-` | `-NH-N(R)-CH2-CO-` |
+| Atomes de squelette | 3 (N, Cα, C) | 4 (N, N, CH2, C) |
+| Liaison nouvelle | — | **N–N** (hydrazide) |
+| Centre stéréogène | Cα (L ou D) | **disparaît** : l'azote substitué n'est pas un centre stéréogène stable |
+| Chaîne latérale | portée par Cα | portée par l'azote |
+| Torsions du squelette | φ, ψ, ω | φ, ψ, ω **plus** la torsion autour de N–N |
+
+Trois conséquences pour l'architecture :
+
+1. La substitution **allonge le squelette d'un atome**. Le modèle de données ne peut donc pas supposer qu'un résidu vaut trois atomes de squelette ; un contrôle doit vérifier la connectivité après greffage plutôt que de compter des atomes supposés.
+2. Elle **supprime un centre stéréogène** : les contrôles de stéréochimie doivent attendre un Cα chiral sur les résidus α et aucun sur les résidus aza.
+3. Elle **introduit une liaison N–N dans le squelette**, ce qui est le point dur ci-dessous.
+
+### 10.3 Le point dur : aucun champ de force protéique ne couvre le squelette N–N
+
+Les champs de force protéiques (ff14SB, ff19SB, CHARMM36m) décrivent le squelette des acides aminés α ; leurs torsions de squelette sont ajustées sur ce squelette. Un résidu aza-β³ n'y figure pas. Les champs de force généralistes (GAFF2, CGenFF) couvrent les molécules organiques, hydrazides compris, mais par analogie : leurs torsions autour d'une liaison N–N ne sont pas ajustées pour reproduire les préférences conformationnelles d'un pseudopeptide.
+
+En conséquence, pour **chaque** résidu aza-β³ de la bibliothèque :
+
+- les paramètres doivent être **dérivés** (voie GAFF2 via `antechamber` / `parmchk2` pour AMBER, CGenFF pour CHARMM) et non repris d'un champ de force publié ;
+- les charges doivent être calculées sur un **fragment coiffé** (type `Ace-X-Nme`), puis ajustées pour que la charge nette du résidu soit entière et que les atomes de jonction restent compatibles avec les résidus voisins du champ de force protéique ;
+- les **torsions du squelette, et en particulier celle autour de N–N, doivent être validées** contre des balayages dièdres relaxés en calcul quantique, avant toute simulation de production. Sans cette validation, les conformations obtenues ne sont pas interprétables.
+- la **recherche bibliographique** (existe-t-il des paramètres publiés pour des aza-peptides ou des β-peptides réutilisables, et à quel niveau de théorie ?) est une tâche à part entière, préalable à l'étape de dérivation. Aucun jeu de paramètres n'est écrit dans le dépôt sans sa source ou sa procédure de dérivation complète.
+
+### 10.4 Ce que l'architecture actuelle couvre déjà
+
+| Besoin du cas d'usage | Déjà prévu |
+|---|---|
+| Représenter un peptide dont un résidu n'est pas standard | `core.Residue` a un indicateur `standard`, et `Peptide` n'impose aucune nomenclature |
+| Remplacer un résidu dans une structure 3D | `build.StructureModifier` (mutation), avec structure immuable et journal obligatoire |
+| Bibliothèque de résidus non standards versionnée, avec provenance | `residues/` et `residues/data/`, où chaque fichier déclare sa source |
+| Refuser de simuler avec un paramètre manquant | `MissingParameterError`, `ParameterSet.missing` vide exigé, contrôle avant écriture moteur |
+| Signaler un paramètre obtenu par analogie | `ParameterSource` et le niveau de confiance prévu à l'étape 11 du plan |
+| Charge nette vérifiée | charge théorique (étape 2 du plan) comparée à la charge relue dans les fichiers produits (étape 7) |
+| Entrée par SMILES / MOL / SDF pour un fragment | mode d'entrée 2.3 de la spécification, module `io` |
+
+L'ossature est donc la bonne : **rien à reconstruire**. Ce qui manque est ci-dessous.
+
+### 10.5 Ce qu'il faut ajouter
+
+| # | À ajouter | Module | Pourquoi |
+|---|---|---|---|
+| A1 | Type `ResidueTemplate` : fragment chimique, atomes d'ancrage côté N et côté C, atomes à retirer lors du greffage, charge du fragment | `core` | C'est l'objet qu'échangent la bibliothèque, le greffage et la paramétrisation. Sans lui, `build` et `forcefields` devraient se connaître. |
+| A2 | Bibliothèque aza-β³ : une entrée par chaîne latérale **et par état de protonation**, versionnée, avec la procédure de dérivation de chaque entrée | `residues/data/` | « Fonctionner sur tous les acides aminés » veut dire une vingtaine de chaînes latérales, dont sept ionisables, donc une trentaine d'entrées à dériver et valider. |
+| A3 | Sous-pipeline de dérivation : fragment coiffé → calcul quantique → charges → `parmchk2` / CGenFF → fichier de paramètres + niveau de confiance | `forcefields` (nouveau sous-module `derivation`) | C'est l'étape la plus coûteuse et la plus sensible. Elle doit être reproductible, journalisée et rejouable à l'identique. |
+| A4 | `MutateResidue` : greffage du template à la position i, reconstruction des liaisons de jonction, minimisation locale du voisinage, conservation du reste de la structure | `build` | Le cœur de la fonction demandée. |
+| A5 | Mode « scan de positions » : même peptide, substitution en i pour i = 1..n, un système préparé par position | `pipeline` | C'est l'usage réel : comparer les positions entre elles, pas préparer un seul système. |
+| A6 | Contrôles propres à la substitution : connectivité du squelette après greffage, longueur et angles de la liaison N–N dans une plage sourcée, absence de centre stéréogène attendu sur le résidu aza, charge nette entière du résidu, aucune torsion manquante autour de N–N, chaîne latérale intacte | `checks` | Les contrôles existants supposent un squelette α. |
+| A7 | Validation des torsions contre des balayages dièdres quantiques, avec les courbes conservées dans `tests/reference/` | tests + `docs` | Sans elle, les paramètres dérivés ne sont pas défendables dans une thèse. |
+| A8 | Journal et rapport étendus : pour chaque résidu dérivé, méthode de charges, niveau de théorie, pénalités d'analogie, version des outils | `report` | Traçabilité exigée par la règle 3 du projet. |
+
+Ces ajouts ne changent **aucune** règle de dépendance de la section 3 : `ResidueTemplate` vit dans `core`, la dérivation dans `forcefields`, le greffage dans `build`, le lot dans `pipeline`. C'est la vérification que l'architecture tient pour ce cas d'usage.
+
+### 10.6 Décisions à prendre avant de coder ce fil
+
+| Décision | Pourquoi elle bloque |
+|---|---|
+| Variante exacte : aza-β³ (`-NH-N(R)-CH2-CO-`) ou azapeptide α (`-NH-N(R)-CO-`) | Change le template, les contrôles et les paramètres à dériver |
+| Voie de paramétrisation : AMBER + GAFF2 ou CHARMM + CGenFF | Change tout le sous-module de dérivation |
+| Méthode de charges et niveau de théorie (AM1-BCC, RESP sur HF/6-31G\*, autre) | Doit être fixée une fois pour toute la bibliothèque, sinon les résidus ne sont pas comparables entre eux |
+| Logiciel de calcul quantique disponible | Conditionne la faisabilité de A3 et A7 |
+| Substitution d'un seul résidu à la fois, ou plusieurs simultanément | Change `MutateResidue` et le mode lot |

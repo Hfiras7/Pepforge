@@ -15,6 +15,8 @@
 - **Étapes bloquées par une décision** : elles sont marquées 🔒. On peut avancer sur les étapes suivantes qui n'en dépendent pas.
 - **Tests** : quatre niveaux (voir [ARCHITECTURE.md, section 7](ARCHITECTURE.md#7-vérification--revue-contrôles-et-tests)). Abréviations ci-dessous : **U** unitaire, **K** contrat, **I** intégration, **V** validation scientifique.
 
+> **Fil central, ajouté le 26 novembre 2026.** La fonction centrale de PepForge est la substitution d'un acide aminé par un résidu **aza-β³**, pour n'importe quel acide aminé et n'importe quelle position, suivie de la génération des fichiers de dynamique moléculaire (voir [ARCHITECTURE.md, section 10](ARCHITECTURE.md#10-cas-dusage-central--substituer-un-acide-aminé-par-un-résidu-aza-β³)). Les étapes 11A à 11E ci-dessous portent ce fil. Elles ne sont plus une extension tardive : dès que l'étape 4 est passée, le fil aza-β³ avance **en parallèle** des étapes 5 à 10, parce que la dérivation des paramètres est l'étape la plus longue et la plus risquée du projet. L'étape 10 (bout en bout) doit être démontrée sur un **pseudopeptide aza-β³**, et pas seulement sur un peptide standard.
+
 ```mermaid
 flowchart LR
     E0[0. Socle] --> E1[1. Modèle enrichi]
@@ -27,7 +29,8 @@ flowchart LR
     E7 --> E8[8. Solvatation]
     E8 --> E9[9. Protocole]
     E9 --> E10[10. Rapport et peptide libre de bout en bout]
-    E6 --> E11[11. Structures personnalisées]
+    E4 --> E11["Fil aza-β³ : 11A à 11E<br/>fonction centrale"]
+    E11 --> E10
     E10 --> E12[12. Complexe peptide–récepteur]
     E10 --> E13[13. Second moteur et conversion]
     E10 --> E14[14. Analyses]
@@ -261,26 +264,92 @@ flowchart LR
 - [ ] Relancer avec le YAML du rapport donne des fichiers identiques (hors horodatages).
 - [ ] Un échec à n'importe quelle étape produit un rapport partiel lisible.
 
-**Tests** : I de bout en bout sur `Ac-RGDS-NH2` ; test de reproductibilité (deux exécutions, fichiers comparés) ; V : courte simulation lancée et relue par Firas.
+**Tests** : I de bout en bout sur `Ac-RGDS-NH2` **et sur son analogue aza-β³ en une position** (dès que l'étape 11C est passée) ; test de reproductibilité (deux exécutions, fichiers comparés) ; V : courte simulation lancée et relue par Firas.
 
 ---
 
-## Étape 11 — Structures chimiques personnalisées
+## Fil aza-β³ — étapes 11A à 11E (fonction centrale)
 
-**Objectif** : intégrer un résidu ou une modification absente des champs de force (mode d'entrée 2.3 de la spécification).
+Ce fil réalise la substitution d'un acide aminé par un résidu aza-β³ et la paramétrisation qui va avec. Il démarre dès l'étape 4 passée, en parallèle des étapes 5 à 10.
 
-**Modules** : `io` (SMILES, MOL/SDF), `forcefields` (dérivation : GAFF2 via `antechamber`/`parmchk2` pour AMBER, CGenFF pour CHARMM), `residues` (bibliothèque locale versionnée), `checks`.
+> **Préalable, avant toute ligne de code : bibliographie.** Déterminer la variante exacte visée (aza-β³ `-NH-N(R)-CH2-CO-` ou azapeptide α `-NH-N(R)-CO-`), et chercher s'il existe des paramètres publiés pour des aza-peptides ou des β-peptides réutilisables, à quel niveau de théorie, et avec quelle validation conformationnelle. Livrable : une note dans `docs/` avec les références et la voie retenue, relue par Firas. Aucun paramètre n'est écrit dans le dépôt sans sa source ou sa procédure de dérivation complète.
 
-**Décision requise** : bibliothèque chimique (RDKit ou autre) et méthode de calcul des charges (niveau de calcul quantique, ajustement RESP, AM1-BCC...).
+### Étape 11A — Fragment chimique et template de résidu
+
+**Modules** : `core` (`ResidueTemplate`), `io` (SMILES, MOL/SDF), `checks`.
+
+**Décision requise** : bibliothèque chimique (RDKit ou autre).
+
+**Livrables** : type `ResidueTemplate` (fragment, atomes d'ancrage côté N et côté C, atomes retirés au greffage, charge attendue), lecture d'un fragment depuis SMILES ou SDF, contrôles de valence, de stéréochimie et de protonation du fragment.
 
 **Critères d'acceptation**
 
-- [ ] Vérification de la valence, de la stéréochimie et de la protonation du fragment.
-- [ ] Points d'ancrage dans la chaîne déclarés explicitement.
-- [ ] Tout paramètre obtenu par analogie est signalé avec son niveau de confiance (pénalités CGenFF, avertissements `parmchk2`).
-- [ ] Le résidu produit est réutilisable et porte sa procédure de dérivation complète.
+- [ ] Les points d'ancrage sont déclarés explicitement, jamais devinés.
+- [ ] Un fragment de valence incohérente lève `ChemistryError`.
+- [ ] Le template ne contient aucun paramètre de champ de force : c'est de la chimie, pas de la paramétrisation.
 
-**Tests** : K, U ; V : règle 7 (charge nette, aucun paramètre manquant) et comparaison avec un résidu dont les paramètres sont publiés.
+**Tests** : U (fragments corrects et défectueux) ; K.
+
+### Étape 11B — Greffage dans le peptide
+
+**Modules** : `build` (`MutateResidue`), `checks`, `pipeline`.
+
+**Livrables** : substitution du résidu en position i par un `ResidueTemplate`, reconstruction des liaisons de jonction, minimisation locale du voisinage, journalisation complète.
+
+**Critères d'acceptation**
+
+- [ ] Le squelette reste continu après greffage (contrôle de connectivité, et non un comptage d'atomes supposé).
+- [ ] Le reste de la structure est inchangé hors de la zone minimisée, et les extrémités du peptide sont conservées.
+- [ ] La longueur et les angles de la liaison N–N tombent dans une plage issue d'une source citée.
+- [ ] Les contrôles de stéréochimie attendent un Cα chiral sur les résidus α et aucun centre stéréogène sur le résidu aza.
+- [ ] Chaque substitution est journalisée : position, résidu retiré, template ajouté, paramètres de minimisation.
+
+**Tests** : U, K, I (séquence → protonation → construction → substitution) ; V : inspection visuelle de chaque peptide de référence substitué, consignée dans la PR.
+
+### Étape 11C — Dérivation des paramètres d'un résidu aza-β³ 🔒
+
+**Décisions requises** : voie de paramétrisation (AMBER + GAFF2 ou CHARMM + CGenFF), méthode de charges et niveau de théorie, logiciel de calcul quantique disponible.
+
+**Modules** : `forcefields` (nouveau sous-module `derivation`), `tools`, `report`.
+
+**Livrables** : chaîne fragment coiffé (type `Ace-X-Nme`) → calcul quantique → charges → `parmchk2` ou CGenFF → fichier de paramètres réutilisable, avec niveau de confiance et procédure complète.
+
+**Critères d'acceptation**
+
+- [ ] La charge nette du résidu dérivé est entière, et les atomes de jonction restent compatibles avec les résidus voisins du champ de force protéique.
+- [ ] Tout paramètre obtenu par analogie est signalé avec son niveau de confiance (pénalités CGenFF, avertissements `parmchk2`).
+- [ ] Aucune torsion manquante autour de la liaison N–N.
+- [ ] La dérivation est rejouable à l'identique depuis le seul fichier de configuration (règle 8), et le rapport consigne méthode de charges, niveau de théorie, pénalités et versions des outils.
+
+**Tests** : U, K ; V : règle 7 (charge nette, aucun paramètre manquant) pour chaque résidu dérivé.
+
+### Étape 11D — Validation conformationnelle des paramètres dérivés 🔒
+
+**Objectif** : sans cette étape, les conformations produites par la simulation ne sont pas interprétables, et les paramètres ne sont pas défendables dans une thèse.
+
+**Critères d'acceptation**
+
+- [ ] Balayages dièdres relaxés en calcul quantique pour φ, ψ et la torsion N–N d'un résidu aza-β³ de référence.
+- [ ] Courbes champ de force et courbes quantiques comparées, écart maximal consigné, seuil d'acceptation fixé et justifié avec Firas.
+- [ ] Courbes et données conservées dans `tests/reference/`.
+- [ ] Si l'écart dépasse le seuil : ajustement des torsions documenté, ou point signalé comme limite connue dans le rapport.
+
+**Tests** : V, avec relecture scientifique obligatoire de Firas.
+
+### Étape 11E — Bibliothèque complète et scan de positions
+
+**Objectif** : « fonctionner sur tous les acides aminés », c'est-à-dire une entrée par chaîne latérale **et par état de protonation**, soit une trentaine d'entrées, puis la substitution en lot.
+
+**Modules** : `residues/data/`, `pipeline` (mode lot), `cli`.
+
+**Critères d'acceptation**
+
+- [ ] Une entrée de bibliothèque par chaîne latérale et par état de protonation pertinent, chacune avec sa procédure de dérivation et sa version.
+- [ ] Les cas particuliers sont traités explicitement, et non ignorés : glycine (pas de chaîne latérale), proline (azote cyclique), cystéine (pont disulfure), chaînes latérales ionisables.
+- [ ] Le mode lot prépare un système par position pour i = 1..n, chacun avec son rapport.
+- [ ] Chaque entrée ajoutée passe le test de charge nette et d'absence de paramètre manquant (règle 7) avant d'entrer dans la bibliothèque.
+
+**Tests** : U par entrée ; I sur un scan complet d'un peptide court ; V : relecture par Firas des entrées, chaîne latérale par chaîne latérale.
 
 ---
 
