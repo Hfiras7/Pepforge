@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Environnements virtuels
+.venv/
+venv/
+env/
+
+# Outils
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Éditeurs
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Système
+.DS_Store
+Thumbs.db
+
+# Sorties de préparation et de simulation (à ne pas versionner)
+runs/
+*.prmtop
+*.inpcrd
+*.rst7
+*.nc
+*.dcd
+*.xtc
+*.trr
+*.tpr
+*.edr
+*.cpt

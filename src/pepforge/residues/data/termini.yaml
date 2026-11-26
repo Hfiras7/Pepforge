@@ -1,0 +1,15 @@
+# Extrémités reconnues dans la notation des séquences.
+# Les alias sont comparés sans tenir compte de la casse.
+# La correspondance avec les résidus terminaux d'un champ de force (ex. NHE en AMBER
+# pour -CO-NH2) relève des adaptateurs de pepforge.forcefields, pas de ce fichier.
+version: 1
+source: Notation usuelle des peptides (IUPAC-IUB 1984, règles 3AA-6 et 3AA-7).
+n_terminus:
+  - {key: free_amine, label: "amine libre (H2N-)", aliases: ["H", "NH2", "H2N"]}
+  - {key: acetyl, label: "acétylée (Ac-)", aliases: ["Ac", "CH3CO"]}
+c_terminus:
+  - {key: free_acid, label: "acide libre (-COOH)", aliases: ["OH", "COOH", "CO-OH"]}
+  - {key: amide, label: "amidée (-CO-NH2)", aliases: ["NH2", "CO-NH2", "CONH2"]}
+  - {key: n_methylamide, label: "N-méthylamide (-CO-NH-CH3)", aliases: ["NHMe", "NHCH3", "CO-NH-CH3"]}
+default_n_terminus: free_amine
+default_c_terminus: free_acid

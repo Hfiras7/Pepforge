@@ -1,0 +1,26 @@
+# Acides aminés standards : nomenclature uniquement, aucun paramètre de champ de force.
+version: 1
+source: >-
+  IUPAC-IUB Joint Commission on Biochemical Nomenclature,
+  "Nomenclature and Symbolism for Amino Acids and Peptides", Eur. J. Biochem. 138, 9-37 (1984).
+residues:
+  - {code: ALA, one_letter: A, name: Alanine}
+  - {code: ARG, one_letter: R, name: Arginine}
+  - {code: ASN, one_letter: N, name: Asparagine}
+  - {code: ASP, one_letter: D, name: Aspartic acid}
+  - {code: CYS, one_letter: C, name: Cysteine}
+  - {code: GLN, one_letter: Q, name: Glutamine}
+  - {code: GLU, one_letter: E, name: Glutamic acid}
+  - {code: GLY, one_letter: G, name: Glycine}
+  - {code: HIS, one_letter: H, name: Histidine}
+  - {code: ILE, one_letter: I, name: Isoleucine}
+  - {code: LEU, one_letter: L, name: Leucine}
+  - {code: LYS, one_letter: K, name: Lysine}
+  - {code: MET, one_letter: M, name: Methionine}
+  - {code: PHE, one_letter: F, name: Phenylalanine}
+  - {code: PRO, one_letter: P, name: Proline}
+  - {code: SER, one_letter: S, name: Serine}
+  - {code: THR, one_letter: T, name: Threonine}
+  - {code: TRP, one_letter: W, name: Tryptophan}
+  - {code: TYR, one_letter: Y, name: Tyrosine}
+  - {code: VAL, one_letter: V, name: Valine}

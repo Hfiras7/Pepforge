@@ -1,0 +1,68 @@
+# PepForge
+
+*Universal Peptide Design, Engineering and Simulation Platform*
+
+PepForge est une plateforme Python de conception, de modification, de construction 3D et de préparation de peptides pour la dynamique moléculaire. Elle part d'une séquence, d'une structure 3D (PDB, mmCIF, sortie de docking) ou d'une structure chimique personnalisée, et produit les fichiers d'entrée de simulation (topologie, paramètres, coordonnées) avec les scripts de préparation associés.
+
+Le projet est développé dans le cadre d'une thèse de doctorat sur des peptides théranostiques ciblant les récepteurs à dépendance (DCC, TrkC, UNC5).
+
+> **État actuel : squelette.** L'analyse des séquences et de leurs extrémités, la configuration, le journal et l'encapsulation des outils externes sont en place. La construction 3D, les adaptateurs de champ de force et la génération des fichiers moteur restent à écrire. Le moteur de simulation, le champ de force et le système simulé ne sont pas encore choisis et restent configurables.
+
+## Installation
+
+Prérequis : Python 3.11 ou plus, et Git.
+
+```bash
+git clone https://github.com/Hfiras7/Pepforge.git
+cd Pepforge
+python -m venv .venv
+source .venv/bin/activate        # Windows : .venv\Scripts\activate
+pip install -e ".[dev]"
+```
+
+## Utilisation
+
+```bash
+pepforge parse "Ac-RGDS-NH2"
+pepforge parse "NH2-Arg-Gly-Asp-Ser-CO-NH2"
+pepforge config-template > prep.yaml
+```
+
+## Développement
+
+```bash
+pytest                                  # tests
+ruff check . && ruff format --check .   # style
+mypy                                    # typage strict
+```
+
+### Avec VS Code et Claude Code
+
+1. Ouvrir le dossier du dépôt dans VS Code.
+2. Accepter l'installation des extensions recommandées (Python, Pylance, Ruff, Mypy, Claude Code).
+3. Sélectionner l'interpréteur `.venv` (palette de commandes : *Python: Select Interpreter*).
+4. Lancer Claude Code et se connecter avec son compte Claude. Il lit automatiquement [`CLAUDE.md`](CLAUDE.md), qui contient les règles du projet.
+
+## Organisation
+
+```
+src/pepforge/
+├── core/         représentation interne du peptide
+├── io/           séquences, puis PDB, mmCIF, SMILES, MOL/SDF
+├── residues/     bibliothèque de résidus et extrémités (données YAML sourcées)
+├── forcefields/  adaptateurs de champ de force (interface commune)
+├── engines/      fichiers d'entrée AMBER, GROMACS, NAMD (interface commune)
+├── pipeline/     enchaînement des étapes, outils externes
+├── report/       journal et rapport reproductible
+└── cli/          commande `pepforge`
+docs/             instructions et spécifications du projet
+tests/            tests pytest
+```
+
+## Documentation
+
+- [Instructions du projet](docs/00-instructions-projet.md)
+- [Spécification fonctionnelle](docs/01-specification-fonctionnelle.md)
+- [Prompt de génération des fichiers de DM](docs/02-prompt-generation-fichiers-md.md)
+- [Prompt de développement logiciel](docs/03-prompt-developpement-logiciel.md)
+- [Checklist qualité avant simulation](docs/04-checklist-qualite.md)
