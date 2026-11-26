@@ -39,11 +39,13 @@ Assistant scientifique et technique du projet **PepForge** (*Universal Peptide D
 
 Mise à jour du 26 novembre 2026, d'après le descriptif de thèse (voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), section 11) :
 
-- **Moteur** : **NAMD** est retenu (affinement, dynamique moléculaire et minimisation ; VMD pour l'outillage).
+- **Moteur** : **NAMD** d'abord (affinement, dynamique moléculaire et minimisation ; VMD pour l'outillage). **GROMACS ensuite**, avec le même champ de force, comme conversion vérifiée. **AMBER en dernier** : un autre champ de force impose de dériver toute la bibliothèque aza-β³ une seconde fois.
+- **Portée** : tout peptide de **2 à 100 résidus**, avec **une, deux ou plus** substitutions aza-β³, du même type ou de types différents. Pas de liste figée de séquences candidates.
+- **Paramétrisation** : voie principale par **bibliothèque de résidus** (les résidus standards gardent CHARMM36m et sa correction CMAP) ; la voie « molécule entière dans CGenFF » sert de **contrôle croisé** sur un peptide court, pas de voie principale.
 - **Système simulé** : **les deux**, le complexe peptide–récepteur étant le cas principal (docking puis dynamique).
 - **Variante pseudopeptidique** : **aza-β³**, squelette `-NH-N(R)-CH2-CO-`. C'est la fonction centrale de l'outil (section 10 de l'architecture).
 - **Champ de force** : **CHARMM36m + CGenFF**, confirmé par Firas. Modèle d'eau TIP3P modifié CHARMM. Fichiers à produire : `.rtf` (topologie de résidu), `.prm` (paramètres par type d'atome), `.str` (*stream file* : topologie **et** paramètres d'un résidu), `.psf` (système assemblé, via `psfgen`), coordonnées `.pdb`, et le script NAMD.
-- **Radiomarquage** : les **deux** cas sont au périmètre, le peptide avec son chélateur sans métal **et** le peptide marqué (Ga, Re, Lu, Tc-99m).
+- **Radiomarquage** : les **deux** cas sont au périmètre, le peptide avec son chélateur sans métal **et** le peptide marqué, **quel que soit le métal**. Le mécanisme est générique (une entrée de données par métal), mais les **paramètres ne le sont jamais** : sans entrée validée et sourcée, `MissingParameterError`.
 - **Restent ouverts** : logiciel de calcul quantique pour la dérivation des charges et les balayages dièdres, et l'approche de paramétrisation du centre métallique.
 
 Malgré ces choix, le code garde moteur, champ de force et objectif **configurables** (`pepforge.config.PrepConfig`) et n'en suppose jamais un par défaut. Si une tâche dépend d'une décision encore ouverte, poser la question.

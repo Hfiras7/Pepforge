@@ -32,7 +32,7 @@ flowchart LR
     E4 --> E11["Fil aza-β³ : 11A à 11E<br/>fonction centrale"]
     E11 --> E10
     E10 --> E12[12. Complexe peptide–récepteur]
-    E10 --> E13[13. Second moteur et conversion]
+    E10 --> E13[13. GROMACS puis AMBER]
     E10 --> E14[14. Analyses]
 ```
 
@@ -312,7 +312,7 @@ Ce fil réalise la substitution d'un acide aminé par un résidu aza-β³ et la 
 
 **Modules** : `forcefields` (nouveau sous-module `derivation`), `tools`, `report`.
 
-**Livrables** : chaîne fragment coiffé (type `Ace-X-Nme`) → calcul quantique → charges → `parmchk2` ou CGenFF → fichier de paramètres réutilisable, avec niveau de confiance et procédure complète.
+**Livrables** : chaîne fragment coiffé (type `Ace-X-Nme`) → calcul quantique → charges → CGenFF (ou `parmchk2` pour la voie AMBER) → fichier de paramètres réutilisable, avec niveau de confiance et procédure complète. **Plus** la voie « molécule entière » comme contrôle croisé, décrite en [ARCHITECTURE.md, section 12.2](ARCHITECTURE.md#122-deux-voies-de-paramétrisation-et-pourquoi-la-bibliothèque-reste-la-voie-principale).
 
 **Critères d'acceptation**
 
@@ -320,6 +320,9 @@ Ce fil réalise la substitution d'un acide aminé par un résidu aza-β³ et la 
 - [ ] Tout paramètre obtenu par analogie est signalé avec son niveau de confiance (pénalités CGenFF, avertissements `parmchk2`).
 - [ ] Aucune torsion manquante autour de la liaison N–N.
 - [ ] La dérivation est rejouable à l'identique depuis le seul fichier de configuration (règle 8), et le rapport consigne méthode de charges, niveau de théorie, pénalités et versions des outils.
+- [ ] **Contrôle croisé** : sur un peptide court (deux à cinq résidus) portant une substitution, les charges et paramètres issus de la bibliothèque sont comparés à ceux obtenus en passant la **molécule entière** dans CGenFF. L'écart est consigné ; un écart important révèle une erreur de traitement des jonctions.
+- [ ] Le cas **deux résidus aza-β³ adjacents** a son propre jeu de charges de jonction et son propre test, puisque les deux atomes de jonction qui se font face appartiennent à des résidus dérivés.
+- [ ] Limite inscrite dans le rapport : un résidu aza-β³ ne bénéficie d'aucune correction CMAP, celle-ci étant ajustée pour le squelette des acides aminés α.
 
 **Tests** : U, K ; V : règle 7 (charge nette, aucun paramètre manquant) pour chaque résidu dérivé.
 
@@ -346,7 +349,8 @@ Ce fil réalise la substitution d'un acide aminé par un résidu aza-β³ et la 
 
 - [ ] Une entrée de bibliothèque par chaîne latérale et par état de protonation pertinent, chacune avec sa procédure de dérivation et sa version.
 - [ ] Les cas particuliers sont traités explicitement, et non ignorés : glycine (pas de chaîne latérale), proline (azote cyclique), cystéine (pont disulfure), chaînes latérales ionisables.
-- [ ] Le mode lot prépare un système par position pour i = 1..n, chacun avec son rapport.
+- [ ] Le mode lot prépare un système par position pour i = 1..n, chacun avec son rapport, et accepte aussi des **combinaisons de positions** déclarées explicitement (une, deux ou plus de substitutions, du même type ou de types différents). PepForge n'énumère jamais toutes les combinaisons de lui-même.
+- [ ] Les deux extrémités de la gamme sont testées : un dipeptide, et un peptide d'une centaine de résidus portant plusieurs substitutions.
 - [ ] Chaque entrée ajoutée passe le test de charge nette et d'absence de paramètre manquant (règle 7) avant d'entrer dans la bibliothèque.
 
 **Tests** : U par entrée ; I sur un scan complet d'un peptide court ; V : relecture par Firas des entrées, chaîne latérale par chaîne latérale.
@@ -399,14 +403,26 @@ Ce fil réalise la substitution d'un acide aminé par un résidu aza-β³ et la 
 
 ---
 
-## Étape 13 — Second moteur, second champ de force, conversion
+## Étape 13 — GROMACS, puis AMBER
 
-**Objectif** : prouver que l'architecture tient : ajouter un moteur ou un champ de force sans modifier les modules existants, et convertir entre moteurs.
+**Objectif** : Firas veut pouvoir choisir le moteur selon la méthode. Les deux ajouts n'ont pas le même coût (voir [ARCHITECTURE.md, section 12.4](ARCHITECTURE.md#124-trois-moteurs--ce-qui-est-peu-coûteux-et-ce-qui-lest-beaucoup)), d'où deux sous-étapes dans cet ordre.
 
-**Critères d'acceptation**
+### Étape 13A — GROMACS avec le même champ de force
 
-- [ ] L'ajout ne modifie ni `core`, ni `build`, ni les autres adaptateurs (vérifiable dans le diff de la PR).
-- [ ] Conversion traitée comme une étape distincte : nombre d'atomes, charge nette et énergie en point unique comparés avant et après.
+Même champ de force CHARMM36m, autre format de fichiers. Coût modéré : les paramètres ne changent pas.
+
+- [ ] Conversion traitée comme une étape distincte, jamais implicite.
+- [ ] Après conversion : nombre d'atomes, charge nette et **énergie en point unique** comparés entre les deux formats, écarts consignés.
+- [ ] L'ajout ne modifie ni `core`, ni `build`, ni `forcefields` (vérifiable dans le diff de la PR).
+
+### Étape 13B — AMBER ff19SB + GAFF2 🔒
+
+Coût élevé, à engager en connaissance de cause : un nouvel adaptateur **et la dérivation complète de la bibliothèque aza-β³ une seconde fois** via `antechamber` et `parmchk2`, plus la revalidation des torsions. C'est le travail des étapes 11C à 11E refait en entier.
+
+- [ ] Décision explicite de Firas avant de commencer, le coût étant connu.
+- [ ] Chaque entrée de bibliothèque dérivée en GAFF2 passe les mêmes critères qu'en CGenFF (charge entière, aucun paramètre manquant, torsions validées).
+- [ ] Aucun mélange de paramètres de champs de force différents dans un même système, quelle que soit la combinaison de moteurs (règle 4).
+- [ ] Comparaison croisée des énergies entre champs de force, écarts documentés et expliqués.
 
 **Tests** : K pour la nouvelle implémentation ; V : comparaison croisée des énergies entre moteurs.
 

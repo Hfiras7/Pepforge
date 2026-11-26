@@ -17,6 +17,7 @@
 9. [Décisions ouvertes et compromis](#9-décisions-ouvertes-et-compromis)
 10. [Cas d'usage central : substitution aza-β³](#10-cas-dusage-central--substituer-un-acide-aminé-par-un-résidu-aza-β³)
 11. [Contraintes venues du projet de thèse](#11-contraintes-venues-du-projet-de-thèse)
+12. [Portée confirmée le 26 novembre 2026](#12-portée-confirmée-le-26-novembre-2026)
 
 ---
 
@@ -386,6 +387,9 @@ Jeu commun à toutes les étapes de validation, enrichi au fil du plan. Les vale
 | Peptide avec Cys–Cys | pont disulfure (quand `core` le prendra en charge) |
 | `Ac-RGDS-NH2` avec une position substituée en aza-β³ | **cas d'usage central** : greffage, paramètres dérivés, torsion N–N (section 10) |
 | Le même peptide substitué en chaque position | mode lot, comparaison entre positions |
+| Peptide portant deux résidus aza-β³ **adjacents** | charges de jonction entre deux résidus dérivés (section 12.1) |
+| Dipeptide, et peptide d'une centaine de résidus | les deux extrémités de la gamme 2 à 100 résidus (section 12.5) |
+| Peptide portant un chélateur, avec et sans métal | volet radiomarquage (sections 11.2 et 11.4) |
 | Peptides de la thèse (ciblant DCC, TrkC, UNC5) | à fournir par Firas |
 
 ### 7.3 Contrôles d'exécution
@@ -438,6 +442,8 @@ Si une modification oblige à toucher deux modules qui ne devraient pas se conna
 | Variante aza exacte : aza-β³ `-NH-N(R)-CH2-CO-` ou azapeptide α `-NH-N(R)-CO-` | tout le fil aza (section 10) | `ResidueTemplate` de la bibliothèque |
 | Méthode de charges et niveau de théorie quantique | étape 11C du plan | procédure de dérivation, consignée dans le rapport |
 | Logiciel de calcul quantique disponible — **non mentionné dans le projet de thèse, reste le principal inconnu** | étapes 11C et 11D du plan | `ExternalTool` dédié |
+| ~~Séquences candidates~~ → **tout peptide de 2 à 100 résidus**, pas de liste figée | peptides de référence des tests | — |
+| Moteurs : **NAMD d'abord, GROMACS ensuite** (même champ de force), **AMBER en dernier** (coût élevé, section 12.4) | étape 13 du plan | `PrepConfig.engine` |
 
 ### 9.2 Compromis d'architecture assumés
 
@@ -613,3 +619,72 @@ Aucune règle de dépendance de la section 3 ne change :
 - NAMD devient une implémentation de `EngineWriter` dans `engines`, sans effet sur `forcefields` ni sur `build` ;
 - l'ensemble RMN multi-modèles est une capacité de lecture de `io`, avec un contrôle qui impose le choix explicite du modèle à préparer ;
 - le complexe peptide–récepteur reste l'étape 12 du plan, mais devient prioritaire au même titre que le peptide libre.
+
+---
+
+## 12. Portée confirmée le 26 novembre 2026
+
+Firas a précisé quatre points qui élargissent la portée. Chacun est traité ci-dessous avec son coût réel.
+
+### 12.1 Substitutions multiples, en nombre et en types quelconques
+
+Une préparation doit accepter **une, deux ou plus** substitutions aza-β³, sur un **même type** d'acide aminé ou sur **plusieurs types différents**, dans un peptide de **2 à 100 résidus**.
+
+Conséquences :
+
+- La substitution est une opération **répétable**, pas un cas unique : `MutateResidue` s'applique n fois, chaque application étant journalisée séparément.
+- Le cas **deux résidus aza-β³ adjacents** est particulier : les deux atomes de jonction qui se font face appartiennent tous deux à un résidu dérivé, et non à un résidu CHARMM36m. Il demande son propre jeu de charges de jonction et son propre test.
+- Le mode lot de l'étape 11E ne se limite pas à « une position à la fois » : il doit pouvoir énumérer des **combinaisons** de positions. Le nombre de combinaisons explose avec la taille du peptide, donc l'utilisateur déclare explicitement les combinaisons voulues ; PepForge ne les énumère jamais toutes de lui-même.
+
+### 12.2 Deux voies de paramétrisation, et pourquoi la bibliothèque reste la voie principale
+
+Firas souhaite faire tourner CGenFF sur **la molécule entière** modifiée. C'est faisable, mais ce n'est pas interchangeable avec la voie par bibliothèque de résidus. Voici la comparaison honnête.
+
+| | Voie A — bibliothèque de résidus | Voie B — molécule entière dans CGenFF |
+|---|---|---|
+| Ce qui passe dans CGenFF | le fragment aza-β³ coiffé, une fois par chaîne latérale | le peptide modifié complet, à chaque nouveau peptide |
+| Résidus standards | gardent **CHARMM36m**, avec ses torsions de squelette et sa correction **CMAP** ajustées pour les peptides | reçoivent des paramètres **génériques** CGenFF, sans CMAP |
+| Réutilisation | une dérivation sert à tous les peptides et toutes les positions | aucune : chaque peptide, chaque position, chaque combinaison repart de zéro |
+| Taille praticable | toute la gamme 2 à 100 résidus | petites molécules seulement ; la limite en nombre d'atomes de la version utilisée est à vérifier, et 100 résidus font plus d'un millier d'atomes |
+| Jonctions | travail de charges de jonction à faire, une fois par chaîne latérale | pas de jonction à traiter : CGenFF voit la connectivité réelle |
+| Pénalités | calculées sur le fragment, hors contexte de chaîne | calculées dans le contexte réel |
+
+**Recommandation : la voie A est la voie principale, la voie B sert de contrôle croisé.** Deux raisons décisives :
+
+1. La voie B **abandonne CHARMM36m pour les résidus standards**. Pour un peptide de 100 résidus, cela revient à décrire un petit peptide structuré avec un champ de force généraliste, sans la correction CMAP. C'est un recul, pas un progrès.
+2. La voie B ne tient pas à l'échelle demandée : chaque combinaison de substitutions exigerait une paramétrisation complète.
+
+En revanche, la voie B a une vraie valeur comme **vérification** : sur un peptide court (deux à cinq résidus) portant une substitution, on compare les charges et les paramètres obtenus par la bibliothèque à ceux obtenus sur la molécule entière. Un écart important révèle une erreur dans le traitement des jonctions. C'est un test de validation à part entière, inscrit à l'étape 11C.
+
+**Limite à écrire dans la thèse** : un résidu aza-β³ ne bénéficie d'aucune correction CMAP, puisque celle-ci est ajustée pour le squelette des acides aminés α. C'est une raison de plus pour valider les torsions du squelette, y compris celle autour de N–N, contre des balayages quantiques (étape 11D).
+
+### 12.3 « Un métal, quelle que soit sa nature »
+
+Le **mécanisme** est générique, et c'est ce que l'architecture garantit : un centre métallique est décrit par un enregistrement de données (élément, état d'oxydation, charge, géométrie de coordination attendue, atomes donneurs du chélateur, approche de paramétrisation retenue), au même titre qu'un `ResidueTemplate`. Ajouter un métal, c'est ajouter une entrée de données, pas du code.
+
+En revanche, et il faut être clair : **les paramètres, eux, ne sont pas génériques**. Pour chaque métal et chaque chélateur, il faut soit des paramètres publiés et cités, soit une dérivation documentée. Un métal sans entrée validée lève `MissingParameterError` ; PepForge ne fabrique jamais un jeu de paramètres métalliques par analogie silencieuse. Les limites propres à chaque approche restent celles de la section 11.4.
+
+### 12.4 Trois moteurs : ce qui est peu coûteux et ce qui l'est beaucoup
+
+Firas veut travailler sur NAMD avec CHARMM, mais pouvoir aussi produire des fichiers AMBER et GROMACS, et choisir selon la méthode. L'architecture est faite pour ça, mais les deux situations n'ont pas le même coût, et il ne faut pas les confondre.
+
+| Situation | Ce que ça demande | Coût |
+|---|---|---|
+| **Même champ de force, autre moteur** — par exemple CHARMM36m exécuté sous GROMACS | un `EngineWriter` GROMACS, ou une conversion de format traitée comme une étape explicite et vérifiée | modéré : un générateur par moteur, les paramètres ne changent pas |
+| **Autre champ de force** — par exemple AMBER ff19SB avec GAFF2 | un nouvel `EngineWriter`, un nouvel adaptateur, **et la dérivation complète de toute la bibliothèque aza-β³ une seconde fois** (GAFF2 via `antechamber` et `parmchk2`), plus la revalidation des torsions | élevé : c'est le travail des étapes 11C à 11E refait en entier |
+
+Ordre de priorité qui en découle, inscrit au plan :
+
+1. **CHARMM36m + NAMD** : la voie de la thèse, développée d'abord.
+2. **GROMACS avec le même champ de force** : ensuite, comme conversion vérifiée (nombre d'atomes, charge nette et énergie en point unique comparés avant et après).
+3. **AMBER ff19SB + GAFF2** : en dernier, parce que cela double la dérivation et la validation.
+
+Interdit, et contrôlé : mélanger des paramètres de champs de force différents dans un même système, quelle que soit la combinaison de moteurs (règle 4 du projet).
+
+### 12.5 Taille des peptides : de 2 à 100 résidus
+
+Il n'y a pas de liste figée de séquences candidates : tout peptide est admis dans cette gamme. Conséquences :
+
+- Les **peptides de référence** des tests restent des cas illustratifs choisis pour ce qu'ils exercent (section 7.2), et non les séquences de la thèse.
+- Les tests doivent couvrir les deux extrémités de la gamme : un dipeptide et un peptide d'une centaine de résidus, ce dernier avec plusieurs substitutions.
+- À 100 résidus, on prépare un petit domaine structuré : la correction CMAP de CHARMM36m et la qualité des torsions de squelette comptent davantage, ce qui renforce la conclusion de la section 12.2.
