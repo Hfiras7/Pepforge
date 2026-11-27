@@ -460,3 +460,13 @@ Coût élevé, à engager en connaissance de cause : un nouvel adaptateur **et l
 **Architecture** : nouveau module `analysis`, hors de la chaîne de préparation. Il consomme des trajectoires et le rapport de préparation, et ne dépend que de `core`, `config`, `io` et `report`. À déclarer dans la matrice de dépendances.
 
 **Tests** : U sur des trajectoires synthétiques ; V : comparaison avec un outil d'analyse publié sur une même trajectoire.
+
+## Étape 15 — Distribution et portabilité
+
+**Objectif** : publier PepForge de façon installable, sur Linux comme sur Windows, sans jamais maintenir deux versions du code (architecture, section 19).
+
+**Architecture** : aucun changement de module. L'étape porte sur l'empaquetage et la CI. Voie normale `pipx`, puis paquet conda, qui est la seule à pouvoir déclarer Psi4 comme dépendance. L'exécutable autonome, si le besoin apparaît, est **une construction par système** produite par la CI depuis le même code, jamais une version séparée.
+
+**Critères** : installation vérifiée depuis zéro sur les deux systèmes ; `pepforge --version` et une préparation courte réussissent sur les deux ; un outil externe manquant produit un message clair nommant l'outil, jamais une trace Python brute ; les règles de portabilité de la section 19.4 respectées (chemins, encodage, fins de ligne).
+
+**Tests** : la CI exécute déjà la suite sur Linux et Windows. À ajouter : un test d'intégration qui installe le paquet construit dans un environnement vierge et lance la CLI, sur les deux systèmes.

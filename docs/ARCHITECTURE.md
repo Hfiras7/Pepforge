@@ -30,6 +30,7 @@
 18. [Comment vérifier et valider une sortie](#18-comment-vérifier-et-valider-une-sortie)
     - [18.8 Exemple complet de référence quantique](#188-exemple-complet-de-référence-quantique)
     - [18.9 Choisir le niveau de validation dans l'outil](#189-choisir-le-niveau-de-validation-dans-loutil)
+19. [Distribution : un seul code, deux exécutables](#19-distribution--un-seul-code-deux-exécutables)
 
 ---
 
@@ -1194,3 +1195,49 @@ Le niveau est un **choix de l'utilisateur**, porté par `PrepConfig.validation_l
 `unavailable(level)` permet d'avertir **avant** de lancer une préparation longue, et non de le découvrir dans le rapport final. État actuel du catalogue : le niveau 0 est entièrement outillé sauf le contrôle de géométrie (étape 4) ; les niveaux 1 à 3 sont déclarés et refusés tant que les étapes 7, 9, 11D et 14 ne sont pas écrites ; le niveau 4 est hors de l'outil par nature, la confrontation aux données RMN restant manuelle.
 
 Jusqu'où est-ce faisable sur un poste de bureau ? **Le niveau 3 est atteignable**, à deux conditions : le palier 3 n'est exécuté que sur **un ou deux peptides de référence**, pas sur chaque préparation, et le peptide témoin de la section 18.5 est simulé une seule fois par protocole, pas une fois par peptide. Le niveau 0 tourne en quelques secondes et peut rester actif en permanence ; les niveaux 1 et 2 coûtent de quelques minutes à quelques heures et se justifient à chaque nouvelle entrée de la bibliothèque ; le niveau 3 coûte des jours, et c'est le palier qui rend les paramètres défendables en soutenance.
+
+---
+
+## 19. Distribution : un seul code, deux exécutables
+
+Question de Firas le 27 novembre 2026 : faut-il une version exécutable qui tourne sous Linux **et** Windows, ou deux versions, une par système ?
+
+### 19.1 La réponse en une ligne
+
+**Un seul code source, jamais deux.** PepForge est du Python pur : le même dépôt tourne sous Linux, Windows et macOS sans la moindre variante de code. En revanche, **un exécutable autonome est propre à un système par nature** : aucun binaire unique ne s'exécute sur les deux. Donc, si exécutable autonome il y a, ce sont deux **constructions** du même code, produites automatiquement par la CI sur chaque système, et non deux versions à maintenir.
+
+Maintenir deux versions du code serait la pire option : deux fois la correction de chaque bogue, et la garantie qu'elles divergent.
+
+### 19.2 Le vrai obstacle n'est pas PepForge, ce sont les outils externes
+
+C'est le point qu'il faut voir avant de choisir un format de distribution. PepForge ne fait pas le calcul : il pilote `psfgen`, NAMD, Psi4 et, plus tard, `gmx` ou les outils AMBER. Ces logiciels ont leurs propres installateurs, leurs propres licences, et une disponibilité qui varie selon le système. PepForge **ne peut pas les embarquer** : les licences l'interdisent pour certains, et le volume l'interdirait pour les autres.
+
+Conséquence directe : **un `.exe` ne dispense pas d'installer les outils externes.** Un exécutable autonome rendrait seulement Python invisible, ce qui est le problème le plus petit de la chaîne. C'est pourquoi la distribution ne commence pas par l'empaquetage mais par la **détection** : `ExternalTool` cherche chaque exécutable sur le `PATH`, enregistre sa version et échoue clairement s'il manque, au lieu de se taire.
+
+### 19.3 Les quatre voies, et laquelle choisir
+
+| Voie | Ce que l'utilisateur fait | Pour | Contre |
+|---|---|---|---|
+| **`pipx install pepforge`** | une commande, puis `pepforge ...` | la plus simple à publier et à mettre à jour, environnement isolé, fonctionne identiquement sur les deux systèmes | demande Python installé |
+| **Paquet conda** | `conda install pepforge` dans un environnement | peut **déclarer Psi4 et xtb comme dépendances** et les installer avec, ce qu'aucune autre voie ne sait faire | demande conda ; ne couvre ni NAMD ni VMD, absents des canaux usuels |
+| **Exécutable autonome** (PyInstaller ou Nuitka) | télécharger un fichier et le lancer | ne demande pas Python ; utile pour confier l'outil à un collègue | un binaire **par système**, construit sur ce système ; démarrage plus lent ; masque l'environnement Python, donc diagnostic plus difficile ; ne dispense pas des outils externes |
+| **Image conteneur** | `docker run ...` | reproductibilité maximale, utile pour qu'un rapporteur rejoue une préparation des années plus tard | sous Windows, s'appuie sur WSL2 ; les licences de NAMD et VMD interdisent de redistribuer une image qui les contient, donc l'image se construit chez l'utilisateur avec ses propres archives |
+
+**Recommandation pour ce projet** : `pipx` comme voie normale, **paquet conda** ensuite parce que c'est la seule qui installe Psi4 en même temps, et exécutable autonome **seulement si** le besoin apparaît de confier l'outil à quelqu'un qui n'installera pas Python. Le conteneur vient en dernier, et sous forme de recette plutôt que d'image publiée, pour la reproductibilité de la thèse.
+
+### 19.4 Ce que la portabilité exige dans le code
+
+Elle s'obtient par des règles simples, appliquées dès maintenant plutôt que réparées à la fin :
+
+- **Chemins** : `pathlib.Path` partout, jamais de concaténation de chaînes ni de séparateur écrit à la main.
+- **Appels externes** : `subprocess` avec une liste d'arguments, jamais `shell=True` ; découverte par `shutil.which`, jamais un chemin codé en dur.
+- **Encodage explicite** : `encoding="utf-8"` à chaque lecture et écriture, parce que la valeur par défaut de Windows n'est pas UTF-8.
+- **Fins de ligne** : les fichiers destinés à un outil externe (`.pdb`, `.inp`, scripts NAMD) s'écrivent en `\n`, donc avec `newline="\n"` explicite. Un fichier en `CRLF` passe souvent, mais pas partout, et l'échec est précisément du genre silencieux que la section 17 interdit.
+- **Casse des noms de fichiers** : jamais deux fichiers ne différant que par la casse, le système de fichiers de Windows ne les distinguant pas.
+- **Chemins longs** : garder les dossiers de travail courts, la limite historique de Windows frappant les arborescences profondes.
+
+### 19.5 Comment on s'assure que c'est vrai
+
+**La CI tourne sur les deux systèmes** (`.github/workflows/tests.yml`) : Linux sur les trois versions de Python prises en charge, Windows sur la plus ancienne et la plus récente, là où les écarts de portabilité se voient. La portabilité est ainsi **vérifiée à chaque poussée**, et non supposée. C'est la même logique que la matrice de dépendances : une règle qui n'est pas exécutée n'est pas une règle.
+
+L'empaquetage proprement dit est une étape tardive du plan (étape 15), après que la chaîne fonctionne de bout en bout : empaqueter un outil incomplet n'apporte rien, alors que tester sur les deux systèmes dès maintenant évite d'accumuler des dettes de portabilité.

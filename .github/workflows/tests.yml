@@ -7,10 +7,20 @@ on:
 
 jobs:
   tests:
-    runs-on: ubuntu-latest
+    # Firas développe sous Windows et les simulations peuvent tourner sous Linux :
+    # les deux systèmes sont donc testés, pour que la portabilité soit vérifiée et
+    # non supposée (chemins, encodage, fins de ligne, découverte des exécutables).
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         python-version: ["3.11", "3.12", "3.13"]
+        exclude:
+          # Sous Windows, la plus ancienne et la plus récente suffisent : c'est là
+          # que les écarts de portabilité se voient.
+          - os: windows-latest
+            python-version: "3.12"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
