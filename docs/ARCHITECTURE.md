@@ -169,7 +169,8 @@ Ce sont les seuls objets qui traversent les frontières entre modules. Chaque ty
 | `PrepConfig` | `config` | utilisateur (YAML), `cli` | `pipeline`, `checks`, `report` | Aucun champ décisionnel n'a de valeur par défaut. `missing_decisions()` liste ce qui manque. Aller-retour YAML sans perte. |
 | `SolvationSpec` | `config` | `PrepConfig.solvation` | `engines` | Aucune valeur par défaut ; vérifié par l'étape de solvatation. |
 | `Peptide` | `core` | `io` (séquence, structure) ; ses propres opérations (mutation, extrémités, protonation, liaisons, modifications), appelées notamment par `build` | `build`, `forcefields`, `checks` | **Immuable** : chaque opération renvoie un nouveau peptide et l'appelant la journalise. Positions numérotées à partir de 1. Extrémités N et C toujours explicites ; une extrémité par défaut est signalée dans `metadata` (`N_TERMINUS_DEFAULTED`, `C_TERMINUS_DEFAULTED`). Liaisons et modifications rangées dans un ordre canonique, positions dans les bornes, aucun doublon. `metadata` en lecture seule et exclue de l'égalité. Aucun nom propre à un champ de force (vérifié par un test). |
-| `Residue`, `Terminus` | `core` | `residues` | tous | Immuables ; identifiants internes stables (`amide`, `acetyl`...) ; code de résidu en majuscules ; `Residue.protonation` facultatif, en clé interne neutre (`his_delta`...). |
+| `Residue`, `Terminus` | `core` | `residues` | tous | Immuables ; identifiants internes stables (`amide`, `acetyl`...) ; code de résidu en majuscules ; `Residue.protonation` et, depuis l'étape 2, `Terminus.protonation` facultatifs, en clé interne neutre (`his_epsilon`, `nterm_protonated`...). |
+| `ProtonationResult`, `GroupAssignment`, `IonizationForm` | `core` | `residues.assign_protonation`, via `pipeline.ProtonationStage` | `checks`, `report`, étapes aval | *Ajouté à l'étape 2.* Peptide protoné, pH, un `GroupAssignment` par groupe ionisable (site, état, forme, forme majoritaire, charge, pKa, source, imposé ou non), charge nette **entière** des états retenus et charge moyenne au pH. Placé dans `core` et non dans `residues` pour que `checks` puisse le contrôler sans dépendre de `residues` (section 3, matrice inchangée). |
 | `Link`, `LinkKind`, `Modification` | `core` | `Peptide.with_link`, `Peptide.with_modification` | `checks` | **Déclarés**, pas encore pris en charge en aval : une étape qui ne sait pas les traiter lève `UnsupportedFeatureError`. Positions d'une liaison rangées dans l'ordre croissant ; une cyclisation tête-queue relie la première et la dernière position ; une position n'appartient qu'à un seul pont disulfure. |
 | `Structure`, `Atom` | `core` | `io` (PDB, mmCIF), `build` | `build`, `engines`, `checks` | Immuables ; coordonnées en Å ; nomenclature PDB, jamais celle d'un champ de force. |
 | `ResidueLibrary` | `residues` | `residues.load_default_library()` | `io`, `build`, `forcefields` | Chaque fichier chargé déclare sa source (`sources`). |
@@ -236,9 +237,9 @@ Pour chaque module : ce qu'il reçoit, ce qu'il rend, les erreurs qu'il lève, e
 
 ### 5.1 `core` — représentation interne
 
-- **Entrées / sorties** : aucune entrée externe ; fournit `Peptide`, `Residue`, `Terminus`, `Link`, `LinkKind`, `Modification`, `Structure`, `Atom`.
+- **Entrées / sorties** : aucune entrée externe ; fournit `Peptide`, `Residue`, `Terminus`, `Link`, `LinkKind`, `Modification`, `Structure`, `Atom`, et depuis l'étape 2 `ProtonationResult`, `GroupAssignment`, `IonizationForm` (données seulement : les pKa vivent dans `residues/data/`).
 - **Erreurs** : `PeptideModelError` (position hors bornes, liaison d'un résidu à lui-même, cyclisation tête-queue qui ne relie pas les deux extrémités, position engagée dans deux ponts disulfure, liaison ou modification déclarée deux fois, clé interne mal formée, mutation qui rendrait fausse une déclaration).
-- **Garanties** (étape 1) : `Peptide` immuable ; `mutate`, `with_n_terminus`, `with_c_terminus`, `with_protonation`, `with_link`, `without_link`, `with_modification` et `without_modification` renvoient un nouveau peptide et laissent l'original intact ; positions numérotées à partir de 1. La journalisation revient à l'appelant, puisque `core` ne dépend que d'`exceptions`. Une mutation est **refusée** à une position qui porte un pont disulfure ou une modification, parce qu'elle remplacerait la chaîne latérale dont dépend la déclaration ; la cyclisation tête-queue, qui passe par le squelette, ne l'empêche pas.
+- **Garanties** (étape 1) : `Peptide` immuable ; `mutate`, `with_n_terminus`, `with_c_terminus`, `with_protonation`, `with_link`, `without_link`, `with_modification` et `without_modification`, et depuis l'étape 2 `with_n_terminus_protonation` et `with_c_terminus_protonation` (qui, eux, conservent la marque d'extrémité supposée), renvoient un nouveau peptide et laissent l'original intact ; positions numérotées à partir de 1. La journalisation revient à l'appelant, puisque `core` ne dépend que d'`exceptions`. Une mutation est **refusée** à une position qui porte un pont disulfure ou une modification, parce qu'elle remplacerait la chaîne latérale dont dépend la déclaration ; la cyclisation tête-queue, qui passe par le squelette, ne l'empêche pas.
 - **Ne fait jamais** : lire un fichier, connaître un champ de force ou un moteur (un test cherche leurs noms de résidus et de patches dans `src/pepforge/core/`), contenir une constante physique, juger de la chimie d'une déclaration, qui relève de `checks`.
 - **Évolutions prévues** : plusieurs chaînes (complexe) ; prise en charge des liaisons et des modifications par les étapes aval.
 
@@ -247,6 +248,7 @@ Pour chaque module : ce qu'il reçoit, ce qu'il rend, les erreurs qu'il lève, e
 - **Entrées** : dictionnaire ou fichier YAML. **Sorties** : `PrepConfig`.
 - **Erreurs** : `ConfigurationError` (clé inconnue, valeur invalide, décision manquante via `require_complete()`).
 - **Garantie** : le YAML écrit par le rapport suffit à relancer la préparation (règle 8).
+- **Étape 2** : champ `protonation` (site → état imposé, `"N"`, `"C"` ou une position), vide par défaut, ce qui ne suppose rien. Il est indispensable pour une histidine neutre, dont le pKa ne départage pas les tautomères.
 
 ### 5.3 `tools` — exécutables externes
 
@@ -257,8 +259,9 @@ Pour chaque module : ce qu'il reçoit, ce qu'il rend, les erreurs qu'il lève, e
 ### 5.4 `residues` — bibliothèque sourcée
 
 - **Entrées** : fichiers `residues/data/*.yaml`, chacun avec un champ `source`. **Sorties** : `ResidueLibrary`.
-- **Erreurs** : `UnknownResidueError`, `UnknownTerminusError`.
-- **Ne fait jamais** : contenir des paramètres de champ de force (ceux-ci vivent dans `forcefields/data/`). Contiendra des données chimiques sourcées : états de protonation, pKa de référence avec leur publication.
+- **Erreurs** : `UnknownResidueError`, `UnknownTerminusError` ; depuis l'étape 2, `ReferenceDataError` (pKa manquant ou sans source, résidu ou extrémité non classé, fichier incohérent), `ChemistryError` (état qui n'appartient pas au groupe, état sur un site non ionisable, pH égal au pKa ou tautomère d'histidine sans état imposé), `UnsupportedFeatureError` (peptide cyclique ou modifié), `ConfigurationError` (pH hors de 0 à 14).
+- **Étape 2** : `ionizable_groups.yaml` (groupes, états, charges formelles, pKa et sources, fenêtre d'alerte justifiée) et `residues.protonation` : `load_ionizable_groups`, `assign_protonation(peptide, ph) -> ProtonationResult`, `theoretical_net_charge(peptide, ph) -> float`. Chaque résidu standard et chaque extrémité est classé ionisable ou non : rien n'est supposé neutre faute d'être cité.
+- **Ne fait jamais** : contenir des paramètres de champ de force (ceux-ci vivent dans `forcefields/data/`).
 
 ### 5.5 `checks` — contrôles qualité
 
@@ -385,7 +388,7 @@ sequenceDiagram
 | # | Étape | Module | Entrée → sortie | Contrôles à la sortie (items de la checklist 04) |
 |---|---|---|---|---|
 | 1 | Entrée | `io` | texte ou fichier → `Peptide` / `Structure` | résidus reconnus, extrémités déclarées (sinon `WARN`), inventaire de la structure importée |
-| 2 | Normalisation, protonation | `residues`, `build` | `Peptide` + pH → `Peptide` protoné | état de chaque groupe ionisable choisi et sourcé ; charge nette théorique calculée |
+| 2 | Normalisation, protonation | `residues` (`build` n'intervient pas : aucune géométrie) | `Peptide` + pH → `ProtonationResult` (dont le `Peptide` protoné) | `PROTONATION_CHECKS` : états portés = états décidés, charge nette entière = somme des états, chaque pKa sourcé, état déduit = forme majoritaire ; `WARN` si \|pH − pKa\| < 1 ou si un état imposé est minoritaire |
 | 3 | Construction / correction 3D | `build` | `Peptide` ou `Structure` → `Structure` | nombre de résidus, extrémités conservées, aucun atome manquant, hydrogènes présents, stéréochimie, conformations alternatives résolues |
 | 4 | Paramétrisation | `forcefields` | `Peptide` → `ParameterSet` | `missing` vide, provenance renseignée, modèle d'eau compatible, fragments obtenus par analogie signalés |
 | 5 | Topologie | `engines` | `Structure` + `ParameterSet` → `EngineFiles` | charge nette relue = charge théorique, nombre d'atomes, résidus terminaux (`NHE` et non `NME` pour `-CO-NH2` en AMBER), aucun avertissement de l'outil |
