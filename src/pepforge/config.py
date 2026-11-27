@@ -107,6 +107,16 @@ class PrepConfig:
     water_model: str | None = None
     goal: SimulationGoal | None = None
     ph: float | None = None
+    protonation: dict[str, str] = field(default_factory=dict)
+    """États de protonation imposés, qui l'emportent sur le choix au pH.
+
+    Clé : `"N"` ou `"C"` pour une extrémité, ou la position du résidu (à partir
+    de 1) ; valeur : clé interne de l'état (`his_epsilon`...). Vide par défaut,
+    ce qui ne suppose rien : chaque état non imposé est déduit du pH et de son
+    pKa sourcé. Obligatoire pour une histidine neutre, dont le pKa ne départage
+    pas les deux tautomères. La raison de chaque choix s'écrit dans `notes`.
+    """
+
     receptor: str | None = None
     solvation: SolvationSpec = field(default_factory=SolvationSpec)
     """Vérifiée par l'étape de solvatation elle-même (`SolvationSpec.missing_decisions`)."""
@@ -167,6 +177,11 @@ class PrepConfig:
                 values["goal"] = SimulationGoal(values["goal"])
             if values.get("validation_level") is not None:
                 values["validation_level"] = ValidationLevel(values["validation_level"])
+            if values.get("protonation") is None:
+                values["protonation"] = {}
+            if not isinstance(values["protonation"], dict):
+                raise ConfigurationError("`protonation` doit être un dictionnaire")
+            values["protonation"] = {str(k): v for k, v in values["protonation"].items()}
             if "solvation" in values:
                 solvation = values["solvation"] or {}
                 if not isinstance(solvation, dict):

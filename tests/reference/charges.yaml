@@ -1,0 +1,125 @@
+# Charges nettes de référence des peptides de validation (étape 2 du plan).
+#
+# Calculées À LA MAIN, indépendamment du code de pepforge.residues.protonation,
+# avec les pKa de ionizable_groups.yaml (pentapeptides d'alanine, tableau I de
+# Grimsley 2009) : N-ter 8,0 ; C-ter 3,7 ; Asp 3,9 ; Glu 4,3 ; His 6,5 ;
+# Cys 8,6 ; Tyr 9,8 ; Lys 10,4. Arginine : pKa non renseigné.
+#
+# Deux grandeurs par peptide :
+#   net_charge     somme des charges formelles des états majoritaires (entière) ;
+#   theoretical    somme des charges moyennes, Henderson-Hasselbalch :
+#                  fraction acide f = 1 / (1 + 10^(pH - pKa)) ;
+#                  groupe basique (amine, imidazole) : charge = +f ;
+#                  groupe acide (carboxyle, thiol, phénol) : charge = -(1 - f).
+#
+# Statut : EN ATTENTE DE VALIDATION PAR FIRAS (source des pKa et charges attendues).
+version: 1
+tolerance_theoretical: 0.001
+peptides:
+  - sequence: H-GGG-OH
+    ph: 7.4
+    net_charge: 0
+    theoretical: -0.2006
+    near_pka: ["N"]
+    reasoning: >-
+      N-ter : pH 7,4 < pKa 8,0, forme protonée NH3+ (+1), écart 0,6 < 1 donc à
+      relire ; f = 1/(1+10^-0,6) = 0,7992. C-ter : pH 7,4 > 3,7, carboxylate
+      (-1) ; charge moyenne -(1 - 1/(1+10^3,7)) = -0,9998. Entière 0, moyenne
+      0,7992 - 0,9998 = -0,2006.
+
+  - sequence: Ac-GGG-NH2
+    ph: 7.4
+    net_charge: 0
+    theoretical: 0.0
+    near_pka: []
+    reasoning: >-
+      Acétylation et amidation consomment l'amine et le carboxyle terminaux ; Gly
+      n'a pas de chaîne latérale. Aucun groupe ionisable : 0 et 0.
+
+  - sequence: Ac-KDEY-NH2
+    ph: 7.4
+    net_charge: -1
+    theoretical: -1.0039
+    near_pka: []
+    reasoning: >-
+      Lys 10,4 : +1 (f = 0,9990). Asp 3,9 : -1 (-0,9997). Glu 4,3 : -1
+      (-0,9992). Tyr 9,8 : phénol neutre, écart 2,4 (-0,0040). Entière
+      +1 - 1 - 1 + 0 = -1 ; moyenne -1,0039.
+
+  - sequence: Ac-EEEE-NH2
+    ph: 7.4
+    net_charge: -4
+    theoretical: -3.9968
+    near_pka: []
+    reasoning: >-
+      Quatre Glu à pKa 4,3, écart 3,1 : chacun -1, moyenne -0,9992 chacun.
+      Entière -4 ; moyenne -3,9968. Les pKa sont ceux de groupes isolés : la
+      répulsion entre carboxylates voisins, qui les déplace, n'est pas modélisée.
+
+  - sequence: H-GDG-OH
+    ph: 2.0
+    net_charge: 1
+    theoretical: 0.9680
+    near_pka: []
+    reasoning: >-
+      pH acide. N-ter 8,0 : +1 (f = 1,0000). Asp 3,9, écart 1,9 : COOH neutre,
+      moyenne -0,0124. C-ter 3,7, écart 1,7 : COOH neutre, moyenne -0,0196.
+      Entière +1 ; moyenne 0,9680.
+
+  - sequence: Ac-GHG-NH2
+    ph: 5.0
+    net_charge: 1
+    theoretical: 0.9693
+    near_pka: []
+    reasoning: >-
+      His 6,5, pH 5,0 inférieur de 1,5 : imidazolium (+1), f = 1/(1+10^-1,5) =
+      0,9693. Aucun tautomère à choisir pour la forme protonée.
+
+  - sequence: Ac-GHG-NH2
+    ph: 7.4
+    imposed: {"2": his_epsilon}
+    net_charge: 0
+    theoretical: 0.1118
+    near_pka: ["2"]
+    reasoning: >-
+      His 6,5, pH 7,4 supérieur de 0,9 : forme neutre majoritaire, mais le pKa
+      ne départage pas Nδ1-H et Nε2-H, d'où l'état imposé his_epsilon. Écart
+      0,9 < 1 : à relire. f = 1/(1+10^0,9) = 0,1118, soit 11 % d'imidazolium.
+
+  - sequence: H-CG-OH
+    ph: 7.4
+    net_charge: 0
+    theoretical: -0.2599
+    near_pka: ["N"]
+    reasoning: >-
+      N-ter +1 (0,7992, à relire). Cys 8,6, écart 1,2 : thiol neutre, moyenne
+      -0,0594. C-ter -1 (-0,9998). Entière 0 ; moyenne -0,2599.
+
+  - sequence: H-CGC-OH
+    ph: 7.4
+    disulfide: [1, 3]
+    net_charge: 0
+    theoretical: -0.2006
+    near_pka: ["N"]
+    reasoning: >-
+      Les deux Cys forment un pont disulfure : plus de thiol, donc aucun groupe
+      ionisable en chaîne latérale. Restent les extrémités, comme H-GGG-OH.
+
+refused:
+  - sequence: Ac-RGDS-NH2
+    ph: 7.4
+    error: ReferenceDataError
+    reasoning: >-
+      pKa de l'arginine non renseigné (Fitch 2015 non lu). Quel que soit ce pKa
+      pourvu qu'il dépasse 8,4, la charge entière attendue est 0 (Arg +1,
+      Asp -1, extrémités bloquées) ; elle sera ajoutée une fois la valeur validée.
+  - sequence: H-RGDS-OH
+    ph: 7.4
+    error: ReferenceDataError
+    reasoning: Même raison ; charge entière attendue +1 - 1 + 1 - 1 = 0.
+  - sequence: Ac-GHG-NH2
+    ph: 7.4
+    error: ChemistryError
+    reasoning: >-
+      Histidine neutre majoritaire sans tautomère imposé : refus, plutôt qu'un
+      choix silencieux entre his_delta et his_epsilon.

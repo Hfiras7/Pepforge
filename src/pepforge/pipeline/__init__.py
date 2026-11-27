@@ -5,6 +5,6 @@ les adaptateurs et générateurs sans dépendance circulaire).
 """
 
 from pepforge.pipeline.stage import Stage, StageContext, run_stage
-from pepforge.pipeline.stages import SequenceInputStage
+from pepforge.pipeline.stages import ProtonationStage, SequenceInputStage
 
-__all__ = ["SequenceInputStage", "Stage", "StageContext", "run_stage"]
+__all__ = ["ProtonationStage", "SequenceInputStage", "Stage", "StageContext", "run_stage"]

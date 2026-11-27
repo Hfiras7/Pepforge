@@ -67,7 +67,8 @@ class ResidueLibrary:
         return token.lower() in self.c_aliases
 
 
-def _read_yaml(name: str) -> dict[str, Any]:
+def read_data_file(name: str) -> dict[str, Any]:
+    """Lit un fichier YAML de `residues/data/` ; son contenu doit être un dictionnaire."""
     text = resources.files("pepforge.residues").joinpath("data", name).read_text("utf-8")
     data = yaml.safe_load(text)
     if not isinstance(data, dict):
@@ -88,8 +89,8 @@ def _termini(entries: list[dict[str, Any]]) -> tuple[dict[str, Terminus], dict[s
 
 def load_default_library() -> ResidueLibrary:
     """Charge les acides aminés standards et les extrémités usuelles."""
-    standard = _read_yaml("standard_amino_acids.yaml")
-    termini = _read_yaml("termini.yaml")
+    standard = read_data_file("standard_amino_acids.yaml")
+    termini = read_data_file("termini.yaml")
     residues = {
         entry["code"]: Residue(code=entry["code"], one_letter=entry["one_letter"], standard=True)
         for entry in standard["residues"]

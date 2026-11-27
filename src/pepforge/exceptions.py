@@ -47,6 +47,17 @@ class MissingParameterError(PepForgeError):
     """Un paramètre de champ de force est absent pour un résidu ou un fragment."""
 
 
+class ReferenceDataError(PepForgeError):
+    """Une donnée chimique de référence manque, est mal formée ou n'a pas de source.
+
+    Par exemple un pKa à `null` dans `ionizable_groups.yaml`, un pKa dont la
+    source n'est pas déclarée, un résidu non standard dont les groupes
+    ionisables ne sont pas décrits, ou une extrémité que le fichier ne classe
+    ni ionisable ni non ionisable. La donnée n'est jamais supposée : le fichier
+    ou le peptide est refusé.
+    """
+
+
 class ConfigurationError(PepForgeError):
     """La configuration de préparation est incomplète ou incohérente."""
 

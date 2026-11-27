@@ -14,13 +14,13 @@ from contracts import (
     assert_forcefield_contract,
     assert_stage_contract,
 )
-from pepforge.config import Engine, SolvationSpec
+from pepforge.config import Engine, PrepConfig, SolvationSpec
 from pepforge.core import Atom, Peptide, Structure
 from pepforge.engines import EngineFiles
 from pepforge.exceptions import MissingParameterError
 from pepforge.forcefields import ParameterSet
 from pepforge.io import parse_sequence
-from pepforge.pipeline import SequenceInputStage
+from pepforge.pipeline import ProtonationStage, SequenceInputStage
 from pepforge.report import Journal
 
 
@@ -81,3 +81,9 @@ def test_builder_contract() -> None:
 
 def test_sequence_stage_contract(tmp_path: Path) -> None:
     assert_stage_contract(SequenceInputStage(), "Ac-RGDS-NH2", tmp_path)
+
+
+def test_protonation_stage_contract(tmp_path: Path) -> None:
+    assert_stage_contract(
+        ProtonationStage(), parse_sequence("Ac-KDEY-NH2"), tmp_path, PrepConfig(ph=7.4)
+    )

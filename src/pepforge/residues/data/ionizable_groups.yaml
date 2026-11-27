@@ -1,0 +1,164 @@
+# Groupes ionisables des peptides : pKa de référence, états et charges formelles.
+#
+# Données chimiques, aucune donnée de champ de force. La correspondance entre
+# un état (clé interne neutre, ex. his_epsilon) et un résidu ou un patch d'un
+# champ de force relève des adaptateurs de pepforge.forcefields.
+#
+# Règles de ce fichier, vérifiées au chargement (pepforge.residues.protonation) :
+#   - chaque pKa cite une source déclarée dans `sources` ; un pKa à `null` est
+#     une donnée manquante : tout peptide qui porte ce groupe est refusé ;
+#   - chaque groupe a au moins un état acide et un état basique ; tous les états
+#     d'une même forme ont la même charge (les tautomères de l'histidine) ;
+#   - chaque résidu standard et chaque extrémité de la bibliothèque est classé :
+#     ionisable (dans `groups`) ou non (dans `non_ionizable_*`). Aucun n'est
+#     supposé neutre faute d'être cité.
+#
+# STATUT : source CHOISIE par Firas le 27/11/2026 (pentapeptides d'alanine du
+# groupe de Pace). Restent à valider par Firas : les conditions de mesure de
+# Thurlkill 2006, la valeur de l'arginine et la fenêtre d'alerte.
+version: 1
+source: >-
+  pKa mesurés sur des pentapeptides d'alanine (Thurlkill et al. 2006), lus dans
+  le tableau I de Grimsley, Scholtz et Pace 2009, colonne « pK value in alanine
+  pentapeptides ». Arginine : non renseignée (voir le groupe arg_side_chain).
+data_set: pace_alanine_pentapeptides_v1
+
+sources:
+  grimsley2009_table1:
+    citation: >-
+      Grimsley G. R., Scholtz J. M., Pace C. N., « A summary of the measured pK
+      values of the ionizable groups in folded proteins », Protein Science 18(1),
+      247-251 (2009). DOI 10.1002/pro.19. Tableau I, colonne « pK value in
+      alanine pentapeptides », dont la note b renvoie à Thurlkill et al. 2006.
+    verified: >-
+      Tableau I lu sur PubMed Central (PMC2708032) le 27/11/2026. La note c du
+      tableau indique que la valeur d'Asp (3,9) remplace la valeur 3,67 publiée
+      en 2006, la discussion du texte retenant 3,94.
+  thurlkill2006:
+    citation: >-
+      Thurlkill R. L., Grimsley G. R., Scholtz J. M., Pace C. N., « pK values of
+      the ionizable groups of proteins », Protein Science 15(5), 1214-1218 (2006).
+      DOI 10.1110/ps.051840806.
+    verified: >-
+      NON LU : l'article n'a pas pu être consulté (accès refusé). Les conditions
+      de mesure (séquences exactes, température, force ionique) restent à
+      relever sur l'article avant validation.
+  fitch2015:
+    citation: >-
+      Fitch C. A., Platzer G., Okon M., García-Moreno E. B., McIntosh L. P.,
+      « Arginine: Its pKa value revisited », Protein Science 24(5), 752-761 (2015).
+      DOI 10.1002/pro.2647.
+    verified: >-
+      NON LU : seule l'existence de l'article et son DOI ont été vérifiés. La
+      valeur du pKa n'est pas reprise ici tant qu'elle n'a pas été lue sur l'article.
+
+# Fenêtre d'alerte autour du pKa, en unités de pH.
+near_pka_window:
+  value: 1.0
+  justification: >-
+    Henderson-Hasselbalch : la fraction de la forme minoritaire vaut
+    1 / (1 + 10^|pH - pKa|). Elle dépasse 9,1 % quand |pH - pKa| < 1 (et 50 % à
+    pH = pKa) : un état unique par groupe y est une approximation grossière, et
+    le choix doit être relu. À 2 unités, elle tombe à 1 %. Le seuil de 1 unité
+    est un choix de prudence, à confirmer par Firas ; il ne tient pas compte du
+    déplacement des pKa dans une protéine repliée ou un complexe (écarts types
+    de 0,5 à 2,7 unités selon le groupe, Grimsley 2009, tableau I).
+
+groups:
+  - key: n_terminal_amine
+    label: amine α N-terminale libre
+    terminus: free_amine
+    pka: 8.0
+    pka_source: grimsley2009_table1
+    states:
+      - {key: nterm_protonated, form: acid, charge: 1}
+      - {key: nterm_deprotonated, form: base, charge: 0}
+
+  - key: c_terminal_carboxyl
+    label: carboxyle α C-terminal libre
+    terminus: free_acid
+    pka: 3.7
+    pka_source: grimsley2009_table1
+    states:
+      - {key: cterm_protonated, form: acid, charge: 0}
+      - {key: cterm_deprotonated, form: base, charge: -1}
+
+  - key: asp_side_chain
+    label: carboxyle de la chaîne latérale de l'aspartate
+    residue: ASP
+    pka: 3.9
+    pka_source: grimsley2009_table1
+    states:
+      - {key: asp_protonated, form: acid, charge: 0}
+      - {key: asp_deprotonated, form: base, charge: -1}
+
+  - key: glu_side_chain
+    label: carboxyle de la chaîne latérale du glutamate
+    residue: GLU
+    pka: 4.3
+    pka_source: grimsley2009_table1
+    states:
+      - {key: glu_protonated, form: acid, charge: 0}
+      - {key: glu_deprotonated, form: base, charge: -1}
+
+  - key: his_side_chain
+    label: imidazole de l'histidine
+    residue: HIS
+    pka: 6.5
+    pka_source: grimsley2009_table1
+    # Forme neutre : deux tautomères, proton sur Nδ1 ou sur Nε2. Le pKa ne dit
+    # pas lequel : sans état imposé, la forme neutre est refusée plutôt que
+    # choisie en silence.
+    states:
+      - {key: his_protonated, form: acid, charge: 1}
+      - {key: his_delta, form: base, charge: 0}
+      - {key: his_epsilon, form: base, charge: 0}
+
+  - key: cys_side_chain
+    label: thiol de la cystéine (libre, hors pont disulfure)
+    residue: CYS
+    pka: 8.6
+    pka_source: grimsley2009_table1
+    states:
+      - {key: cys_protonated, form: acid, charge: 0}
+      - {key: cys_deprotonated, form: base, charge: -1}
+
+  - key: tyr_side_chain
+    label: hydroxyle phénolique de la tyrosine
+    residue: TYR
+    pka: 9.8
+    pka_source: grimsley2009_table1
+    states:
+      - {key: tyr_protonated, form: acid, charge: 0}
+      - {key: tyr_deprotonated, form: base, charge: -1}
+
+  - key: lys_side_chain
+    label: amine ε de la lysine
+    residue: LYS
+    pka: 10.4
+    pka_source: grimsley2009_table1
+    states:
+      - {key: lys_protonated, form: acid, charge: 1}
+      - {key: lys_deprotonated, form: base, charge: 0}
+
+  - key: arg_side_chain
+    label: guanidinium de l'arginine
+    residue: ARG
+    # Absent du tableau I de Grimsley 2009. Valeur à lire sur Fitch et al. 2015
+    # et à saisir après validation par Firas. D'ici là, tout peptide contenant
+    # une arginine est refusé (MissingReferenceDataError).
+    pka: null
+    pka_source: fitch2015
+    states:
+      - {key: arg_protonated, form: acid, charge: 1}
+      - {key: arg_deprotonated, form: base, charge: 0}
+
+# Résidus standards sans groupe ionisable retenu. Les hydroxyles de Ser et Thr
+# et l'amide de Asn et Gln ne s'ionisent pas dans la plage de pH des simulations
+# visées ; Grimsley 2009 (tableau I) ne les compte pas parmi les groupes
+# ionisables des protéines.
+non_ionizable_residues: [ALA, ASN, GLN, GLY, ILE, LEU, MET, PHE, PRO, SER, THR, TRP, VAL]
+
+# Extrémités sans groupe ionisable : l'acétylation et l'amidation consomment
+# l'amine et le carboxyle terminaux.
+non_ionizable_termini: [acetyl, amide, n_methylamide]

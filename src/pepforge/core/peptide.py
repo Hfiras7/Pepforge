@@ -81,8 +81,19 @@ class Terminus:
     label: str
     """Libellé lisible en français."""
 
+    protonation: str | None = None
+    """État de protonation du groupe terminal, en clé interne neutre ; `None`
+    tant qu'aucun état n'est fixé, ou si l'extrémité n'a pas de groupe ionisable.
+
+    Exemples : `nterm_protonated` (amine chargée), `cterm_deprotonated`
+    (carboxylate). Comme pour `Residue.protonation`, le modèle ne vérifie que la
+    forme de la clé ; son sens relève de l'étape de protonation (étape 2).
+    """
+
     def __post_init__(self) -> None:
         _check_internal_key(self.key, "Extrémité")
+        if self.protonation is not None:
+            _check_internal_key(self.protonation, f"Protonation de l'extrémité {self.key}")
 
 
 @dataclass(frozen=True)
@@ -448,6 +459,18 @@ class Peptide:
         """Fixe l'état de protonation d'un résidu, ou l'efface avec `None`."""
         index = self._index(position)
         return self._replace_residue(index, replace(self.residues[index], protonation=state))
+
+    def with_n_terminus_protonation(self, state: str | None) -> Peptide:
+        """Fixe l'état de protonation du groupe N-terminal, ou l'efface avec `None`.
+
+        Contrairement à `with_n_terminus`, l'extrémité elle-même ne change pas :
+        une extrémité supposée par défaut le reste, et sa marque est conservée.
+        """
+        return replace(self, n_terminus=replace(self.n_terminus, protonation=state))
+
+    def with_c_terminus_protonation(self, state: str | None) -> Peptide:
+        """Même rôle que `with_n_terminus_protonation`, pour le groupe C-terminal."""
+        return replace(self, c_terminus=replace(self.c_terminus, protonation=state))
 
     def with_link(self, link: Link) -> Peptide:
         """Renvoie un peptide qui déclare en plus la liaison `link`."""
