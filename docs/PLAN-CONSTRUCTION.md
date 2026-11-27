@@ -142,6 +142,7 @@ flowchart LR
 **Critères d'acceptation**
 
 - [ ] Chaque item automatisable de la section « Structure » de la checklist 04 a un contrôle et l'indique dans `checklist_item`.
+- [ ] Les lignes du catalogue de la [section 17.2](ARCHITECTURE.md#172-catalogue-des-défaillances-silencieuses) relevant de la lecture PDB sont couvertes : conformations alternatives résolues, continuité de la chaîne, atomes manquants.
 - [ ] Chaque contrôle a un test `PASS` et un test `FAIL`.
 - [ ] Les seuils (distance de chevauchement...) viennent d'un fichier de données sourcé, pas du code.
 
@@ -211,7 +212,11 @@ flowchart LR
 
 - [ ] `assert_engine_writer_contract` passe.
 - [ ] Charge nette **relue dans les fichiers produits** égale à la charge théorique de l'étape 2.
-- [ ] Toute ligne d'avertissement de l'outil fait échouer l'étape, sauf exception documentée.
+- [ ] Toute ligne d'avertissement de l'outil fait échouer l'étape, sauf exception inscrite dans une liste versionnée, motivée avec la version de l'outil, et reportée dans le rapport ([section 17.3](ARCHITECTURE.md#173-les-avertissements-sont-des-erreurs)).
+- [ ] **Inventaire attendu contre fichier produit** : l'inventaire construit depuis le `Peptide` et le `ParameterSet` (atomes par résidu, ordre des résidus, liaisons du squelette, extrémités, ponts disulfure, charge nette, nombre de termes CMAP attendus) est comparé à celui relu dans le `.psf` réellement produit. Toute différence lève `QualityCheckError` ([section 17.1](ARCHITECTURE.md#171-le-principe--ne-jamais-croire-loutil-sur-parole)).
+- [ ] Les motifs d'échec de `ExternalTool` sont **construits et vérifiés contre l'outil réellement installé**, en provoquant délibérément chaque erreur pour observer ce qu'il affiche. Ils ne sont jamais écrits d'avance.
+- [ ] Les contrôles du catalogue de la [section 17.2](ARCHITECTURE.md#172-catalogue-des-défaillances-silencieuses) applicables à cette étape sont implémentés, chacun avec son test `PASS` et son test `FAIL`.
+- [ ] Contrôles de dernier recours : charge nette relue, **énergie en point unique** sur le système produit, et minimisation courte qui doit converger. Les trois valeurs sont consignées dans le rapport.
 - [ ] Versions des outils dans `EngineFiles.tool_versions`.
 
 **Tests** : K, U (génération des scripts d'entrée de l'outil), I (séquence → topologie, marqué `external`) ; V : énergie en point unique d'un peptide de référence comparée à un calcul fait à la main avec l'outil, consigné dans `tests/reference/`.
@@ -393,7 +398,7 @@ Ce fil réalise la substitution d'un acide aminé par un résidu aza-β³ et la 
 - [ ] Approche de paramétrisation du centre métallique choisie et justifiée avec sa source parmi les trois familles de la section 11.4, avec ses limites écrites dans le rapport.
 - [ ] Aucun mélange entre champ de force protéique CHARMM et paramètres métalliques AMBER dans un même système : un contrôle le refuse (règle 4 du projet).
 - [ ] Pour un cœur oxo de technétium ou de rhénium, l'hypothèse structurale retenue est énoncée explicitement dans le rapport, puisque la nature du complexe formé au radiomarquage n'est pas toujours établie.
-- [ ] Géométrie de coordination contrôlée après construction.
+- [ ] Géométrie de coordination contrôlée après construction, **puis de nouveau en fin d'équilibration** : un métal qui se dissocie du chélateur en cours de simulation ne signale rien de lui-même.
 - [ ] Charge totale du complexe vérifiée contre la charge théorique attendue.
 - [ ] Limites de l'approche signalées dans le rapport de chaque préparation concernée.
 - [ ] Une entrée de données par couple métal–chélateur dans `forcefields/data/metals/`, avec `source` **obligatoire** et niveau de confiance ([section 14](ARCHITECTURE.md#14-métaux--données-livrées-et-ajout-manuel)). Ajouter un métal ne demande aucun code.
@@ -431,6 +436,7 @@ Même champ de force CHARMM36m, autre format de fichiers. Coût modéré : les p
 
 - [ ] Conversion traitée comme une étape distincte, jamais implicite.
 - [ ] Après conversion : nombre d'atomes, charge nette et **énergie en point unique** comparés entre les deux formats, écarts consignés.
+- [ ] Vérifier explicitement ce qu'une conversion peut perdre en silence : termes CMAP, paramètres 1-4 explicites, termes `NBFIX`, et charges altérées par un arrondi de format.
 - [ ] L'ajout ne modifie ni `core`, ni `build`, ni `forcefields` (vérifiable dans le diff de la PR).
 
 ### Étape 13B — AMBER ff19SB + GAFF2 🔒

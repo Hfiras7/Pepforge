@@ -22,6 +22,7 @@
 14. [Métaux : données livrées et ajout manuel](#14-métaux--données-livrées-et-ajout-manuel)
 15. [Calcul quantique : recommandation et interface](#15-calcul-quantique--recommandation-et-interface)
 16. [Faisabilité des calculs sur un poste de bureau](#16-faisabilité-des-calculs-sur-un-poste-de-bureau)
+17. [Politique d'absence d'erreur silencieuse](#17-politique-dabsence-derreur-silencieuse)
 
 ---
 
@@ -924,3 +925,69 @@ Ordre de travail recommandé, qui va du moins coûteux au plus coûteux :
 2. faire passer les contrôles d'intégration de la section 13.1 (aucun calcul) ;
 3. lancer les balayages 1D et mesurer l'écart (heures à jours) ;
 4. **au vu des chiffres seulement**, décider si l'option B suffit ou si l'option C se justifie.
+
+---
+
+## 17. Politique d'absence d'erreur silencieuse
+
+Exigence posée par Firas le 27 novembre 2026 : **aucune erreur silencieuse, ni dans le `.psf` ni dans les autres fichiers**. C'est la plus importante du projet, parce qu'une erreur silencieuse ne se voit pas à la lecture d'une trajectoire : elle se voit à la soutenance.
+
+### 17.1 Le principe : ne jamais croire l'outil sur parole
+
+Un code de retour nul ne prouve rien, et un avertissement affiché dans un flot de sortie de plusieurs centaines de lignes n'est pas un signalement. La seule méthode fiable est l'**inventaire attendu contre fichier produit** :
+
+1. Avant d'écrire quoi que ce soit, PepForge construit, à partir du `Peptide` et du `ParameterSet`, un **inventaire attendu** : nombre d'atomes par résidu, résidus dans l'ordre, liaisons du squelette, extrémités, ponts disulfure, charge nette, nombre de termes CMAP attendus.
+2. Après écriture, PepForge **relit le fichier réellement produit** et en extrait le même inventaire.
+3. Les deux inventaires sont comparés terme à terme. Toute différence lève `QualityCheckError`.
+
+Cette méthode ne dépend ni de la version de `psfgen`, ni de la façon dont il formule ses avertissements. C'est ce qui la rend robuste.
+
+### 17.2 Catalogue des défaillances silencieuses
+
+Ce catalogue est à compléter au fil des outils réellement utilisés. Chaque ligne devient un contrôle nommé dans `checks`, avec son test `PASS` et son test `FAIL`.
+
+| Étape | Ce qui se passe sans contrôle | Contrôle qui l'attrape |
+|---|---|---|
+| Lecture PDB | conformations alternatives non résolues : un atome sur deux est retenu arbitrairement | inventaire : aucun `alt_loc` restant |
+| Lecture PDB | résidus manquants dans la structure, donc **rupture de chaîne** au milieu du peptide | continuité de la numérotation et des liaisons du squelette |
+| `psfgen` | un nom de résidu absent de la topologie : le résidu peut être **ignoré**, et le `.psf` sort amputé | comparaison du nombre de résidus et d'atomes attendus contre produits |
+| `psfgen` | un atome du PDB absent de la topologie, ou l'inverse : écarté ou régénéré | comparaison atome par atome, par nom et par résidu |
+| `psfgen` | coordonnées manquantes devinées automatiquement, parfois mal placées | aucun atome à une position dupliquée ou aberrante ; distances de liaison dans une plage sourcée |
+| `psfgen` | patch non appliqué ou appliqué au mauvais résidu : extrémités fausses, jonction absente | les extrémités produites correspondent à celles du `Peptide` ; chaque jonction attendue porte sa liaison |
+| `psfgen` | pont disulfure non déclaré : deux cystéines libres au lieu d'un pont | inventaire des ponts attendus contre liaisons `S–S` présentes |
+| `psfgen` | **terme CMAP absent** pour un résidu standard, parce qu'une référence traversant la jonction ne s'est pas résolue | comptage des termes CMAP du `.psf` contre le nombre de résidus standards attendus (section 13.3) |
+| Paramètres | un dièdre sans paramètre propre est capté par une **entrée générique à jokers** : un paramètre s'applique, mais ce n'est pas le bon | détection et comptage des termes résolus par joker, listés dans le rapport |
+| Paramètres | paramètres 1-4 explicites non déclarés : les valeurs non liées ordinaires s'appliquent à la place | vérification que chaque type concerné déclare `eps14` et `rmin14` là où CHARMM36m le fait |
+| Paramètres | termes `NBFIX` non appliqués parce que les types diffèrent | liste des `NBFIX` attendus contre ceux effectivement actifs |
+| Charges | redistribution de jonction approximative : charge nette non entière de quelques centièmes | charge nette relue dans le `.psf`, comparée à la charge théorique, tolérance stricte |
+| Solvatation | chevauchement atomique, ou marge de boîte insuffisante | distance minimale entre atomes non liés ; marge mesurée sur le système produit |
+| Protonation | état choisi par un outil tiers sans que ce soit demandé | chaque état de protonation du système produit est comparé à celui décidé à l'étape 2 |
+| Conversion entre moteurs | perte des termes CMAP, des paramètres 1-4 ou altération des charges | nombre d'atomes, charge nette **et énergie en point unique** comparés avant et après |
+| Métal | centre métallique dissocié du chélateur en cours de simulation sans que rien ne le signale | géométrie de coordination vérifiée après construction, puis contrôlée en fin d'équilibration |
+
+### 17.3 Les avertissements sont des erreurs
+
+Règle par défaut : **toute ligne d'avertissement d'un outil externe fait échouer l'étape.** Une exception ne s'obtient qu'à trois conditions, cumulatives :
+
+1. le motif exact est inscrit dans une liste d'exceptions versionnée, dans les données du projet ;
+2. la raison est écrite, avec la version de l'outil concernée ;
+3. l'exception est reportée dans le rapport de chaque préparation où elle s'applique, et non seulement dans le code.
+
+La liste des motifs d'échec de `ExternalTool` ne peut pas être devinée : elle doit être **construite et vérifiée contre les outils réellement installés**, en provoquant délibérément chaque erreur pour observer ce que l'outil affiche. C'est un travail d'étape, pas une liste écrite d'avance.
+
+### 17.4 Contrôles de dernier recours
+
+Même avec tout ce qui précède, trois contrôles numériques attrapent ce que l'inventaire ne voit pas :
+
+- **Charge nette relue** dans les fichiers produits, jamais recopiée de l'entrée.
+- **Énergie en point unique** calculée sur le système produit : une valeur aberrante révèle un paramètre absurde ou un chevauchement, là où les comptages sont tous corrects.
+- **Minimisation courte qui doit converger** : un système mal paramétré diverge ou stagne.
+
+Ces trois valeurs sont consignées dans le rapport, avec le matériel et les versions d'outils, pour qu'une préparation reste comparable à une autre.
+
+### 17.5 Ce que cela impose au code
+
+- `EngineFiles` porte `net_charge` et `atom_count` **relus dans les fichiers produits** (section 4) : c'est déjà le contrat, et cette section explique pourquoi.
+- Chaque contrôle du catalogue 17.2 est une fonction pure de `checks`, avec son test `PASS` et son test `FAIL` (règle 7 du projet).
+- `ExternalTool` analyse la sortie et non le seul code de retour : c'est déjà son contrat, la liste de motifs reste à construire.
+- Un échec arrête le pipeline par `QualityCheckError` et produit un **rapport partiel lisible** : savoir où ça s'est arrêté fait partie de l'absence d'erreur silencieuse.
