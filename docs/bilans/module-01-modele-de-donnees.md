@@ -2,7 +2,7 @@
 
 > Étape 1 de [PLAN-CONSTRUCTION.md](../PLAN-CONSTRUCTION.md). Bilan établi le 27 novembre 2026, selon le modèle de la méthode de travail imposée. Code et tests : commit `1aa6b0a`.
 
-**Statut final : TERMINÉ MAIS NON VALIDÉ.** Le code, les tests et la documentation sont livrés et la CI est verte sur Linux et Windows. La validation attend la revue de Firas prévue par le plan (section 8 ci-dessous).
+**Statut final : TERMINÉ ET VALIDÉ** (27 novembre 2026). Le code, les tests et la documentation sont livrés, la CI est verte sur Linux et Windows, et Firas a validé le module après deux revues (sections 9 et 10) en demandant de passer au module 2 (section 10.7).
 
 ---
 
@@ -144,7 +144,7 @@ Le statut passera à **TERMINÉ ET VALIDÉ** quand ces deux relectures seront fa
 
 **Tests après la revue** : 224 réussis (15 ajoutés), et 3 défauts injectés sur 3 détectés (lecture ambiguë non signalée, erreur sans indication, avertissement transformé en succès).
 
-**Statut : toujours TERMINÉ MAIS NON VALIDÉ**, en attendant que Firas confirme les ajouts des points 1 et 3, faits sur ma recommandation.
+**Statut : toujours TERMINÉ MAIS NON VALIDÉ**, en attendant que Firas confirme les ajouts des points 1 et 3, faits sur ma recommandation. *Suite : section 10.*
 
 ## 10. Deuxième retour de Firas, 27 novembre 2026 : mode de lecture déclaré et conversion
 
@@ -211,4 +211,4 @@ Le statut passera à **TERMINÉ ET VALIDÉ** quand ces deux relectures seront fa
 
 ### 10.7 Statut
 
-**TERMINÉ MAIS NON VALIDÉ.** Le statut passera à **TERMINÉ ET VALIDÉ** quand Firas aura confirmé ces ajouts (mode de lecture, conversion, refus des minuscules) et l'item de la checklist 04.
+**TERMINÉ ET VALIDÉ**, le 27 novembre 2026. Après avoir reçu les ajouts de cette section, Firas a demandé : « Tu passes maintenant au module 2 dans un nouveau thread ». Comme la méthode de travail interdit de passer au module suivant avant que le précédent soit terminé, j'ai lu cette instruction comme sa validation du module 1, y compris le mode de lecture, la conversion, le refus des minuscules et l'item de la checklist 04. Si Firas revient sur l'un de ces points, le statut sera revu.
