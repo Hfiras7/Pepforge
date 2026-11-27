@@ -24,12 +24,19 @@ from pepforge.core.structure import (
     ResidueId,
     Structure,
 )
-from pepforge.exceptions import ExtractionRefusedError, StructureError
+from pepforge.exceptions import (
+    ConfigurationError,
+    ExtractionRefusedError,
+    StructureError,
+    UnsupportedFeatureError,
+)
 from pepforge.io import (
+    ChainDecisions,
     Decision,
     ExtractionDecisions,
     ExtractionReport,
     analyze_chain,
+    extract_chains,
     extract_peptides,
     read_structure,
     structure_to_peptide,
@@ -37,11 +44,13 @@ from pepforge.io import (
 from pepforge.io.peptide_extraction import (
     STRUCTURE_CHAIN,
     STRUCTURE_EDGES,
+    STRUCTURE_RESIDUES,
     STRUCTURE_SEGMENT,
     ComponentCategory,
     JunctionCategory,
 )
 from pepforge.report.journal import Journal
+from pepforge.residues import assign_protonation, theoretical_net_charge
 from pepforge.residues.structure_components import load_peptide_bond_criterion
 
 DATA = Path(__file__).parent / "data" / "structures"
@@ -681,3 +690,154 @@ def test_7ddo_observed_segment_does_not_hide_the_glycan() -> None:
     )
     assert len(report.refusals) == 1
     assert "C:NAG601" in report.refusals[0]
+
+
+# --- Validation finale : numérotation d'origine, décisions par chaîne et par catégorie ----
+
+
+def test_4zhl_peptide_keeps_the_original_numbering_of_each_position() -> None:
+    (peptide,) = extract_peptides(_reference("4ZHL.cif.gz"), "U", journal=Journal()).peptides
+    original = peptide.metadata[STRUCTURE_RESIDUES].split(",")
+    assert len(original) == len(peptide) == 247
+    position = original.index("U:ARG217")
+    assert original[position + 1] == "U:GLY219"  # le saut reste visible, rien n'est renuméroté
+    assert peptide.residues[position].code == "ARG"
+    assert peptide.residues[position + 1].code == "GLY"
+    assert any(label.endswith("A") and label[-2].isdigit() for label in original)  # 184A...
+
+
+def test_numbering_discontinuity_evidence_names_the_jump_and_the_distance() -> None:
+    report = analyze_chain(_reference("4ZHL.cif.gz"), "U")
+    jump = _junction(report, "U:ARG217", "U:GLY219")
+    assert "numérotation +2" in jump.evidence  # type: ignore[attr-defined]
+    assert "1.316 Å ≤ 1.8 Å" in jump.evidence  # type: ignore[attr-defined]
+    (measure,) = jump.measurements  # type: ignore[attr-defined]
+    assert (measure.c_atom, measure.n_atom) == ("U:ARG217:C", "U:GLY219:N")
+
+
+def test_conformations_without_a_compatible_pair_are_unmeasurable_not_bonded() -> None:
+    """Une absence de mesure n'est jamais une preuve de continuité."""
+    atoms = [
+        *_build((1, "ALA", {"atoms": ("N", "CA", "O")}), (2, "GLY", {"atoms": ("CA", "C", "O")})),
+        Atom(90, "C", "C", "ALA", 1, "A", 2.0, 0.0, 0.0, alt_loc="A"),
+        Atom(91, "N", "N", "GLY", 2, "A", 3.33, 0.0, 0.0, alt_loc="B"),
+    ]
+    report = _refused(Structure(atoms=tuple(atoms)))
+    (junction,) = report.junctions
+    assert junction.category is JunctionCategory.CONTINUITY_UNMEASURABLE
+    assert junction.measurements == ()
+    assert "aucune paire mesurable" in junction.evidence
+    assert junction.decision is Decision.REJECT
+
+
+def _two_broken_chains() -> Structure:
+    return Structure(
+        atoms=(
+            *_build((1, "ALA"), (2, "GLY"), (3, "SER", {"gap": 10.0})),
+            *_build((1, "LYS"), (2, "GLY"), (3, "THR", {"gap": 10.0}), chain="B"),
+        )
+    )
+
+
+def test_decisions_of_one_chain_do_not_propagate_to_another() -> None:
+    journal = Journal()
+    decisions = ChainDecisions({"A": ExtractionDecisions(breaks=Decision.SPLIT)})
+    assert decisions.for_chain("B") == ExtractionDecisions()
+    with pytest.raises(ExtractionRefusedError, match="chaîne B") as info:
+        extract_chains(_two_broken_chains(), ["A", "B"], journal=journal, decisions=decisions)
+    report_b = info.value.report
+    assert isinstance(report_b, ExtractionReport)
+    assert report_b.decisions == {"breaks": "reject", "unobserved_termini": "reject"}
+    assert report_b.junctions[1].decision is Decision.REJECT
+    accepted, refused = journal.entries[-2], journal.entries[-1]
+    assert (accepted.action, accepted.parameters["chain"]) == ("extract_peptide", "A")
+    assert accepted.parameters["decisions"]["breaks"] == "split"
+    assert len(accepted.parameters["peptides"]) == 2
+    assert (refused.action, refused.parameters["chain"]) == ("extract_peptide_refused", "B")
+
+
+def test_each_chain_receives_its_own_decision() -> None:
+    decisions = ChainDecisions.from_dict({"A": {"breaks": "split"}, "B": {"breaks": "split"}})
+    results = extract_chains(
+        _two_broken_chains(), ["A", "B"], journal=Journal(), decisions=decisions
+    )
+    assert {chain: len(r.peptides) for chain, r in results.items()} == {"A": 2, "B": 2}
+    assert results["B"].peptides[1].metadata[STRUCTURE_CHAIN] == "B"
+    assert decisions.to_dict() == {
+        "A": {"breaks": "split", "unobserved_termini": "reject"},
+        "B": {"breaks": "split", "unobserved_termini": "reject"},
+    }
+
+
+def test_chain_decisions_refuse_unknown_chains_categories_and_values() -> None:
+    structure = _two_broken_chains()
+    stray = ChainDecisions({"Z": ExtractionDecisions(breaks=Decision.SPLIT)})
+    with pytest.raises(ConfigurationError, match="non extraites"):
+        extract_chains(structure, ["A"], journal=Journal(), decisions=stray)
+    with pytest.raises(StructureError, match="absente"):
+        extract_chains(structure, ["A", "Q"], journal=Journal())
+    with pytest.raises(ConfigurationError, match="inconnue"):
+        ChainDecisions.from_dict({"A": {"missing_residues": "split"}})
+    with pytest.raises(ConfigurationError, match="chaîne A"):
+        ChainDecisions.from_dict({"A": {"breaks": "observed_segment"}})
+
+
+def _break_and_unobserved_ends() -> Structure:
+    return Structure(
+        atoms=_build((2, "ALA"), (3, "GLY", {"extra": ("OXT",)}), (4, "SER", {"gap": 10.0})),
+        declared_missing_residues=(_rid(1, "MET"),),
+    )
+
+
+def test_a_decision_on_breaks_does_not_accept_unobserved_termini() -> None:
+    report = _refused(
+        _break_and_unobserved_ends(), decisions=ExtractionDecisions(breaks=Decision.SPLIT)
+    )
+    assert report.junctions[1].decision is Decision.SPLIT
+    assert [t.decision for t in report.unobserved_termini] == [Decision.REJECT]
+    (reason,) = report.refusals
+    assert "extrémité N" in reason
+
+
+def test_a_decision_on_unobserved_termini_does_not_accept_breaks() -> None:
+    report = _refused(
+        _break_and_unobserved_ends(),
+        decisions=ExtractionDecisions(unobserved_termini=Decision.OBSERVED_SEGMENT),
+    )
+    assert [t.decision for t in report.unobserved_termini] == [Decision.OBSERVED_SEGMENT]
+    assert report.junctions[1].decision is Decision.REJECT
+    (reason,) = report.refusals
+    assert "break_undeclared" in reason
+
+
+def test_both_decisions_together_and_oxt_before_a_break_is_not_a_free_acid() -> None:
+    decisions = ExtractionDecisions(
+        breaks=Decision.SPLIT, unobserved_termini=Decision.OBSERVED_SEGMENT
+    )
+    first, second = extract_peptides(
+        _break_and_unobserved_ends(), "A", journal=Journal(), decisions=decisions
+    ).peptides
+    assert (first.n_terminus.key, first.c_terminus.key) == ("unobserved", "unobserved")
+    assert first.metadata[STRUCTURE_EDGES] == "unobserved/break"
+    assert first.metadata[STRUCTURE_RESIDUES] == "A:ALA2,A:GLY3"
+    assert (second.n_terminus.key, second.c_terminus.key) == ("unobserved", "free_acid")
+    assert C_TERMINUS_DEFAULTED in second.metadata  # vraie extrémité sans preuve : marquée
+
+
+def test_extracted_segment_cannot_be_protonated_or_charged() -> None:
+    structure = Structure(
+        atoms=_build((2, "LYS"), (3, "GLY")),
+        declared_missing_residues=(_rid(1, "MET"),),
+    )
+    decisions = ExtractionDecisions(unobserved_termini=Decision.OBSERVED_SEGMENT)
+    (peptide,) = extract_peptides(structure, "A", journal=Journal(), decisions=decisions).peptides
+    with pytest.raises(UnsupportedFeatureError, match="pas une extrémité chimique"):
+        assign_protonation(peptide, 7.4)
+    with pytest.raises(UnsupportedFeatureError, match="coiffer ou reconstruire"):
+        theoretical_net_charge(peptide, 7.4)
+
+
+def test_4zhl_two_chains_are_extracted_independently() -> None:
+    results = extract_chains(_reference("4ZHL.cif.gz"), ["U", "P"], journal=Journal())
+    assert {c: len(r.peptides[0]) for c, r in results.items()} == {"U": 247, "P": 10}
+    assert results["P"].report.junctions_by_category() == {"continuous": 9}

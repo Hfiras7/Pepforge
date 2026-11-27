@@ -1,11 +1,13 @@
 """Entrées et sorties : séquences, structures PDB et mmCIF, puis SMILES, MOL/SDF (à venir)."""
 
 from pepforge.io.peptide_extraction import (
+    ChainDecisions,
     Decision,
     ExtractionDecisions,
     ExtractionReport,
     ExtractionResult,
     analyze_chain,
+    extract_chains,
     extract_peptides,
     structure_to_peptide,
 )
@@ -28,6 +30,7 @@ from pepforge.io.structure_inventory import StructureInventory, inventory
 
 __all__ = [
     "SEQUENCE_NOTATION",
+    "ChainDecisions",
     "Decision",
     "DownloadLimits",
     "ExtractionDecisions",
@@ -40,6 +43,7 @@ __all__ = [
     "analyze_chain",
     "convert_sequence",
     "download_file",
+    "extract_chains",
     "extract_peptides",
     "format_sequence",
     "inventory",

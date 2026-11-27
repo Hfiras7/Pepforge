@@ -36,10 +36,11 @@ Règles de classement, toutes structurelles ou tirées d'un fichier de données 
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from itertools import pairwise, product
+from types import MappingProxyType
 from typing import Any
 
 from pepforge.core.peptide import (
@@ -50,7 +51,7 @@ from pepforge.core.peptide import (
     Peptide,
 )
 from pepforge.core.structure import Atom, ConnectionKind, ResidueId, Structure
-from pepforge.exceptions import ExtractionRefusedError, StructureError
+from pepforge.exceptions import ConfigurationError, ExtractionRefusedError, StructureError
 from pepforge.report.journal import Journal
 from pepforge.residues.library import ResidueLibrary, load_default_library
 from pepforge.residues.structure_components import (
@@ -74,6 +75,10 @@ STRUCTURE_CHAIN = "structure_chain"
 
 STRUCTURE_SEGMENT = "structure_segment"
 """Clé de `Peptide.metadata` : premier et dernier résidu du segment extrait (`A:ALA1-A:GLY9`)."""
+
+STRUCTURE_RESIDUES = "structure_residues"
+"""Clé de `Peptide.metadata` : identifiant d'origine de chaque résidu, dans l'ordre des
+positions du peptide, séparés par des virgules (`U:ARG217,U:GLY219,U:GLY219A`)."""
 
 STRUCTURE_EDGES = "structure_edges"
 """Clé de `Peptide.metadata` : nature des bords N et C du segment (`chemical/break`...)."""
@@ -160,6 +165,52 @@ class ExtractionDecisions:
 
     def to_dict(self) -> dict[str, str]:
         return {"breaks": self.breaks.value, "unobserved_termini": self.unobserved_termini.value}
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any], where: str = "décisions") -> ExtractionDecisions:
+        """Décisions lues d'une configuration ; une clé inconnue est refusée, jamais ignorée."""
+        unknown = set(data) - {"breaks", "unobserved_termini"}
+        if unknown:
+            raise ConfigurationError(
+                f"{where} : catégorie(s) inconnue(s) {sorted(unknown)} ; "
+                "catégories possibles : breaks, unobserved_termini"
+            )
+        try:
+            return cls(**{key: Decision(str(value)) for key, value in data.items()})
+        except ValueError as exc:
+            raise ConfigurationError(f"{where} : {exc}") from None
+
+
+@dataclass(frozen=True)
+class ChainDecisions:
+    """Décisions par chaîne. Une chaîne absente du tableau reste en mode strict.
+
+    Chaque chaîne a ses propres décisions : rien ne passe d'une chaîne à l'autre,
+    et une chaîne nommée qui n'existe pas dans la structure est refusée
+    (`extract_chains`), pour qu'une faute de frappe ne laisse pas une chaîne en
+    mode strict sans le dire.
+    """
+
+    by_chain: Mapping[str, ExtractionDecisions] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "by_chain", MappingProxyType(dict(self.by_chain)))
+
+    def for_chain(self, chain_id: str) -> ExtractionDecisions:
+        return self.by_chain.get(chain_id, ExtractionDecisions())
+
+    def to_dict(self) -> dict[str, dict[str, str]]:
+        return {chain: d.to_dict() for chain, d in sorted(self.by_chain.items())}
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Mapping[str, Any]]) -> ChainDecisions:
+        """Forme de la configuration YAML : `{A: {breaks: split}, B: {...}}`."""
+        return cls(
+            {
+                str(chain): ExtractionDecisions.from_dict(values, f"décisions de la chaîne {chain}")
+                for chain, values in data.items()
+            }
+        )
 
 
 @dataclass(frozen=True)
@@ -364,7 +415,12 @@ def _junction(
             if not any(x.name == name for x in atoms)
         ]
         category = JunctionCategory.CONTINUITY_UNMEASURABLE
-        evidence = f"atome absent : {', '.join(absent)}"
+        evidence = (
+            f"atome absent : {', '.join(absent)}"
+            if absent
+            else "atomes C et N présents, mais dans des conformations alternatives différentes : "
+            "aucune paire mesurable"
+        )
     elif all(bonded):
         regular = step == 1 and not icode
         category = (
@@ -817,6 +873,7 @@ def _peptide(
         STRUCTURE_CHAIN: chain_id,
         STRUCTURE_SEGMENT: f"{segment.first}-{segment.last}",
         STRUCTURE_EDGES: f"{segment.n_edge}/{segment.c_edge}",
+        STRUCTURE_RESIDUES: ",".join(rid.label() for rid, _ in part),
     }
     if n_key is None and not n_open:
         metadata[N_TERMINUS_DEFAULTED] = _FROM_STRUCTURE_DEFAULT
@@ -973,3 +1030,49 @@ def structure_to_peptide(
     )
     (peptide,) = result.peptides
     return peptide
+
+
+def extract_chains(
+    structure: Structure,
+    chains: Sequence[str],
+    *,
+    journal: Journal,
+    decisions: ChainDecisions | None = None,
+    library: ResidueLibrary | None = None,
+    components: StructureComponents | None = None,
+    criterion: PeptideBondCriterion | None = None,
+) -> dict[str, ExtractionResult]:
+    """Extraction de plusieurs chaînes, chacune avec ses propres décisions.
+
+    Les décisions données pour une chaîne qui n'est pas demandée, ou absente de la
+    structure, sont refusées (`ConfigurationError`). Le premier refus d'extraction
+    lève `ExtractionRefusedError` avec le rapport de sa chaîne ; les chaînes déjà
+    traitées restent inscrites au journal.
+    """
+    decisions = decisions or ChainDecisions()
+    stray = sorted(set(decisions.by_chain) - set(chains))
+    if stray:
+        raise ConfigurationError(
+            f"Décisions données pour des chaînes non extraites : {stray} ; "
+            f"chaînes demandées : {list(chains)}"
+        )
+    absent = [c for c in chains if c not in structure.chain_ids]
+    if absent:
+        raise StructureError(
+            f"Chaîne(s) {absent} absente(s) ; chaînes présentes : {structure.chain_ids}"
+        )
+    library = library or load_default_library()
+    components = components or load_structure_components(library)
+    criterion = criterion or load_peptide_bond_criterion()
+    return {
+        chain: extract_peptides(
+            structure,
+            chain,
+            journal=journal,
+            decisions=decisions.for_chain(chain),
+            library=library,
+            components=components,
+            criterion=criterion,
+        )
+        for chain in chains
+    }

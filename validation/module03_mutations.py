@@ -255,6 +255,26 @@ M = [
         '    c_open = c_key is None and segment.c_edge != "chemical"',
         "    c_open = False",
     ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        "        return self.by_chain.get(chain_id, ExtractionDecisions())",
+        "        return next(iter(self.by_chain.values()), ExtractionDecisions())",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        "    if stray:\n",
+        "    if False:\n",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        "        if unknown:\n            raise ConfigurationError(",
+        "        if False:\n            raise ConfigurationError(",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        "            if absent\n            else",
+        "            if True\n            else",
+    ),
 ]
 env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
 caught = 0

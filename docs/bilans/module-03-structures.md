@@ -293,3 +293,41 @@ Option retenue : une **nouvelle extrémité « non observée »**, plutôt qu'un
 - Tests ajoutés : 11 (extraction `observed_segment` et `split`, pont disulfure entre segments refusé, 6WQA découpé en 254 et 137 résidus, 7DDO C dont le glycane bloque toujours, refus de la protonation aux deux extrémités, refus d'écriture, chargement de la bibliothèque). **610 tests réussis, 0 échec.**
 - Défauts injectés : 4 de plus sur les nouvelles gardes (refus de la protonation, refus d'écriture, bords N et C). **54 sur 54 détectés.** Une garde redondante a été retirée après qu'un défaut injecté a montré qu'elle ne changeait rien.
 - Validation sur les 14 fichiers relancée : 137 contrôles, 0 échec (elle n'utilise que le mode strict).
+
+### 9.7 Validation finale demandée par Firas (27 novembre 2026, 20 h 10 UTC)
+
+Audit du code, des tests et du diff complet de la PR #3 (43 fichiers, aucun dans `checks/`, `build/`, `forcefields/`, `engines/` ni `pipeline/` : **module 4 non touché**). Contre la branche par défaut, aucune ligne de test n'est supprimée ; les seules lignes retirées hors du module 3 sont la signature interne `add_terminus` de la protonation, remplacée pour recevoir l'extrémité entière.
+
+Noms des catégories : Firas a choisi de garder `numbering_discontinuity` et `unobserved` (carte du 27 novembre, 20 h 15 UTC), parce que la catégorie couvre aussi les codes d'insertion et les retours en arrière.
+
+**Problèmes trouvés et corrigés**
+
+| Problème | Conséquence | Correction |
+|---|---|---|
+| Le `Peptide` extrait ne gardait que le premier et le dernier identifiant du segment | la numérotation d'origine de chaque position (saut 217 → 219, codes d'insertion) n'était pas conservée dans le peptide | `Peptide.metadata["structure_residues"]` : identifiant d'origine de chaque position |
+| Aucune représentation des décisions **par chaîne** | une configuration à plusieurs chaînes n'avait pas de forme, et rien n'empêchait d'appliquer à une chaîne la décision d'une autre | `ChainDecisions` (forme YAML, refus des chaînes, catégories et valeurs inconnues) et `extract_chains` |
+| Message faux quand les atomes C et N existent mais dans des conformations différentes | le rapport annonçait « atome absent » avec une liste vide | message exact ; la jonction reste non mesurable et refusée |
+
+**Tests ajoutés (11)** : numérotation d'origine de 4ZHL U conservée position par position ; preuve du saut (+2, 1,316 Å, atomes `U:ARG217:C` et `U:GLY219:N`) ; conformations sans paire compatible refusées ; deux chaînes à rupture dont seule A reçoit `split` (B reste refusée, journal des deux) ; deux chaînes avec chacune sa décision ; refus des chaînes, catégories et valeurs inconnues ; `split` seul ne lève pas le refus d'une extrémité non observée, et inversement ; les deux décisions ensemble, avec un `OXT` avant la rupture qui ne devient pas un acide libre ; segment extrait refusé par la protonation et le calcul de charge ; 4ZHL U et P extraites ensemble.
+
+**Résultats**
+
+- `ruff`, `ruff format`, `mypy --strict` propres ; **621 tests réussis, 0 échec**.
+- Régression des modules 1 et 2 : les fichiers de tests de la branche par défaut (`test_peptide.py`, `test_sequence.py`, `test_library.py`, `test_protonation.py`, 287 tests) passent tels quels sur le nouveau code.
+- Défauts injectés : **58 sur 58 détectés** (4 de plus : décision d'une chaîne propagée aux autres, chaîne non extraite acceptée, catégorie inconnue acceptée, message de conformations).
+- Validation sur les 14 fichiers : **137 contrôles, 0 échec**, résultats identiques.
+
+| Structure | Situation | Résultat obtenu |
+|---|---|---|
+| 4ZHL U | ARG217 → GLY219, C–N 1,316 Å | `numbering_discontinuity`, accepté et signalé ; 247 résidus, numérotation d'origine gardée |
+| 6WQA A | ALA1043 → ASP1060, 14,081 Å | `break_undeclared` ; refus par défaut ; avec `split`, deux peptides de 254 et 137 résidus, bords `unobserved` |
+| 6WQA A | `ZMA` | `unbound_ligand`, exclu et listé (2,834 Å) |
+| 7DDO A | `NAG` sur Asn 53, 90, 546 | `side_chain_modification`, liaison `LINK` donnée, jamais un résidu ; refus motivé |
+
+**Limites restantes**
+
+1. Les atomes absents (hors C et N d'une jonction) sont rapportés sans décision : leur traitement est celui de l'étape 4.
+2. Une liaison covalente non déclarée (fichier sans `LINK`) ne peut pas être vue ; le composant est classé non lié, avec sa plus courte distance à la chaîne.
+3. Aucune borne basse n'est appliquée à la distance C–N : un chevauchement anormal (C–N très court) serait lu comme une liaison. Le contrôle des chevauchements est à l'étape 4.
+4. Les décisions par chaîne existent dans l'API et sous forme YAML, mais aucune étape du pipeline ne les lit encore depuis `PrepConfig` ; la ligne de commande traite une chaîne à la fois.
+5. Les récepteurs de la thèse (DCC, TrkC, UNC5) ne sont pas dans la validation, qui reste provisoire.
