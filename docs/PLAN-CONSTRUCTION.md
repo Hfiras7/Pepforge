@@ -140,11 +140,13 @@ flowchart LR
 
 ## Étape 2 — Protonation et charge nette théorique
 
+**Statut : TERMINÉ ET VALIDÉ** (27 novembre 2026). Code, tests et documentation livrés sur une branche et une PR dédiées (PR #2), CI verte sur Linux et Windows. Firas a validé la source des pKa, les charges de référence, le pKa de l'arginine (Fitch 2015, qu'il a lu) et la fenêtre d'alerte. Bilan complet : [bilans/module-02-protonation.md](bilans/module-02-protonation.md).
+
 **Objectif** : choisir l'état de chaque groupe ionisable au pH de l'étude et calculer la charge nette théorique, référence de tous les contrôles de charge ultérieurs.
 
 **Modules** : `residues/data/` (nouveau fichier de groupes ionisables), `residues`, `checks`, `pipeline` (étape « normalisation »).
 
-**Prérequis** : choisir la **source** des pKa de référence (valeurs de résidus isolés publiées, ou outil de prédiction comme PROPKA pour une structure). À décider avec Firas ; aucune valeur n'est saisie sans sa source.
+**Prérequis** : choisir la **source** des pKa de référence (valeurs de résidus isolés publiées, ou outil de prédiction comme PROPKA pour une structure). À décider avec Firas ; aucune valeur n'est saisie sans sa source. *Décidé par Firas le 27 novembre 2026 : pKa mesurés sur des pentapeptides d'alanine (Thurlkill et al. 2006, tableau I de Grimsley et al. 2009). PROPKA pourra s'ajouter comme seconde source, sur structure, après l'étape 3.*
 
 **Livrables**
 
@@ -154,14 +156,14 @@ flowchart LR
 
 **Critères d'acceptation**
 
-- [ ] Une extrémité acétylée ou amidée ne porte pas de charge ; une extrémité libre en porte une selon le pH.
-- [ ] Le pH vient de `PrepConfig.ph` ; s'il manque, `ConfigurationError`.
-- [ ] Un pH proche d'un pKa (fenêtre définie et justifiée) produit un `WARN` : l'état choisi doit être relu.
-- [ ] Le choix de chaque état est journalisé avec la source du pKa.
+- [x] Une extrémité acétylée ou amidée ne porte pas de charge ; une extrémité libre en porte une selon le pH.
+- [x] Le pH vient de `PrepConfig.ph` ; s'il manque, `ConfigurationError`.
+- [x] Un pH proche d'un pKa (fenêtre définie et justifiée) produit un `WARN` : l'état choisi doit être relu. *Fenêtre : \|pH − pKa\| < 1, justifiée par Henderson–Hasselbalch dans le fichier de données (forme minoritaire au-delà de 9 %), validée par Firas.*
+- [x] Le choix de chaque état est journalisé avec la source du pKa.
 
 **Tests** : U (chaque groupe, cas limites de pH) ; I (`SequenceInputStage` puis `ProtonationStage`) ; V : charges nettes des peptides de référence calculées à la main et consignées dans `tests/reference/charges.yaml` avec le raisonnement.
 
-**Revue** : Firas valide la source des pKa et les charges attendues des peptides de référence.
+**Revue** : Firas valide la source des pKa et les charges attendues des peptides de référence. *Faite par Firas le 27 novembre 2026 : source, charges de référence, pKa de l'arginine et fenêtre d'alerte validés.*
 
 ---
 

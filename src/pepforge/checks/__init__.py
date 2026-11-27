@@ -9,11 +9,13 @@ from pepforge.checks.inventory import (
 )
 from pepforge.checks.levels import CONTROLS, Control, audit, requested, unavailable
 from pepforge.checks.peptide_checks import PEPTIDE_CHECKS
+from pepforge.checks.protonation_checks import PROTONATION_CHECKS
 
 __all__ = [
     "CHARGE_TOLERANCE",
     "CONTROLS",
     "PEPTIDE_CHECKS",
+    "PROTONATION_CHECKS",
     "Check",
     "CheckResult",
     "Control",

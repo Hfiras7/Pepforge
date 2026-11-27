@@ -60,10 +60,16 @@ def assert_builder_contract(builder: StructureBuilder, peptide: Peptide) -> None
     assert journal.entries, "la construction doit être journalisée"
 
 
-def assert_stage_contract(stage: Stage[object, object], data: object, tmp_path: Path) -> None:
+def assert_stage_contract(
+    stage: Stage[object, object],
+    data: object,
+    tmp_path: Path,
+    config: PrepConfig | None = None,
+) -> None:
+    """Contrat d'une étape ; `config` fournit les choix dont l'étape a besoin (le pH...)."""
     assert isinstance(stage, Stage)
     assert stage.name, "une étape porte un nom stable (utilisé dans le rapport)"
-    context = StageContext(config=PrepConfig(), workdir=tmp_path)
+    context = StageContext(config=config or PrepConfig(), workdir=tmp_path)
     stage.run(data, context)
 
 

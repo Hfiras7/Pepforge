@@ -281,6 +281,11 @@ def _not_writable(peptide: Peptide) -> list[str]:
         for position, residue in enumerate(peptide.residues, start=1)
         if residue.protonation is not None
     ]
+    lost += [
+        f"état de protonation {terminus.protonation} de l'extrémité {side}"
+        for side, terminus in (("N", peptide.n_terminus), ("C", peptide.c_terminus))
+        if terminus.protonation is not None
+    ]
     return lost
 
 
