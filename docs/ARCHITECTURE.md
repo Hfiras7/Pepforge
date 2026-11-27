@@ -24,6 +24,7 @@
 15. [Calcul quantique : recommandation et interface](#15-calcul-quantique--recommandation-et-interface)
     - [15.4 Ajouter concrètement ORCA et Psi4 au projet](#154-ajouter-concrètement-orca-et-psi4-au-projet)
     - [15.5 Automatiser davantage : les briques existantes](#155-automatiser-davantage--les-briques-existantes)
+    - [15.6 Travailler avec Psi4 seul](#156-travailler-avec-psi4-seul--oui-et-cest-défendable)
 16. [Faisabilité des calculs sur un poste de bureau](#16-faisabilité-des-calculs-sur-un-poste-de-bureau)
 17. [Politique d'absence d'erreur silencieuse](#17-politique-dabsence-derreur-silencieuse)
 18. [Comment vérifier et valider une sortie](#18-comment-vérifier-et-valider-une-sortie)
@@ -886,7 +887,7 @@ Aucun des deux ne devient une dépendance déclarée du paquet : PepForge les d�
 
 Trois pièges spécifiques à Windows. Les calculs se lancent dans un dossier de travail séparé, jamais dans le dossier d'installation. En parallèle, ORCA s'appelle avec son **chemin absolu**, et jamais par `mpirun` : le nombre de cœurs se déclare dans le fichier d'entrée (`!PAL4`, ou un bloc `%pal NProcs ... end` au-delà de huit), et ORCA lance lui-même ses processus. Enfin, un éditeur qui ajoute une extension cachée produit un `input.inp.txt` que rien ne lit.
 
-**Le vrai point de décision sous Windows est le parallélisme.** ORCA 6 s'appuie sur OpenMPI, et la version attendue est celle qu'indique la page de téléchargement du paquet récupéré (4.1.6 pour la série 6). La documentation est explicite sur Linux et beaucoup plus pauvre sur Windows, où elle finit par suggérer un environnement de type Cygwin. Pour le volume de calculs du projet — des milliers de points de balayage (sections 15.5 et 16) —, faire tourner ORCA sous **WSL2** avec la version Linux est plus simple à maintenir qu'une installation parallèle native Windows, et c'est aussi là que Psi4, xtb et `torsiondrive` s'installent sans friction. Le reste de la chaîne, NAMD et `psfgen`, fonctionne nativement sous Windows : seule la partie quantique gagne à passer par WSL2.
+**Le vrai point de décision sous Windows est le parallélisme** — et il ne se pose que si ORCA est conservé (voir 15.6). ORCA 6 s'appuie sur OpenMPI, et la version attendue est celle qu'indique la page de téléchargement du paquet récupéré (4.1.6 pour la série 6). La documentation est explicite sur Linux et beaucoup plus pauvre sur Windows, où elle finit par suggérer un environnement de type Cygwin. Pour le volume de calculs du projet — des milliers de points de balayage (sections 15.5 et 16) —, faire tourner ORCA sous **WSL2** avec la version Linux est plus simple à maintenir qu'une installation parallèle native Windows, et c'est aussi là que Psi4, xtb et `torsiondrive` s'installent sans friction. Le reste de la chaîne, NAMD et `psfgen`, fonctionne nativement sous Windows : seule la partie quantique gagne à passer par WSL2.
 
 **2. Déclarer le niveau de théorie.** `QuantumSpec` (dans `pepforge.tools.quantum`) porte le logiciel, la méthode, la base, le type de balayage et son pas. Il naît **vide** : `missing_decisions()` liste ce qui reste à fixer et `label()` refuse de produire une étiquette tant que la spécification est incomplète. C'est volontaire, puisque deux entrées de la bibliothèque dérivées à des niveaux différents ne sont pas comparables entre elles.
 
@@ -897,6 +898,24 @@ La spécification quantique n'est **pas** dans `PrepConfig` : une préparation d
 Deux règles pour ces implémentations. D'abord, **un calcul non convergé lève `ExternalToolError`** et n'entre jamais dans une dérivation : le code de retour d'ORCA ou de Psi4 ne suffit pas, il faut analyser la sortie, et les motifs d'échec se construisent en provoquant délibérément l'erreur sur le logiciel installé (section 17). Ensuite, chaque implémentation passe `tests/contracts.py::assert_quantum_tool_contract`, qui vérifie ce qui ne dépend pas du logiciel : version déclarée, profil non vide, spécification recopiée dans le profil, et profil lisible en relatif.
 
 **4. Produire les profils avec leur provenance.** `TorsionProfile` embarque le fragment, les quatre indices d'atomes de la torsion, les points, la spécification, la version du logiciel, la date et le matériel, et `relative_energies_kcal()` donne les énergies relatives au minimum, seule grandeur comparable au champ de force. Ces profils vivent dans `tests/reference/` et sont ce qui sera montré en soutenance pour justifier les paramètres (section 18.8).
+
+### 15.6 Travailler avec Psi4 seul : oui, et c'est défendable
+
+Question de Firas le 27 novembre 2026 : peut-on se passer d'ORCA, dont l'installation est plus lourde ? **Oui.** C'est un choix légitime, et il a même un avantage méthodologique que l'option à deux logiciels n'a pas.
+
+**Ce que le projet demande réellement au quantique.** Des optimisations de fragments capés de trente à cinquante atomes, des balayages dièdres relaxés unidimensionnels au niveau fixé, éventuellement des charges, et au plus une grille bidimensionnelle sur **un** résidu modèle (section 16). À cette taille et à ce niveau, Psi4 est parfaitement dimensionné : MP2 avec ajustement de densité y est efficace, et c'est exactement le niveau du protocole publié de CGenFF auquel la bibliothèque doit s'aligner.
+
+**L'avantage méthodologique, qui est le vrai argument.** Deux entrées de la bibliothèque dérivées avec deux programmes différents, même au même niveau nominal, ne donnent pas des nombres strictement identiques : les seuils d'intégration, l'ajustement de densité et les critères de convergence diffèrent. **Un seul programme pour toute la bibliothèque, avec sa version enregistrée, est donc plus homogène et plus facile à défendre** qu'une bibliothèque dérivée pour moitié avec chacun. L'instinct de simplifier va ici dans le sens de la rigueur, pas contre elle.
+
+**Ce que l'on perd.** La vitesse brute sur les gros calculs, où ORCA est devant, et l'accès commode à des références de très haute précision du type DLPNO-CCSD(T) si le niveau de théorie devait monter. Aucun des deux n'est nécessaire au périmètre décrit ci-dessus. Si l'un le devenait, ORCA s'ajoute comme **une implémentation de plus** derrière `QuantumTool`, sans toucher au reste : c'est précisément ce que l'interface protège.
+
+**Conséquence pratique immédiate : plus besoin de WSL2.** Psi4 est distribué par conda-forge pour **win-64** en plus de Linux et macOS, et l'installation native Windows est prise en charge depuis sa version 1.4. La recommandation de passer la partie quantique sous WSL2 (section 15.4) portait sur le parallélisme d'ORCA : en abandonnant ORCA, le problème disparaît. NAMD et `psfgen` étant déjà natifs Windows, toute la chaîne tourne alors sur un seul environnement.
+
+```
+conda install conda-forge::psi4
+```
+
+**Décision retenue : Psi4 seul**, installé par conda-forge, avec sa version enregistrée dans chaque profil produit. ORCA reste documenté en 15.4 et possible plus tard, sans que cela remette en cause une seule dérivation déjà faite, à condition de ne jamais mélanger les deux au sein d'une même bibliothèque.
 
 ### 15.5 Automatiser davantage : les briques existantes
 
