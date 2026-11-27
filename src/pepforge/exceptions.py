@@ -21,6 +21,24 @@ class UnknownTerminusError(PepForgeError):
     """Une extrémité N- ou C-terminale n'est pas reconnue."""
 
 
+class PeptideModelError(PepForgeError):
+    """La représentation du peptide est incohérente.
+
+    Position hors bornes, liaison d'un résidu à lui-même, liaison ou
+    modification déclarée deux fois, clé interne mal formée, ou opération qui
+    ferait disparaître en silence une liaison ou une modification déclarée.
+    """
+
+
+class UnsupportedFeatureError(PepForgeError):
+    """Une déclaration du peptide n'est pas encore prise en charge par l'étape.
+
+    Levée par une étape qui reçoit une déclaration (modification de chaîne
+    latérale, liaison non linéaire) qu'elle ne sait pas traiter : le peptide
+    est refusé plutôt que traité sans elle, ce qui serait une erreur silencieuse.
+    """
+
+
 class ChemistryError(PepForgeError):
     """Incohérence chimique (valence, stéréochimie, charge nette inattendue...)."""
 

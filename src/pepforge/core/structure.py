@@ -3,8 +3,8 @@
 `Structure` est le type échangé entre `io` (lecture PDB/mmCIF), `build`
 (construction et correction 3D) et `engines` (écriture de la topologie). Les
 noms d'atomes et de résidus y suivent la nomenclature du format d'origine
-(PDB) ; la traduction vers la nomenclature d'un champ de force (`NHE`, `HIE`...)
-relève exclusivement de `pepforge.forcefields`.
+(PDB) ; la traduction vers la nomenclature d'un champ de force (résidus
+terminaux, tautomères, patches) relève exclusivement de `pepforge.forcefields`.
 
 Les coordonnées sont en angströms, comme dans les formats PDB et mmCIF.
 """

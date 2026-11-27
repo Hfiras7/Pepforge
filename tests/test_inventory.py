@@ -6,8 +6,14 @@ section 17.2 : un piège qui, sans ce contrôle, passerait inaperçu.
 
 from __future__ import annotations
 
+import dataclasses
+
+import pytest
+
 from pepforge.checks import CheckResult, Inventory, Status, compare, expected_from_peptide
 from pepforge.checks.base import failures
+from pepforge.core import Link, LinkKind, Modification
+from pepforge.exceptions import UnsupportedFeatureError
 from pepforge.io import parse_sequence
 
 
@@ -165,3 +171,43 @@ def test_incomplete_expected_inventory_blocks_rather_than_passes() -> None:
         "inventory.net_charge",
         "inventory.cmap_terms",
     }
+
+
+# --- Liaisons et modifications déclarées (étape 1) ------------------------------
+
+
+def test_expected_disulfides_come_from_the_declared_links() -> None:
+    peptide = parse_sequence("Ac-CCGCC-NH2")
+    peptide = peptide.with_link(Link(LinkKind.DISULFIDE, 5, 2)).with_link(
+        Link(LinkKind.DISULFIDE, 1, 4)
+    )
+    inventory = expected_from_peptide(peptide)
+    assert inventory.disulfides == ((1, 4), (2, 5))
+    assert inventory.backbone_bonds == 4
+
+
+def test_a_declared_disulfide_missing_from_the_file_is_caught() -> None:
+    peptide = parse_sequence("Ac-CRGDC-NH2").with_link(Link(LinkKind.DISULFIDE, 1, 5))
+    expected = expected_from_peptide(peptide)
+    produced = dataclasses.replace(expected, disulfides=(), source="psf relu")
+    failed = {r.check_id for r in failures(compare(expected, produced))}
+    assert "inventory.disulfides" in failed
+
+
+def test_head_to_tail_is_refused_rather_than_inventoried_without_it() -> None:
+    cyclic = parse_sequence("H-RGDS-OH").with_link(Link(LinkKind.HEAD_TO_TAIL, 1, 4))
+    with pytest.raises(UnsupportedFeatureError, match="cyclisation tête-queue"):
+        expected_from_peptide(cyclic)
+
+
+def test_modification_is_refused_rather_than_inventoried_without_it() -> None:
+    peptide = (
+        parse_sequence("H-RGDSK-OH")
+        .with_modification(Modification("phosphorylation", 4))
+        .with_modification(Modification("dota_conjugation", 5))
+    )
+    with pytest.raises(UnsupportedFeatureError) as error:
+        expected_from_peptide(peptide)
+    # Toutes les déclarations non représentables sont nommées, pas seulement la première.
+    assert "phosphorylation en position 4" in str(error.value)
+    assert "dota_conjugation en position 5" in str(error.value)

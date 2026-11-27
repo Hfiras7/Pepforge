@@ -8,7 +8,7 @@ import pytest
 
 from pepforge.checks import PEPTIDE_CHECKS, Check, CheckResult, Status, run_checks
 from pepforge.config import PrepConfig
-from pepforge.core import Peptide
+from pepforge.core import Link, LinkKind, Modification, Peptide, Residue
 from pepforge.exceptions import QualityCheckError
 from pepforge.io import parse_sequence
 from pepforge.pipeline import SequenceInputStage, StageContext, run_stage
@@ -48,3 +48,72 @@ def test_stage_journals_the_parse(tmp_path: Path) -> None:
     run_stage(SequenceInputStage(), "Ac-RGDS-NH2", context)
     actions = [e.action for e in context.journal.entries]
     assert actions == ["parse_sequence", "stage_completed"]
+
+
+# --- Liaisons et modifications déclarées (étape 1) ------------------------------
+
+
+def _check(check_id: str, peptide: Peptide) -> CheckResult:
+    results = {r.check_id: r for r in run_checks(PEPTIDE_CHECKS, peptide)}
+    return results[check_id]
+
+
+def test_disulfide_between_two_cysteines_passes() -> None:
+    peptide = parse_sequence("Ac-CRGDC-NH2").with_link(Link(LinkKind.DISULFIDE, 1, 5))
+    result = _check("peptide.links_chemistry", peptide)
+    assert result.status is Status.PASS
+    assert "pont disulfure 1–5" in result.message
+
+
+def test_disulfide_on_a_residue_without_thiol_fails() -> None:
+    peptide = parse_sequence("Ac-CRGDS-NH2").with_link(Link(LinkKind.DISULFIDE, 1, 5))
+    result = _check("peptide.links_chemistry", peptide)
+    assert result.status is Status.FAIL
+    assert "SER en position 5 ne porte pas de thiol" in result.message
+
+
+def test_disulfide_on_a_non_standard_residue_is_unverifiable_hence_fails() -> None:
+    xcy = Residue(code="XCY", standard=False)
+    peptide = parse_sequence("Ac-CRGDA-NH2").mutate(5, xcy)
+    peptide = peptide.with_link(Link(LinkKind.DISULFIDE, 1, 5))
+    result = _check("peptide.links_chemistry", peptide)
+    assert result.status is Status.FAIL
+    assert "non vérifiable" in result.message
+
+
+def test_head_to_tail_with_free_ends_passes() -> None:
+    cyclic = parse_sequence("H-RGDS-OH").with_link(Link(LinkKind.HEAD_TO_TAIL, 1, 4))
+    assert _check("peptide.links_chemistry", cyclic).status is Status.PASS
+
+
+def test_head_to_tail_with_capped_ends_fails() -> None:
+    cyclic = parse_sequence("Ac-RGDS-NH2").with_link(Link(LinkKind.HEAD_TO_TAIL, 1, 4))
+    result = _check("peptide.links_chemistry", cyclic)
+    assert result.status is Status.FAIL
+    assert "extrémité N" in result.message
+    assert "extrémité C" in result.message
+
+
+def test_head_to_tail_on_a_non_standard_end_is_unverifiable_hence_fails() -> None:
+    cyclic = parse_sequence("H-RGDS-OH").mutate(4, Residue(code="XAA", standard=False))
+    cyclic = cyclic.with_link(Link(LinkKind.HEAD_TO_TAIL, 1, 4))
+    result = _check("peptide.links_chemistry", cyclic)
+    assert result.status is Status.FAIL
+    assert "non vérifiable" in result.message
+
+
+def test_declared_modification_is_unverifiable_hence_fails() -> None:
+    peptide = parse_sequence("Ac-RGDS-NH2").with_modification(Modification("phosphorylation", 4))
+    result = _check("peptide.modifications_verifiable", peptide)
+    assert result.status is Status.FAIL
+    assert "phosphorylation en position 4" in result.message
+
+
+def test_a_problem_on_a_link_stops_the_input_stage(tmp_path: Path) -> None:
+    class _CappedCyclicStage(SequenceInputStage):
+        def run(self, data: str, context: StageContext) -> Peptide:
+            peptide = super().run(data, context)
+            return peptide.with_link(Link(LinkKind.HEAD_TO_TAIL, 1, len(peptide)))
+
+    with pytest.raises(QualityCheckError, match=r"peptide\.links_chemistry"):
+        run_stage(_CappedCyclicStage(), "Ac-RGDS-NH2", _context(tmp_path), PEPTIDE_CHECKS)

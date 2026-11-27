@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 
 from pepforge.checks.base import CheckResult, Status
 from pepforge.core.peptide import Peptide
+from pepforge.exceptions import UnsupportedFeatureError
 
 CHARGE_TOLERANCE = 1e-3
 """Écart maximal toléré sur la charge nette, en charge élémentaire.
@@ -79,16 +80,33 @@ def expected_from_peptide(peptide: Peptide) -> Inventory:
 
     Les champs qui dépendent de la bibliothèque de résidus ou de l'adaptateur de
     champ de force (`atom_counts`, `net_charge`, `cmap_terms`) restent à `None` :
-    ils seront renseignés par les étapes correspondantes du plan. Tant qu'ils le
-    sont, la comparaison les signale comme non vérifiables, ce qui est le
+    ils seront renseignés par les étapes correspondantes du plan. Tant qu'ils ne
+    le sont pas, la comparaison les signale comme non vérifiables, ce qui est le
     comportement voulu.
+
+    Les ponts disulfure viennent des liaisons déclarées sur le peptide. Une
+    déclaration que l'inventaire ne sait pas encore représenter (cyclisation
+    tête-queue, modification de chaîne latérale) fait lever
+    `UnsupportedFeatureError` : un inventaire qui la passerait sous silence
+    laisserait écrire un fichier sans elle, et la comparaison ne pourrait pas
+    s'en apercevoir.
     """
+    unsupported: list[str] = []
+    if peptide.is_cyclic:
+        unsupported.append("cyclisation tête-queue (liaison de fermeture et extrémités consommées)")
+    unsupported += [m.describe() for m in peptide.modifications]
+    if unsupported:
+        raise UnsupportedFeatureError(
+            "L'inventaire attendu ne sait pas encore représenter : "
+            + "; ".join(unsupported)
+            + ". Le peptide est refusé plutôt que vérifié sans ces déclarations."
+        )
     return Inventory(
         residue_sequence=tuple(r.code for r in peptide.residues),
         n_terminus=peptide.n_terminus.key,
         c_terminus=peptide.c_terminus.key,
-        backbone_bonds=max(len(peptide.residues) - 1, 0),
-        disulfides=(),
+        backbone_bonds=max(len(peptide) - 1, 0),
+        disulfides=peptide.disulfides,
         source="représentation interne",
     )
 

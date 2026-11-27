@@ -10,6 +10,7 @@ import yaml
 
 from pepforge import __version__
 from pepforge.config import PrepConfig
+from pepforge.core import C_TERMINUS_DEFAULTED, N_TERMINUS_DEFAULTED
 from pepforge.exceptions import PepForgeError
 from pepforge.io.sequence import parse_sequence
 
@@ -23,9 +24,9 @@ def _cmd_parse(args: argparse.Namespace) -> int:
     print(f"Extrémité C          : {peptide.c_terminus.label}")
     composition = ", ".join(f"{k}×{v}" for k, v in sorted(peptide.composition().items()))
     print(f"Composition          : {composition}")
-    for side in ("n_terminus_source", "c_terminus_source"):
-        if side in peptide.metadata:
-            print(f"Attention : extrémité {side[0].upper()} non déclarée, valeur par défaut.")
+    for side, key in (("N", N_TERMINUS_DEFAULTED), ("C", C_TERMINUS_DEFAULTED)):
+        if key in peptide.metadata:
+            print(f"Attention : extrémité {side} non déclarée, valeur par défaut.")
     return 0
 
 

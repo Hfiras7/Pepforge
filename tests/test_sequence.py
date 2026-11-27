@@ -1,9 +1,13 @@
 """Tests de l'analyse des séquences et des extrémités."""
 
+import dataclasses
+
 import pytest
 
+from pepforge.core import Residue
 from pepforge.exceptions import SequenceParseError, UnknownResidueError, UnknownTerminusError
 from pepforge.io.sequence import parse_sequence
+from pepforge.residues import ResidueLibrary, load_default_library
 
 
 def test_one_letter_without_termini_uses_defaults() -> None:
@@ -75,3 +79,79 @@ def test_unknown_terminus_lookup() -> None:
 
     with pytest.raises(UnknownTerminusError):
         load_default_library().c_terminus("CO-SH")
+
+
+# --- Notation des non standards entre crochets (étape 1) ------------------------
+
+
+def _library_with_aib() -> ResidueLibrary:
+    """Bibliothèque par défaut plus un non standard, l'acide α-aminoisobutyrique."""
+    library = load_default_library()
+    residues = dict(library.residues)
+    residues["AIB"] = Residue(code="AIB", one_letter=None, standard=False)
+    return dataclasses.replace(library, residues=residues)
+
+
+@pytest.mark.parametrize(
+    ("text", "codes"),
+    [
+        ("Ac-RG[Aib]S-NH2", ("ARG", "GLY", "AIB", "SER")),
+        ("[Aib]RG", ("AIB", "ARG", "GLY")),
+        ("RG[Aib]", ("ARG", "GLY", "AIB")),
+        ("[Aib][aib]", ("AIB", "AIB")),
+        ("[Aib]", ("AIB",)),
+        ("Ac-Arg-Gly-[Aib]-Ser-NH2", ("ARG", "GLY", "AIB", "SER")),
+        ("Ac-Arg-Gly-Aib-Ser-NH2", ("ARG", "GLY", "AIB", "SER")),
+        ("Ac - RG [ Aib ] S - NH2", ("ARG", "GLY", "AIB", "SER")),
+    ],
+)
+def test_bracket_notation(text: str, codes: tuple[str, ...]) -> None:
+    peptide = parse_sequence(text, _library_with_aib())
+    assert tuple(r.code for r in peptide.residues) == codes
+
+
+def test_bracketed_residue_keeps_its_library_entry() -> None:
+    peptide = parse_sequence("Ac-RG[Aib]S-NH2", _library_with_aib())
+    assert peptide.residue_at(3).standard is False
+    assert peptide.one_letter_sequence == "RGXS"
+    assert peptide.n_terminus.key == "acetyl"
+    assert peptide.c_terminus.key == "amide"
+
+
+def test_bracketed_standard_code_is_the_same_residue() -> None:
+    assert parse_sequence("Ac-RG[Asp]S-NH2") == parse_sequence("Ac-RGDS-NH2")
+
+
+def test_both_notations_give_the_same_peptide() -> None:
+    library = _library_with_aib()
+    assert parse_sequence("Ac-RG[Aib]S-NH2", library) == parse_sequence(
+        "Ac-Arg-Gly-[Aib]-Ser-NH2", library
+    )
+
+
+@pytest.mark.parametrize(
+    ("text", "message"),
+    [
+        ("RG[AibS", "jamais fermé"),
+        ("RGAib]S", "sans crochet ouvrant"),
+        ("RG[]S", "Crochets vides"),
+        ("RG[[Aib]]S", "imbriqués"),
+        ("RG[Ai-b]S", "non refermé avant le tiret"),
+        ("Ac-RG[Aib-NH2", "non refermé avant le tiret"),
+        ("Arg-Gly[Aib]-Ser", "occupe un bloc entier"),
+        ("Arg-[Aib][Aib]-Ser", "occupe un bloc entier"),
+    ],
+)
+def test_malformed_brackets(text: str, message: str) -> None:
+    with pytest.raises(SequenceParseError, match=message):
+        parse_sequence(text, _library_with_aib())
+
+
+def test_bracketed_code_absent_from_the_library() -> None:
+    """La bibliothèque par défaut ne contient que les vingt standards."""
+    with pytest.raises(UnknownResidueError, match="Résidu inconnu : 'Aib'"):
+        parse_sequence("Ac-RG[Aib]S-NH2")
+
+
+def test_residues_are_a_tuple() -> None:
+    assert isinstance(parse_sequence("RGDS").residues, tuple)
