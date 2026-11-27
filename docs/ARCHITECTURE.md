@@ -7,6 +7,7 @@
 ## Sommaire
 
 1. [Principes](#1-principes)
+    - [1.1 Style d'architecture : monolithe modulaire](#11-style-darchitecture--monolithe-modulaire)
 2. [Vue d'ensemble des modules](#2-vue-densemble-des-modules)
 3. [Règles de dépendance](#3-règles-de-dépendance)
 4. [Types de données échangés](#4-types-de-données-échangés)
@@ -21,6 +22,7 @@
 13. [Intégrer un résidu aza-β³ dans CHARMM36m](#13-intégrer-un-résidu-aza-β³-dans-charmm36m)
 14. [Métaux : données livrées et ajout manuel](#14-métaux--données-livrées-et-ajout-manuel)
 15. [Calcul quantique : recommandation et interface](#15-calcul-quantique--recommandation-et-interface)
+    - [15.4 Ajouter concrètement ORCA et Psi4 au projet](#154-ajouter-concrètement-orca-et-psi4-au-projet)
 16. [Faisabilité des calculs sur un poste de bureau](#16-faisabilité-des-calculs-sur-un-poste-de-bureau)
 17. [Politique d'absence d'erreur silencieuse](#17-politique-dabsence-derreur-silencieuse)
 18. [Comment vérifier et valider une sortie](#18-comment-vérifier-et-valider-une-sortie)
@@ -41,6 +43,22 @@
 | P6 | **Rien n'est supposé** | Moteur, champ de force, modèle d'eau, objectif, pH, solvatation : aucune valeur par défaut (`PrepConfig`, `SolvationSpec`). Aucun paramètre numérique codé en dur : les données viennent de fichiers sourcés. |
 | P7 | **Tout est tracé** | Chaque modification de structure est journalisée (`Journal`), chaque outil externe enregistre sa version, chaque contrôle laisse un résultat dans le rapport. |
 | P8 | **Indépendance vis-à-vis du champ de force et du moteur** | `core`, `io`, `residues`, `build` et `checks` ne connaissent aucune nomenclature de champ de force (`NHE`, `HIE`...) ni aucun format moteur (`.prmtop`, `.top`, `.psf`). |
+
+### 1.1 Style d'architecture : monolithe modulaire
+
+Oui, c'est bien un **monolithe modulaire**, et le choix est délibéré. Un seul paquet Python, un seul processus, une seule base de code versionnée ensemble ; mais des frontières internes explicites, déclarées et **vérifiées à la compilation du test** plutôt que seulement documentées :
+
+- les frontières sont les modules de `src/pepforge/`, chacun avec une responsabilité unique (P1) ;
+- les contrats sont des `Protocol` typés et les types de données échangés de la section 4 (P2, P4) ;
+- la direction des dépendances est une matrice exécutable, `ALLOWED` dans `tests/test_architecture.py`, qui fait échouer la CI sur un import interdit, un import relatif ou un cycle (P3).
+
+C'est ce qui distingue un monolithe modulaire d'un monolithe ordinaire : dans un monolithe ordinaire, rien n'empêche `io` d'importer `forcefields` « juste pour cette fois », et la structure se dissout en un an. Ici, cet import ne passe pas la CI.
+
+**Pourquoi pas des microservices ou des plugins installables séparément.** PepForge est un outil en ligne de commande, mono-utilisateur, qui tourne sur un poste de bureau (section 16). Il n'a ni montée en charge indépendante par composant, ni équipes séparées, ni déploiement continu : les trois seules raisons qui justifieraient le coût d'un découpage en services. Un découpage apporterait de la sérialisation, des versions à synchroniser et des pannes réseau, pour rien.
+
+**Les points d'extension, qui sont la vraie demande.** Les adaptateurs de champ de force, les générateurs par moteur, les constructeurs 3D et les logiciels de calcul quantique sont des `Protocol` avec une implémentation par outil. Ajouter GROMACS, AMBER, Psi4 ou un nouveau chélateur, c'est ajouter un fichier qui respecte le `Protocol` et passe sa fonction de contrat de `tests/contracts.py` : aucune modification du reste. C'est l'indépendance que Firas a demandée, obtenue sans frontière de processus.
+
+**Si cela devait changer un jour.** Les modules les plus susceptibles de sortir du monolithe sont `tools` (lancer un calcul quantique ou une dynamique sur une machine distante) et `engines`. Tous deux sont déjà derrière un `Protocol` et déjà des feuilles ou presque de la matrice de dépendances : les remplacer par un client distant resterait un changement local. C'est la propriété qu'il faut préserver, et elle ne demande pas de découper aujourd'hui.
 
 ---
 
@@ -851,6 +869,27 @@ Un protocole `QuantumTool` dans `pepforge.tools`, avec une implémentation par l
 - `charges(fragment, method, level) -> Charges`
 
 Chaque appel passe par `ExternalTool` : version du logiciel enregistrée, sortie analysée pour détecter un calcul non convergé plutôt que de se fier au code de retour. Un calcul non convergé lève `ExternalToolError` et n'entre jamais dans une dérivation.
+
+### 15.4 Ajouter concrètement ORCA et Psi4 au projet
+
+Quatre choses à faire, dans cet ordre, et une seule demande du code.
+
+**1. Installer les logiciels.** Ils ne s'installent pas par `pip install -e ".[dev]"`, parce que ce ne sont pas des dépendances Python de PepForge mais des exécutables externes, exactement comme `psfgen` ou `gmx`.
+
+- **ORCA** : compte académique gratuit à créer sur le portail des développeurs, puis téléchargement de l'archive binaire pour la plateforme, extraction, et le dossier `bin` ajouté au `PATH`. Rien à compiler. La licence académique interdit la redistribution : l'archive n'entre jamais dans le dépôt.
+- **Psi4** : installation par `conda` depuis son canal, dans un environnement dédié. C'est le plus simple des deux, et le seul qui s'importe aussi comme module Python, ce qui le rend idéal pour les tests reproductibles.
+
+Aucun des deux ne devient une dépendance déclarée du paquet : PepForge les détecte sur le `PATH` au moment où il en a besoin, et lève `ExternalToolError` s'ils manquent.
+
+**2. Déclarer le niveau de théorie.** `QuantumSpec` (dans `pepforge.tools.quantum`) porte le logiciel, la méthode, la base, le type de balayage et son pas. Il naît **vide** : `missing_decisions()` liste ce qui reste à fixer et `label()` refuse de produire une étiquette tant que la spécification est incomplète. C'est volontaire, puisque deux entrées de la bibliothèque dérivées à des niveaux différents ne sont pas comparables entre elles.
+
+La spécification quantique n'est **pas** dans `PrepConfig` : une préparation de dynamique n'appelle jamais de quantique. Elle appartient au flux de construction de la bibliothèque (étape 11D), et la valeur employée est recopiée dans chaque profil produit et dans l'entrée de résidu correspondante.
+
+**3. Écrire une implémentation par logiciel.** Le protocole `QuantumTool` est déjà en place avec `optimize`, `scan_dihedral`, `charges` et `version`. Une implémentation est un fichier dans `pepforge/tools/`, qui construit le fichier d'entrée, passe par `ExternalTool` pour que la version soit enregistrée et la sortie analysée, et retourne un `TorsionProfile`. Le reste de PepForge ne change pas d'une ligne.
+
+Deux règles pour ces implémentations. D'abord, **un calcul non convergé lève `ExternalToolError`** et n'entre jamais dans une dérivation : le code de retour d'ORCA ou de Psi4 ne suffit pas, il faut analyser la sortie, et les motifs d'échec se construisent en provoquant délibérément l'erreur sur le logiciel installé (section 17). Ensuite, chaque implémentation passe `tests/contracts.py::assert_quantum_tool_contract`, qui vérifie ce qui ne dépend pas du logiciel : version déclarée, profil non vide, spécification recopiée dans le profil, et profil lisible en relatif.
+
+**4. Produire les profils avec leur provenance.** `TorsionProfile` embarque le fragment, les quatre indices d'atomes de la torsion, les points, la spécification, la version du logiciel, la date et le matériel, et `relative_energies_kcal()` donne les énergies relatives au minimum, seule grandeur comparable au champ de force. Ces profils vivent dans `tests/reference/` et sont ce qui sera montré en soutenance pour justifier les paramètres (section 18.8).
 
 **Point de prudence sur le coût.** Des balayages bidimensionnels pour une trentaine d'entrées représenteraient des centaines de milliers de points de calcul. Le périmètre réaliste est : balayages **unidimensionnels** sur les torsions critiques pour chaque entrée, et traitement approfondi sur **un ou deux résidus de référence**. Ce périmètre est à valider avec Firas avant de lancer la moindre série.
 

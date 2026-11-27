@@ -24,6 +24,7 @@ from pepforge.exceptions import MissingParameterError
 from pepforge.forcefields import ForceFieldAdapter, ParameterSet
 from pepforge.pipeline import Stage, StageContext
 from pepforge.report import Journal
+from pepforge.tools import QuantumSpec, QuantumTool, TorsionProfile
 
 
 def assert_forcefield_contract(adapter: ForceFieldAdapter, peptides: Sequence[Peptide]) -> None:
@@ -63,3 +64,22 @@ def assert_stage_contract(stage: Stage[object, object], data: object, tmp_path: 
     assert stage.name, "une étape porte un nom stable (utilisé dans le rapport)"
     context = StageContext(config=PrepConfig(), workdir=tmp_path)
     stage.run(data, context)
+
+
+def assert_quantum_tool_contract(tool: QuantumTool, spec: QuantumSpec, geometry: Path) -> None:
+    """Contrat d'un logiciel de calcul quantique.
+
+    Vérifie ce qui ne dépend pas du logiciel : l'interface est respectée, la
+    version est déclarée, et un profil produit porte sa provenance et la
+    spécification réellement employée. Sans cela, deux profils dérivés à des
+    niveaux différents seraient indistinguables dans la bibliothèque.
+    """
+    assert isinstance(tool, QuantumTool)
+    version = tool.version()
+    assert version, "la version du logiciel doit être enregistrée"
+    profile = tool.scan_dihedral(geometry, (1, 2, 3, 4), spec, geometry.parent)
+    assert isinstance(profile, TorsionProfile)
+    assert profile.points, "un balayage sans point n'est pas un profil"
+    assert profile.spec == spec, "le profil doit porter la spécification employée"
+    assert profile.software_version == version
+    assert min(profile.relative_energies_kcal()) == 0.0, "le profil se lit en relatif"
