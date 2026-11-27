@@ -29,6 +29,11 @@ pepforge parse --notation 3 "NH2-Arg-Gly-Asp-Ser-CO-NH2"
 pepforge convert --notation 1 "Ac-RGDS-NH2"      # → Ac-Arg-Gly-Asp-Ser-NH2
 pepforge convert --notation 3 "Ac-Ala-NHMe"      # → Ac-A-NHMe
 pepforge config-template > prep.yaml
+
+# Importer une structure, sans la modifier, et afficher son inventaire
+pepforge inspect structure.cif
+pepforge inspect ensemble.pdb --model 1 --chain A     # modèle à choisir si plusieurs
+pepforge inspect --url https://exemple.org/structure.cif
 ```
 
 ## Développement

@@ -12,7 +12,11 @@ from pepforge import __version__
 from pepforge.config import PrepConfig
 from pepforge.core import C_TERMINUS_DEFAULTED, N_TERMINUS_DEFAULTED, Peptide
 from pepforge.exceptions import PepForgeError, SequenceParseError
+from pepforge.io.retrieval import DownloadLimits
 from pepforge.io.sequence import SequenceNotation, format_sequence, parse_sequence
+from pepforge.io.structure import read_structure, read_structure_url
+from pepforge.io.structure_inventory import inventory, structure_to_peptide
+from pepforge.report.journal import Journal
 
 _NOTATION_CHOICES: dict[str, SequenceNotation] = {
     "1": SequenceNotation.ONE_LETTER,
@@ -78,6 +82,40 @@ def _cmd_convert(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_inspect(args: argparse.Namespace) -> int:
+    """Importe une structure (fichier ou URL), sans la modifier, et affiche son inventaire."""
+    journal = Journal()
+    if args.url:
+        limits = DownloadLimits(
+            timeout_s=args.timeout,
+            max_bytes=int(args.max_mb * 1024 * 1024),
+            allow_http=args.allow_http,
+        )
+        structure = read_structure_url(
+            args.url, journal=journal, model=args.model, fmt=args.format, limits=limits
+        )
+    else:
+        if not args.path:
+            raise SequenceParseError("Indiquer un fichier, ou une adresse avec --url")
+        structure = read_structure(args.path, journal=journal, model=args.model, fmt=args.format)
+    report: dict[str, object] = {
+        "provenance": dict(journal.entries[0].parameters),
+        "inventaire": inventory(structure).to_dict(),
+    }
+    if args.chain:
+        peptide = structure_to_peptide(structure, args.chain, journal=journal)
+        report["peptide"] = {
+            "chaîne": args.chain,
+            "résidus": "-".join(residue.code for residue in peptide.residues),
+            "extrémité_N": peptide.n_terminus.label,
+            "extrémité_C": peptide.c_terminus.label,
+            "ponts_disulfure": [list(link.positions) for link in peptide.links],
+            "avertissements": _termini_warnings(peptide),
+        }
+    print(yaml.safe_dump(report, allow_unicode=True, sort_keys=False), end="")
+    return 0
+
+
 def _cmd_config_template(_: argparse.Namespace) -> int:
     config = PrepConfig()
     print("# Modèle de configuration PepForge : toutes les décisions sont à prendre.")
@@ -107,6 +145,33 @@ def build_parser() -> argparse.ArgumentParser:
     p_convert.add_argument("sequence", help="séquence à réécrire, dans le code donné par -n")
     p_convert.add_argument("-n", "--notation", help=_NOTATION_HELP)
     p_convert.set_defaults(func=_cmd_convert)
+
+    p_inspect = sub.add_parser(
+        "inspect",
+        help="Importer une structure (fichier local ou URL) et afficher son inventaire",
+    )
+    p_inspect.add_argument("path", nargs="?", help="fichier PDB ou mmCIF (éventuellement .gz)")
+    p_inspect.add_argument("--url", help="adresse du fichier, téléchargé sous contrôle")
+    p_inspect.add_argument(
+        "--model", type=int, help="modèle à lire (obligatoire si le fichier en a plusieurs)"
+    )
+    p_inspect.add_argument(
+        "--format", choices=["pdb", "mmcif"], help="format attendu, vérifié sur le contenu"
+    )
+    p_inspect.add_argument("--chain", help="établir le peptide décrit par cette chaîne")
+    p_inspect.add_argument(
+        "--timeout", type=float, default=DownloadLimits.timeout_s, help="délai réseau (s)"
+    )
+    p_inspect.add_argument(
+        "--max-mb",
+        type=float,
+        default=DownloadLimits.max_bytes / (1024 * 1024),
+        help="taille maximale acceptée (Mio)",
+    )
+    p_inspect.add_argument(
+        "--allow-http", action="store_true", help="accepter une adresse http non chiffrée"
+    )
+    p_inspect.set_defaults(func=_cmd_inspect)
 
     p_tpl = sub.add_parser("config-template", help="Afficher un modèle de configuration")
     p_tpl.set_defaults(func=_cmd_config_template)

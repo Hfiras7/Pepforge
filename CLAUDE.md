@@ -66,7 +66,7 @@ Malgré ces choix, le code garde moteur, champ de force et objectif **configurab
 | `src/pepforge/config.py` | `PrepConfig`, `SolvationSpec` : choix de l'utilisateur, sans valeur par défaut |
 | `src/pepforge/tools/` | `ExternalTool` (exécutables externes) et `QuantumTool` (ORCA, Psi4) : module feuille |
 | `src/pepforge/checks/` | Contrôles qualité appliqués à la sortie de chaque étape |
-| `src/pepforge/io/` | Lecture et écriture PDB, mmCIF, SMILES, MOL/SDF, et analyse des séquences |
+| `src/pepforge/io/` | Séquences ; structures PDB et mmCIF par fichier local ou URL (gemmi, confiné à `io/structure_formats.py`), inventaire ; SMILES, MOL/SDF à venir |
 | `src/pepforge/residues/` | Bibliothèque de résidus versionnée, avec la provenance de chaque donnée (`residues/data/`) |
 | `src/pepforge/build/` | Construction et correction 3D, conformes à `StructureBuilder` / `StructureModifier` |
 | `src/pepforge/forcefields/` | Adaptateurs de champ de force, tous conformes à `ForceFieldAdapter` |
@@ -100,6 +100,8 @@ ruff check . && ruff format --check .   # style
 mypy                   # typage
 pepforge parse --notation 1 "Ac-RGDS-NH2"     # essai de la CLI (1 = code à une lettre)
 pepforge convert --notation 1 "Ac-RGDS-NH2"   # → Ac-Arg-Gly-Asp-Ser-NH2 (3 = trois lettres)
+pepforge inspect fichier.cif --model 1        # inventaire d'une structure (ou --url https://...)
+python validation/module03_structures.py      # validation du module 3 (réseau, pip install -e ".[validation]")
 ```
 
 ## Méthode de travail imposée (Firas, 27 novembre 2026)
