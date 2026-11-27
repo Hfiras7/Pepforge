@@ -2,7 +2,7 @@
 
 > Étape 2 de [PLAN-CONSTRUCTION.md](../PLAN-CONSTRUCTION.md). Bilan établi le 27 novembre 2026, selon le modèle de la méthode de travail imposée. Livré sur une branche et une PR dédiées, empilées sur la PR #1.
 
-**Statut final : TERMINÉ MAIS NON VALIDÉ.** Le code, les tests et la documentation sont livrés. La source des pKa a été choisie par Firas. La validation attend trois choses de sa part (section 8) : relire les charges de référence, fournir le pKa de l'arginine lu sur l'article, et confirmer la fenêtre d'alerte. Tant que le pKa de l'arginine manque, **aucun peptide contenant une arginine ne passe cette étape**, ce qui inclut les peptides RGD.
+**Statut final : TERMINÉ MAIS NON VALIDÉ.** Le code, les tests et la documentation sont livrés, et la CI est verte sur Linux et Windows. La source des pKa a été choisie par Firas. La validation attend trois choses de sa part (section 8) : relire les charges de référence, fournir le pKa de l'arginine lu sur l'article, et confirmer la fenêtre d'alerte. Tant que le pKa de l'arginine manque, **aucun peptide contenant une arginine ne passe cette étape**, ce qui inclut les peptides RGD.
 
 ---
 
@@ -99,7 +99,7 @@ Choisir l'état de chaque groupe ionisable au pH de l'étude, calculer la charge
 | `ruff check`, `ruff format --check`, `mypy --strict` | propres |
 | Anciens fichiers de tests sur le nouveau code | les fichiers de tests **dans leur version d'avant l'étape** réussissent sur le nouveau code (194 réussis, 1 ignoré hors du dépôt, le test d'architecture, qui lui est inchangé et passe dans le dépôt) |
 | Défauts injectés volontairement, un à la fois | **14 sur 14 détectés** par le test désigné |
-| CI GitHub (Linux 3.11 à 3.13, Windows 3.11 et 3.13) | sur la PR du module |
+| CI, [exécution 45994478643](https://github.com/Hfiras7/Pepforge/actions/runs/45994478643) | **5 tâches vertes** : Linux (Python 3.11, 3.12, 3.13) et Windows (3.11, 3.13) |
 
 **Critères d'acceptation du plan.**
 
