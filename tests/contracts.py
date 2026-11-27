@@ -6,7 +6,8 @@ correspondante, en plus de ses propres tests. Exemple, pour un futur
 adaptateur :
 
     def test_ff19sb_contract() -> None:
-        assert_forcefield_contract(FF19SBAdapter(), [parse_sequence("Ac-RGDS-NH2")])
+        peptide = parse_sequence("Ac-RGDS-NH2", notation="one_letter")
+        assert_forcefield_contract(FF19SBAdapter(), [peptide])
 """
 
 from __future__ import annotations

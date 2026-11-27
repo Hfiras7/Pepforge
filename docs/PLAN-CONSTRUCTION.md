@@ -112,11 +112,11 @@ flowchart LR
 
 ## Étape 1 — Modèle de données enrichi
 
-**Statut : TERMINÉ MAIS NON VALIDÉ.** Code, tests et documentation livrés le 27 novembre 2026 (commit `1aa6b0a`), CI verte sur Linux et Windows. La validation attend la revue de Firas décrite en fin d'étape. Bilan complet : [bilans/module-01-modele-de-donnees.md](bilans/module-01-modele-de-donnees.md).
+**Statut : TERMINÉ MAIS NON VALIDÉ.** Code, tests et documentation livrés le 27 novembre 2026 (commit `1aa6b0a`), CI verte sur Linux et Windows. Revue de Firas faite le même jour, en deux temps (bilan, sections 9 et 10) ; la validation attend sa confirmation des ajouts. Bilan complet : [bilans/module-01-modele-de-donnees.md](bilans/module-01-modele-de-donnees.md).
 
 **Objectif** : que `core` puisse représenter tout ce dont les étapes suivantes ont besoin, sans connaître de champ de force.
 
-**Modules** : `core`, `residues`, `io.sequence`. *Réalisé : `core` et `io.sequence` ; `residues` n'a pas eu besoin de changer ; `checks`, `exceptions` et `cli` ajustés pour la compatibilité, sans quoi une déclaration aurait traversé les contrôles et l'inventaire sans être vue.*
+**Modules** : `core`, `residues`, `io.sequence`. *Réalisé : `core` et `io.sequence` ; `checks`, `exceptions` et `cli` ajustés pour la compatibilité, sans quoi une déclaration aurait traversé les contrôles et l'inventaire sans être vue. À la revue : `residues` (forme écrite des extrémités), `config` (`sequence_notation`) et `pipeline` (mode de lecture de `SequenceInputStage`).*
 
 **Livrables**
 
@@ -124,16 +124,17 @@ flowchart LR
 - Résidu avec état de protonation optionnel (`protonation: str | None`, clé interne neutre comme `his_delta`, `his_epsilon`, `his_protonated`).
 - Modifications de chaînes latérales et liaisons non linéaires (pont disulfure, cyclisation tête-queue) déclarées, même si leur prise en charge complète vient plus tard.
 - Notation des non standards dans une séquence (ex. `Ac-RG[Aib]S-NH2`), avec la règle de lecture documentée.
+- *Ajouté à la revue (demande de Firas) : mode de lecture déclaré au départ, code à une lettre ou code à trois lettres, sans valeur par défaut ; conversion d'une séquence entre les deux codes, à la manière de PyMOL.*
 
 **Critères d'acceptation**
 
 - [x] Aucun nom de résidu de champ de force dans `core` (vérifié par un test qui cherche `NHE`, `NME`, `HIE`, `HID`, `HIP`, `CYX` dans `src/pepforge/core/`). *Le test cherche aussi seize autres noms AMBER et CHARMM, et il attrape bien ceux de l'ancienne version de `core`.*
 - [x] Une mutation renvoie un nouveau `Peptide` ; l'original est inchangé.
-- [x] Les notations existantes (`Ac-RGDS-NH2`, `NH2-Arg-Gly-CO-NH2`...) donnent le même résultat qu'avant. *Les 49 tests des fichiers existants, dans leur version d'avant l'étape, réussissent sur le nouveau code.*
+- [x] Les notations existantes (`Ac-RGDS-NH2`, `NH2-Arg-Gly-CO-NH2`...) donnent le même résultat qu'avant. *Les 49 tests des fichiers existants, dans leur version d'avant l'étape, réussissent sur le nouveau code. Depuis la revue, ces notations donnent le même résultat une fois le mode de lecture déclaré ; seule la lecture devinée d'un bloc comme `ALA` a disparu.*
 
-**Tests** : U (mutations, notation entre crochets, erreurs) ; V : aucune (pas encore de chimie quantitative). *Réalisé : 97 tests ajoutés, 209 au total ; 9 défauts injectés volontairement sur 9 détectés.*
+**Tests** : U (mutations, notation entre crochets, erreurs) ; V : aucune (pas encore de chimie quantitative). *Réalisé : 97 tests ajoutés, 209 au total ; 9 défauts injectés volontairement sur 9 détectés. Après la revue : 333 tests ; 16 défauts injectés sur 16 détectés pour le mode de lecture et la conversion.*
 
-**Revue** : relire la règle de lecture des séquences ; vérifier que les clés internes de protonation sont neutres. *Faite par Firas le 27 novembre 2026 : règle de lecture et clés de protonation approuvées, refus de mutation conservé. Deux ajouts issus de la revue, à confirmer avant de passer en TERMINÉ ET VALIDÉ : avertissement de lecture ambiguë (`ALA`) et item « liaisons hors squelette » de la checklist 04 (bilan, section 9).*
+**Revue** : relire la règle de lecture des séquences ; vérifier que les clés internes de protonation sont neutres. *Faite par Firas le 27 novembre 2026 : règle de lecture et clés de protonation approuvées, refus de mutation conservé. Deuxième retour le même jour : le mode de lecture se déclare au départ et une conversion entre les deux codes est ajoutée, ce qui remplace l'avertissement de lecture ambiguë (bilan, section 10). À confirmer avant de passer en TERMINÉ ET VALIDÉ : ces ajouts et l'item « liaisons hors squelette » de la checklist 04 (bilan, section 9).*
 
 ---
 
@@ -326,6 +327,7 @@ flowchart LR
 - [ ] Le rapport contient : configuration complète, journal, résultats de tous les contrôles, versions des outils, objectif de simulation, points à vérifier manuellement.
 - [ ] Relancer avec le YAML du rapport donne des fichiers identiques (hors horodatages).
 - [ ] Un échec à n'importe quelle étape produit un rapport partiel lisible.
+- [ ] La séquence de la configuration est lue dans le mode déclaré (`PrepConfig.sequence_notation`), jamais deviné.
 
 **Tests** : I de bout en bout sur `Ac-RGDS-NH2` **et sur son analogue aza-β³ en une position** (dès que l'étape 11C est passée) ; test de reproductibilité (deux exécutions, fichiers comparés) ; V : courte simulation lancée et relue par Firas.
 
@@ -523,7 +525,7 @@ Coût élevé, à engager en connaissance de cause : un nouvel adaptateur **et l
 
 **Architecture** : le manifeste est lu par `io` et produit une liste de `PrepConfig`. Le mode lot vit dans `cli` et appelle le pipeline une fois par peptide. Aucun module nouveau.
 
-**Critères** : l'échec d'un peptide n'arrête pas le lot ; un dossier par peptide nommé par son `id` ; `summary.csv` et `summary.md` distinguant réussi, échoué et **contrôles non vérifiés** ; code de retour non nul si un seul peptide a échoué.
+**Critères** : chaque ligne déclare le mode de lecture de sa séquence (colonne `notation`, obligatoire) ; l'échec d'un peptide n'arrête pas le lot ; un dossier par peptide nommé par son `id` ; `summary.csv` et `summary.md` distinguant réussi, échoué et **contrôles non vérifiés** ; code de retour non nul si un seul peptide a échoué.
 
 **Tests** : U sur un manifeste de trois peptides dont un invalide, en vérifiant que les deux autres aboutissent et que le récapitulatif nomme le fautif ; C : le lot ne doit produire aucun fichier dans le dossier d'un autre peptide.
 
@@ -543,6 +545,6 @@ Coût élevé, à engager en connaissance de cause : un nouvel adaptateur **et l
 
 **Architecture** : nouveau module `ui`, au sommet de la matrice, autorisé à importer `pipeline`, `config`, `checks`, `report`, `io` et `core`. **Aucune logique scientifique** : l'interface est un client du pipeline, exactement comme `cli`. Sa ligne est ajoutée à la matrice de la section 3 et à `ALLOWED` à cette étape.
 
-**Critères** : toute action produit la même configuration YAML que la ligne de commande, et l'interface la montre ; le lancement reste impossible tant que `missing_decisions()` n'est pas vide, avec le motif affiché ; aucune trace Python à l'écran, chaque erreur donnant ce qui s'est passé, où, et quoi faire ; les trois états réussi, échoué et **non vérifié** sont visuellement distincts et ne reposent pas sur la seule couleur ; une préparation lancée depuis l'interface est rejouable depuis la ligne de commande avec le YAML produit, et réciproquement.
+**Critères** : toute action produit la même configuration YAML que la ligne de commande, et l'interface la montre ; le mode de lecture de la séquence se choisit avant la saisie, sans choix fait d'avance, et un bouton bascule la saisie dans l'autre code (`convert_sequence`) ; le lancement reste impossible tant que `missing_decisions()` n'est pas vide, avec le motif affiché ; aucune trace Python à l'écran, chaque erreur donnant ce qui s'est passé, où, et quoi faire ; les trois états réussi, échoué et **non vérifié** sont visuellement distincts et ne reposent pas sur la seule couleur ; une préparation lancée depuis l'interface est rejouable depuis la ligne de commande avec le YAML produit, et réciproquement.
 
 **Tests** : U sur la traduction exception → message (ce qui s'est passé, où, quoi faire) ; C : pour une même configuration, interface et ligne de commande produisent des fichiers identiques ; I : une préparation complète menée par l'interface sur un peptide court.

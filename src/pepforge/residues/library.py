@@ -28,6 +28,11 @@ class ResidueLibrary:
     default_n: str
     default_c: str
     sources: dict[str, str]
+    n_symbols: dict[str, str]
+    """Forme écrite de chaque extrémité N (clé → premier alias de `termini.yaml`)."""
+
+    c_symbols: dict[str, str]
+    """Forme écrite de chaque extrémité C, choisie de la même façon."""
 
     def by_code(self, code: str) -> Residue:
         try:
@@ -60,6 +65,20 @@ class ResidueLibrary:
             raise UnknownTerminusError(f"Extrémité C-terminale inconnue : {alias!r}")
         return self.c_termini[key]
 
+    def n_terminus_symbol(self, key: str) -> str:
+        """Forme sous laquelle PepForge écrit l'extrémité N `key` (`Ac`, `H`...)."""
+        try:
+            return self.n_symbols[key]
+        except KeyError:
+            raise UnknownTerminusError(f"Extrémité N-terminale inconnue : {key!r}") from None
+
+    def c_terminus_symbol(self, key: str) -> str:
+        """Forme sous laquelle PepForge écrit l'extrémité C `key` (`NH2`, `OH`...)."""
+        try:
+            return self.c_symbols[key]
+        except KeyError:
+            raise UnknownTerminusError(f"Extrémité C-terminale inconnue : {key!r}") from None
+
     def is_n_alias(self, token: str) -> bool:
         return token.lower() in self.n_aliases
 
@@ -75,15 +94,23 @@ def _read_yaml(name: str) -> dict[str, Any]:
     return data
 
 
-def _termini(entries: list[dict[str, Any]]) -> tuple[dict[str, Terminus], dict[str, str]]:
+def _termini(
+    entries: list[dict[str, Any]],
+) -> tuple[dict[str, Terminus], dict[str, str], dict[str, str]]:
+    """Extrémités, alias (en minuscules, pour la lecture) et forme écrite de chacune.
+
+    La forme écrite est le premier alias de l'entrée, avec sa casse.
+    """
     termini: dict[str, Terminus] = {}
     aliases: dict[str, str] = {}
+    symbols: dict[str, str] = {}
     for entry in entries:
         terminus = Terminus(key=entry["key"], label=entry["label"])
         termini[terminus.key] = terminus
+        symbols[terminus.key] = str(entry["aliases"][0])
         for alias in entry["aliases"]:
             aliases[str(alias).lower()] = terminus.key
-    return termini, aliases
+    return termini, aliases, symbols
 
 
 def load_default_library() -> ResidueLibrary:
@@ -94,8 +121,8 @@ def load_default_library() -> ResidueLibrary:
         entry["code"]: Residue(code=entry["code"], one_letter=entry["one_letter"], standard=True)
         for entry in standard["residues"]
     }
-    n_termini, n_aliases = _termini(termini["n_terminus"])
-    c_termini, c_aliases = _termini(termini["c_terminus"])
+    n_termini, n_aliases, n_symbols = _termini(termini["n_terminus"])
+    c_termini, c_aliases, c_symbols = _termini(termini["c_terminus"])
     return ResidueLibrary(
         residues=residues,
         n_termini=n_termini,
@@ -108,4 +135,6 @@ def load_default_library() -> ResidueLibrary:
             "standard_amino_acids.yaml": standard["source"],
             "termini.yaml": termini["source"],
         },
+        n_symbols=n_symbols,
+        c_symbols=c_symbols,
     )

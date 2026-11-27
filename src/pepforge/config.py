@@ -17,6 +17,14 @@ import yaml
 
 from pepforge.exceptions import ConfigurationError
 
+SEQUENCE_NOTATIONS: tuple[str, ...] = ("one_letter", "three_letter")
+"""Modes de lecture d'une séquence : code à une lettre ou code à trois lettres.
+
+Ce sont les valeurs de `pepforge.io.sequence.SequenceNotation`, recopiées ici
+parce que `config` ne dépend que d'`exceptions` ; `tests/test_config.py`
+vérifie que les deux listes restent identiques.
+"""
+
 
 class Engine(StrEnum):
     """Moteurs de dynamique moléculaire visés."""
@@ -101,6 +109,13 @@ class PrepConfig:
     """Paramètres d'une préparation, sérialisables en YAML pour la reproductibilité."""
 
     sequence: str | None = None
+    sequence_notation: str | None = None
+    """Mode de lecture de `sequence`, déclaré au départ : `one_letter` ou `three_letter`.
+
+    Sans lui, `ALA` serait soit l'alanine, soit le tripeptide Ala-Leu-Ala : la
+    configuration ne suffirait plus à relancer la même préparation.
+    """
+
     input_structure: str | None = None
     engine: Engine | None = None
     forcefield: str | None = None
@@ -121,11 +136,20 @@ class PrepConfig:
 
     notes: dict[str, str] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        if self.sequence_notation is not None and self.sequence_notation not in SEQUENCE_NOTATIONS:
+            raise ConfigurationError(
+                f"Mode de lecture inconnu : {self.sequence_notation!r} "
+                f"(modes acceptés : {', '.join(SEQUENCE_NOTATIONS)})"
+            )
+
     def missing_decisions(self) -> list[str]:
         """Retourne la liste des choix encore à faire avant une préparation."""
         missing: list[str] = []
         if self.sequence is None and self.input_structure is None:
             missing.append("entrée (séquence ou structure 3D)")
+        if self.sequence is not None and self.sequence_notation is None:
+            missing.append("mode de lecture de la séquence (code à une lettre ou à trois lettres)")
         if self.engine is None:
             missing.append("moteur de simulation")
         if self.forcefield is None:

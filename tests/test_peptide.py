@@ -61,12 +61,12 @@ def _forbidden_names(text: str) -> list[str]:
 
 
 def _rgds() -> Peptide:
-    return parse_sequence("Ac-RGDS-NH2")
+    return parse_sequence("Ac-RGDS-NH2", notation="one_letter")
 
 
 def _cys_peptide() -> Peptide:
     """Ac-CRGDC-NH2 avec un pont disulfure entre les positions 1 et 5."""
-    peptide = parse_sequence("Ac-CRGDC-NH2")
+    peptide = parse_sequence("Ac-CRGDC-NH2", notation="one_letter")
     return peptide.with_link(Link(LinkKind.DISULFIDE, 1, 5))
 
 
@@ -162,15 +162,15 @@ def test_peptide_is_hashable() -> None:
 
 
 def test_notations_of_the_same_molecule_are_equal() -> None:
-    one_letter = parse_sequence("Ac-RGDS-NH2")
-    three_letters = parse_sequence("Ac-Arg-Gly-Asp-Ser-NH2")
+    one_letter = parse_sequence("Ac-RGDS-NH2", notation="one_letter")
+    three_letters = parse_sequence("Ac-Arg-Gly-Asp-Ser-NH2", notation="three_letter")
     assert one_letter.metadata["input"] != three_letters.metadata["input"]
     assert one_letter == three_letters
     assert hash(one_letter) == hash(three_letters)
 
 
 def test_declaration_order_does_not_change_equality() -> None:
-    peptide = parse_sequence("Ac-CCGCC-NH2")
+    peptide = parse_sequence("Ac-CCGCC-NH2", notation="one_letter")
     first = peptide.with_link(Link(LinkKind.DISULFIDE, 1, 4)).with_link(
         Link(LinkKind.DISULFIDE, 2, 5)
     )
@@ -182,7 +182,7 @@ def test_declaration_order_does_not_change_equality() -> None:
 
 
 def test_protonation_is_part_of_identity() -> None:
-    peptide = parse_sequence("Ac-AHA-NH2")
+    peptide = parse_sequence("Ac-AHA-NH2", notation="one_letter")
     assert peptide.with_protonation(2, "his_delta") != peptide.with_protonation(2, "his_epsilon")
 
 
@@ -220,7 +220,7 @@ def test_mutation_out_of_range_is_refused() -> None:
 
 def test_mutation_does_not_carry_the_old_protonation() -> None:
     library = load_default_library()
-    peptide = parse_sequence("Ac-AHA-NH2").with_protonation(2, "his_delta")
+    peptide = parse_sequence("Ac-AHA-NH2", notation="one_letter").with_protonation(2, "his_delta")
     mutated = peptide.mutate(2, library.by_code("HIS"))
     assert mutated.residue_at(2).protonation is None
 
@@ -247,7 +247,9 @@ def test_mutation_is_allowed_after_removing_the_declaration() -> None:
 
 def test_head_to_tail_does_not_block_mutating_its_ends() -> None:
     library = load_default_library()
-    cyclic = parse_sequence("H-RGDS-OH").with_link(Link(LinkKind.HEAD_TO_TAIL, 1, 4))
+    cyclic = parse_sequence("H-RGDS-OH", notation="one_letter").with_link(
+        Link(LinkKind.HEAD_TO_TAIL, 1, 4)
+    )
     mutated = cyclic.mutate(1, library.by_code("LYS"))
     assert mutated.is_cyclic
     assert mutated.one_letter_sequence == "KGDS"
@@ -258,7 +260,7 @@ def test_head_to_tail_does_not_block_mutating_its_ends() -> None:
 
 def test_changing_a_terminus_makes_it_declared() -> None:
     library = load_default_library()
-    defaulted = parse_sequence("RGDS")
+    defaulted = parse_sequence("RGDS", notation="one_letter")
     assert N_TERMINUS_DEFAULTED in defaulted.metadata
     assert C_TERMINUS_DEFAULTED in defaulted.metadata
     capped = defaulted.with_n_terminus(library.n_terminus("Ac")).with_c_terminus(
@@ -274,7 +276,9 @@ def test_changing_a_terminus_makes_it_declared() -> None:
 
 
 def test_setting_one_terminus_leaves_the_other_flagged() -> None:
-    peptide = parse_sequence("RGDS").with_n_terminus(load_default_library().n_terminus("Ac"))
+    peptide = parse_sequence("RGDS", notation="one_letter").with_n_terminus(
+        load_default_library().n_terminus("Ac")
+    )
     assert N_TERMINUS_DEFAULTED not in peptide.metadata
     assert C_TERMINUS_DEFAULTED in peptide.metadata
 
@@ -288,7 +292,7 @@ def test_terminus_key_must_be_internal() -> None:
 
 
 def test_protonation_is_set_and_cleared() -> None:
-    peptide = parse_sequence("Ac-AHA-NH2")
+    peptide = parse_sequence("Ac-AHA-NH2", notation="one_letter")
     protonated = peptide.with_protonation(2, "his_protonated")
     assert protonated.residue_at(2).protonation == "his_protonated"
     assert peptide.residue_at(2).protonation is None
@@ -298,7 +302,7 @@ def test_protonation_is_set_and_cleared() -> None:
 @pytest.mark.parametrize("key", ["HisDelta", "his-delta", "1his", "", "his delta"])
 def test_protonation_key_must_be_internal(key: str) -> None:
     with pytest.raises(PeptideModelError, match="clé interne mal formée"):
-        parse_sequence("Ac-AHA-NH2").with_protonation(2, key)
+        parse_sequence("Ac-AHA-NH2", notation="one_letter").with_protonation(2, key)
 
 
 # --- Résidus ---------------------------------------------------------------------
@@ -353,7 +357,9 @@ def test_head_to_tail_must_join_the_two_ends() -> None:
 
 
 def test_a_position_belongs_to_one_disulfide_only() -> None:
-    peptide = parse_sequence("Ac-CCC-NH2").with_link(Link(LinkKind.DISULFIDE, 1, 2))
+    peptide = parse_sequence("Ac-CCC-NH2", notation="one_letter").with_link(
+        Link(LinkKind.DISULFIDE, 1, 2)
+    )
     with pytest.raises(PeptideModelError, match="deux ponts disulfure"):
         peptide.with_link(Link(LinkKind.DISULFIDE, 2, 3))
 

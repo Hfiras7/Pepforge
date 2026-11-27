@@ -10,7 +10,7 @@ from pepforge.checks import PEPTIDE_CHECKS, Check, CheckResult, Status, run_chec
 from pepforge.config import PrepConfig
 from pepforge.core import Link, LinkKind, Modification, Peptide, Residue
 from pepforge.exceptions import QualityCheckError
-from pepforge.io import parse_sequence
+from pepforge.io import SequenceNotation, parse_sequence
 from pepforge.pipeline import SequenceInputStage, StageContext, run_stage
 
 
@@ -19,13 +19,15 @@ def _context(tmp_path: Path) -> StageContext:
 
 
 def test_declared_termini_pass() -> None:
-    results = run_checks(PEPTIDE_CHECKS, parse_sequence("Ac-RGDS-NH2"))
+    results = run_checks(PEPTIDE_CHECKS, parse_sequence("Ac-RGDS-NH2", notation="one_letter"))
     assert all(r.status is Status.PASS for r in results)
 
 
 def test_default_termini_warn_but_do_not_block(tmp_path: Path) -> None:
     context = _context(tmp_path)
-    peptide = run_stage(SequenceInputStage(), "RGDS", context, PEPTIDE_CHECKS)
+    peptide = run_stage(
+        SequenceInputStage(SequenceNotation.ONE_LETTER), "RGDS", context, PEPTIDE_CHECKS
+    )
     assert len(peptide) == 4
     statuses = {r.check_id: r.status for r in context.check_results["input.sequence"]}
     assert statuses["peptide.termini_declared"] is Status.WARN
@@ -38,14 +40,16 @@ def test_failing_check_stops_the_pipeline(tmp_path: Path) -> None:
     )
     context = _context(tmp_path)
     with pytest.raises(QualityCheckError, match=r"test\.fail"):
-        run_stage(SequenceInputStage(), "Ac-RGDS-NH2", context, [always_fail])
+        run_stage(
+            SequenceInputStage(SequenceNotation.ONE_LETTER), "Ac-RGDS-NH2", context, [always_fail]
+        )
     # Les résultats restent disponibles pour le rapport, même en cas d'échec.
     assert context.check_results["input.sequence"][0].status is Status.FAIL
 
 
 def test_stage_journals_the_parse(tmp_path: Path) -> None:
     context = _context(tmp_path)
-    run_stage(SequenceInputStage(), "Ac-RGDS-NH2", context)
+    run_stage(SequenceInputStage(SequenceNotation.ONE_LETTER), "Ac-RGDS-NH2", context)
     actions = [e.action for e in context.journal.entries]
     assert actions == ["parse_sequence", "stage_completed"]
 
@@ -59,14 +63,18 @@ def _check(check_id: str, peptide: Peptide) -> CheckResult:
 
 
 def test_disulfide_between_two_cysteines_passes() -> None:
-    peptide = parse_sequence("Ac-CRGDC-NH2").with_link(Link(LinkKind.DISULFIDE, 1, 5))
+    peptide = parse_sequence("Ac-CRGDC-NH2", notation="one_letter").with_link(
+        Link(LinkKind.DISULFIDE, 1, 5)
+    )
     result = _check("peptide.links_chemistry", peptide)
     assert result.status is Status.PASS
     assert "pont disulfure 1–5" in result.message
 
 
 def test_disulfide_on_a_residue_without_thiol_fails() -> None:
-    peptide = parse_sequence("Ac-CRGDS-NH2").with_link(Link(LinkKind.DISULFIDE, 1, 5))
+    peptide = parse_sequence("Ac-CRGDS-NH2", notation="one_letter").with_link(
+        Link(LinkKind.DISULFIDE, 1, 5)
+    )
     result = _check("peptide.links_chemistry", peptide)
     assert result.status is Status.FAIL
     assert "SER en position 5 ne porte pas de thiol" in result.message
@@ -74,7 +82,7 @@ def test_disulfide_on_a_residue_without_thiol_fails() -> None:
 
 def test_disulfide_on_a_non_standard_residue_is_unverifiable_hence_fails() -> None:
     xcy = Residue(code="XCY", standard=False)
-    peptide = parse_sequence("Ac-CRGDA-NH2").mutate(5, xcy)
+    peptide = parse_sequence("Ac-CRGDA-NH2", notation="one_letter").mutate(5, xcy)
     peptide = peptide.with_link(Link(LinkKind.DISULFIDE, 1, 5))
     result = _check("peptide.links_chemistry", peptide)
     assert result.status is Status.FAIL
@@ -82,12 +90,16 @@ def test_disulfide_on_a_non_standard_residue_is_unverifiable_hence_fails() -> No
 
 
 def test_head_to_tail_with_free_ends_passes() -> None:
-    cyclic = parse_sequence("H-RGDS-OH").with_link(Link(LinkKind.HEAD_TO_TAIL, 1, 4))
+    cyclic = parse_sequence("H-RGDS-OH", notation="one_letter").with_link(
+        Link(LinkKind.HEAD_TO_TAIL, 1, 4)
+    )
     assert _check("peptide.links_chemistry", cyclic).status is Status.PASS
 
 
 def test_head_to_tail_with_capped_ends_fails() -> None:
-    cyclic = parse_sequence("Ac-RGDS-NH2").with_link(Link(LinkKind.HEAD_TO_TAIL, 1, 4))
+    cyclic = parse_sequence("Ac-RGDS-NH2", notation="one_letter").with_link(
+        Link(LinkKind.HEAD_TO_TAIL, 1, 4)
+    )
     result = _check("peptide.links_chemistry", cyclic)
     assert result.status is Status.FAIL
     assert "extrémité N" in result.message
@@ -95,7 +107,9 @@ def test_head_to_tail_with_capped_ends_fails() -> None:
 
 
 def test_head_to_tail_on_a_non_standard_end_is_unverifiable_hence_fails() -> None:
-    cyclic = parse_sequence("H-RGDS-OH").mutate(4, Residue(code="XAA", standard=False))
+    cyclic = parse_sequence("H-RGDS-OH", notation="one_letter").mutate(
+        4, Residue(code="XAA", standard=False)
+    )
     cyclic = cyclic.with_link(Link(LinkKind.HEAD_TO_TAIL, 1, 4))
     result = _check("peptide.links_chemistry", cyclic)
     assert result.status is Status.FAIL
@@ -103,7 +117,9 @@ def test_head_to_tail_on_a_non_standard_end_is_unverifiable_hence_fails() -> Non
 
 
 def test_declared_modification_is_unverifiable_hence_fails() -> None:
-    peptide = parse_sequence("Ac-RGDS-NH2").with_modification(Modification("phosphorylation", 4))
+    peptide = parse_sequence("Ac-RGDS-NH2", notation="one_letter").with_modification(
+        Modification("phosphorylation", 4)
+    )
     result = _check("peptide.modifications_verifiable", peptide)
     assert result.status is Status.FAIL
     assert "phosphorylation en position 4" in result.message
@@ -116,19 +132,37 @@ def test_a_problem_on_a_link_stops_the_input_stage(tmp_path: Path) -> None:
             return peptide.with_link(Link(LinkKind.HEAD_TO_TAIL, 1, len(peptide)))
 
     with pytest.raises(QualityCheckError, match=r"peptide\.links_chemistry"):
-        run_stage(_CappedCyclicStage(), "Ac-RGDS-NH2", _context(tmp_path), PEPTIDE_CHECKS)
+        run_stage(
+            _CappedCyclicStage(SequenceNotation.ONE_LETTER),
+            "Ac-RGDS-NH2",
+            _context(tmp_path),
+            PEPTIDE_CHECKS,
+        )
 
 
-def test_ambiguous_reading_warns_but_does_not_block(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("notation", "length"),
+    [(SequenceNotation.ONE_LETTER, 3), (SequenceNotation.THREE_LETTER, 1)],
+)
+def test_input_stage_reads_in_the_declared_notation_and_journals_it(
+    tmp_path: Path, notation: SequenceNotation, length: int
+) -> None:
+    """`Ac-ALA-NHMe` : Ala-Leu-Ala en code à une lettre, l'alanine seule en code à trois lettres."""
     context = _context(tmp_path)
-    peptide = run_stage(SequenceInputStage(), "Ac-ALA-NHMe", context, PEPTIDE_CHECKS)
-    assert len(peptide) == 3
-    results = {r.check_id: r for r in context.check_results["input.sequence"]}
-    assert results["peptide.unambiguous_reading"].status is Status.WARN
-    assert "écrire « Ala »" in results["peptide.unambiguous_reading"].message
+    peptide = run_stage(SequenceInputStage(notation), "Ac-ALA-NHMe", context, PEPTIDE_CHECKS)
+    assert len(peptide) == length
+    entry = context.journal.entries[0]
+    assert entry.action == "parse_sequence"
+    assert entry.parameters["notation"] == notation.value
+    assert type(entry.parameters["notation"]) is str  # sérialisable par yaml.safe_dump
+    statuses = {r.check_id: r.status for r in context.check_results["input.sequence"]}
+    assert all(status is Status.PASS for status in statuses.values())
 
 
 def test_link_checks_point_to_the_checklist_item() -> None:
-    results = {r.check_id: r for r in run_checks(PEPTIDE_CHECKS, parse_sequence("Ac-RGDS-NH2"))}
+    results = {
+        r.check_id: r
+        for r in run_checks(PEPTIDE_CHECKS, parse_sequence("Ac-RGDS-NH2", notation="one_letter"))
+    }
     for check_id in ("peptide.links_chemistry", "peptide.modifications_verifiable"):
         assert results[check_id].checklist_item == "structure.links_and_modifications"
