@@ -32,6 +32,7 @@
     - [18.9 Choisir le niveau de validation dans l'outil](#189-choisir-le-niveau-de-validation-dans-loutil)
 19. [Distribution : un seul code, deux exécutables](#19-distribution--un-seul-code-deux-exécutables)
 20. [Entrées, traitement par lots et sorties proposées](#20-entrées-traitement-par-lots-et-sorties-proposées)
+21. [Interface utilisateur](#21-interface-utilisateur)
 
 ---
 
@@ -1322,3 +1323,71 @@ Quatre propriétés, et la première est la plus importante :
 ### 20.5 Quand ces sorties arrivent
 
 Les sorties 1 à 3 viennent avec les étapes 7 à 9. La table de correspondance (8) et l'inventaire des termes (9) viennent avec l'étape 7, parce que c'est là que le `.psf` naît. Le rapport, le journal, la configuration et les empreintes (4 à 7) viennent avec l'étape 10, qui est précisément l'étape du rapport reproductible. Le fichier des sources et le brouillon de méthodes (10, 11) viennent avec l'étape 11E, quand la bibliothèque est complète. Le manifeste et le mode lot s'ajoutent à l'étape 11E également, puisque c'est le balayage de positions qui les rend nécessaires.
+
+---
+
+## 21. Interface utilisateur
+
+Exigence de Firas le 27 novembre 2026 : une interface simple, intuitive, utilisable sans compétence en programmation, au design professionnel, moderne, épuré et cohérent, avec une navigation claire, des formulaires simples, des messages d'erreur explicites, un affichage lisible des résultats et une identité visuelle sobre.
+
+### 21.1 Le principe qui conditionne tout le reste
+
+**L'interface est un client du même pipeline que la ligne de commande, jamais un second chemin de code.** Ni `ui` ni `cli` ne contiennent de logique scientifique : les deux lisent des choix, appellent `pipeline`, et affichent ce qu'il retourne. Une interface qui appellerait `psfgen` directement, ou qui court-circuiterait les contrôles de la section 17 pour « aller plus vite », produirait exactement les erreurs silencieuses que tout le reste de cette architecture s'emploie à rendre impossibles.
+
+Conséquence pratique : **toute action dans l'interface se traduit par la même configuration YAML** que la ligne de commande consomme, et l'interface la montre. La reproductibilité (règle 8) survit ainsi au passage à l'interface graphique, au lieu d'être perdue dans des clics non tracés.
+
+**Dépendances** : un module `ui` au sommet de la matrice, autorisé à importer `pipeline`, `config`, `checks`, `report`, `io` et `core`, et rien d'autre. Sa ligne est ajoutée à la matrice de la section 3 et à `ALLOWED` au moment où le module est créé (étape 16).
+
+### 21.2 La tension à nommer honnêtement
+
+Firas demande que l'utilisateur n'ait pas à comprendre la complexité technique interne. C'est juste, et c'est faisable pour **la mécanique** : personne n'a besoin de savoir qu'un `PRES` est appliqué par `psfgen`, ni qu'un inventaire est relu dans le `.psf`.
+
+Mais une interface ne peut pas rendre la **science** plus simple qu'elle n'est. Le champ de force, le modèle d'eau, le pH, l'objectif de simulation et le niveau de validation changent le résultat scientifique, et le principe P6 interdit d'en inventer une valeur par défaut. Masquer ces choix reviendrait à les prendre à la place de l'utilisateur, en silence.
+
+La règle est donc : **la complexité d'implémentation est cachée, les décisions scientifiques ne le sont jamais.** Le rôle de l'interface est de les rendre **lisibles** — une par écran, formulée en français, avec sa conséquence —, pas de les supprimer. C'est aussi ce qui la rend utilisable par un non-programmeur : il n'a pas à écrire du YAML, il répond à des questions claires.
+
+### 21.3 Technologie retenue : interface web servie localement
+
+| Option | Pour | Contre |
+|---|---|---|
+| **Web servie en local** (`pepforge ui` ouvre le navigateur) | une seule base pour Windows et Linux, design moderne et responsive sans effort, s'installe par la même voie que le reste, suivi naturel des traitements longs (journal et progression en flux), déployable plus tard sur un serveur de laboratoire | le navigateur ne voit pas les chemins du disque : PepForge doit servir son propre explorateur de fichiers |
+| **Bureau Qt** (PySide6) | boîtes de dialogue de fichiers natives, aucune dépendance au navigateur | empaquetage plus lourd sur deux systèmes, et l'aspect « moderne et épuré » demande nettement plus de travail |
+| **Tkinter** | inclus dans Python | ne répond pas à l'exigence de design |
+
+**Retenu : interface web servie localement.** L'exigence de responsive design que Firas mentionne la désigne, et c'est la seule option qui donne un résultat identique sur les deux systèmes sans double empaquetage. Le serveur ne quitte jamais la machine : il écoute sur l'interface locale uniquement.
+
+### 21.4 Navigation : le pipeline est le modèle mental
+
+L'interface suit l'ordre du traitement, parce que c'est l'ordre dans lequel l'utilisateur pense. Un assistant linéaire, avec les étapes visibles en permanence et la possibilité de revenir en arrière :
+
+1. **Entrée** — séquence, fichier de structure, ou manifeste pour un lot (section 20).
+2. **Peptide** — séquence relue, résidus affichés un par un, extrémités, pH, charge nette recalculée en direct.
+3. **Substitutions aza-β³** — on clique une position, elle devient aza. C'est l'écran central de l'outil.
+4. **Champ de force et moteur** — les choix, avec leur conséquence écrite.
+5. **Solvatation** — boîte, sel, neutralisation.
+6. **Vérification** — le niveau de validation 0 à 3, avec son coût annoncé avant de lancer.
+7. **Résultats** — rapport, contrôles, fichiers.
+
+À côté de l'assistant, trois espaces seulement : **Préparations** (l'historique, rejouable d'un clic), **Bibliothèque de résidus** (les entrées et leur provenance), **Outils** (les logiciels externes détectés, leur version, et ce qui manque).
+
+### 21.5 Les écrans qui comptent
+
+**Saisie de la séquence.** Un seul champ acceptant le code à une lettre, à trois lettres ou la notation complète (`Ac-RGDS-NH2`). Validation en direct, caractère fautif surligné. Sous le champ, les résidus apparaissent en pastilles numérotées ; cliquer une pastille ouvre ce qu'on peut faire à cette position, substitution aza-β³ comprise. Les extrémités sont deux listes déroulantes, jamais un texte libre. La charge nette au pH choisi s'affiche en permanence et change en direct : c'est le retour qui apprend le plus vite à l'utilisateur.
+
+**Les décisions ouvertes, visibles.** `PrepConfig.missing_decisions()` et `SolvationSpec.missing_decisions()` existent déjà et retournent la liste de ce qui reste à décider. L'interface les affiche comme une liste de contrôle permanente, et le bouton de lancement reste désactivé tant qu'elle n'est pas vide, avec le motif écrit. L'utilisateur ne peut donc pas lancer une préparation incomplète sans le savoir.
+
+**Messages d'erreur.** Trois règles. Jamais de trace Python à l'écran. Chaque exception de `pepforge.exceptions` est traduite en trois éléments : ce qui s'est passé, où (le champ ou le fichier concerné), et **quoi faire**. Et pour un outil externe manquant, le message nomme l'outil, donne sa version attendue et renvoie à la procédure d'installation — pas « FileNotFoundError ».
+
+**Résultats.** Le rapport de vérification en tableau, groupé par niveau, avec trois états distincts et visuellement distincts : réussi, échoué, **non vérifié**. Ce troisième état ne doit jamais ressembler au premier (section 18.9). Les fichiers produits sont listés avec leur rôle en français, pas seulement leur extension, et le YAML de configuration est téléchargeable pour rejouer la préparation.
+
+**Mode lot.** Le manifeste est déposé, un tableau montre une ligne par peptide et son état, et une ligne en échec reste consultable sans interrompre les autres.
+
+### 21.6 Identité visuelle
+
+Sobre et professionnelle, au service de la lisibilité : fond clair, une seule couleur d'accent, le rouge et le vert réservés aux états de contrôle et à rien d'autre, polices système, espacement généreux, aucune ombre ni dégradé décoratif. Les tableaux et les nombres sont l'essentiel du contenu : ils passent avant tout effet. Un état « non vérifié » se distingue aussi par sa forme et son texte, et non par la seule couleur, pour rester lisible en cas de daltonisme et à l'impression.
+
+**Progressive disclosure.** Deux niveaux : l'essentiel visible, l'avancé replié. Rien de ce qui change le résultat scientifique n'est replié, et tout ce qui est replié apparaît malgré tout dans le rapport final. C'est ainsi qu'on évite l'interface surchargée sans rien cacher.
+
+### 21.7 Quand la construire
+
+**Après que la chaîne fonctionne de bout en bout** (étape 10), sinon on habille un outil qui ne produit rien. L'interface est l'étape 16 du plan. En revanche, rien n'empêche de valider le **design** dès maintenant sur une maquette, ce qui est sans risque et évite de découvrir tardivement un désaccord sur l'ergonomie.

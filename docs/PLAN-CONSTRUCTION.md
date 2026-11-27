@@ -480,3 +480,13 @@ Coût élevé, à engager en connaissance de cause : un nouvel adaptateur **et l
 **Critères** : installation vérifiée depuis zéro sur les deux systèmes ; `pepforge --version` et une préparation courte réussissent sur les deux ; un outil externe manquant produit un message clair nommant l'outil, jamais une trace Python brute ; les règles de portabilité de la section 19.4 respectées (chemins, encodage, fins de ligne).
 
 **Tests** : la CI exécute déjà la suite sur Linux et Windows. À ajouter : un test d'intégration qui installe le paquet construit dans un environnement vierge et lance la CLI, sur les deux systèmes.
+
+## Étape 16 — Interface utilisateur
+
+**Objectif** : une interface web servie localement, utilisable sans compétence en programmation (architecture, section 21).
+
+**Architecture** : nouveau module `ui`, au sommet de la matrice, autorisé à importer `pipeline`, `config`, `checks`, `report`, `io` et `core`. **Aucune logique scientifique** : l'interface est un client du pipeline, exactement comme `cli`. Sa ligne est ajoutée à la matrice de la section 3 et à `ALLOWED` à cette étape.
+
+**Critères** : toute action produit la même configuration YAML que la ligne de commande, et l'interface la montre ; le lancement reste impossible tant que `missing_decisions()` n'est pas vide, avec le motif affiché ; aucune trace Python à l'écran, chaque erreur donnant ce qui s'est passé, où, et quoi faire ; les trois états réussi, échoué et **non vérifié** sont visuellement distincts et ne reposent pas sur la seule couleur ; une préparation lancée depuis l'interface est rejouable depuis la ligne de commande avec le YAML produit, et réciproquement.
+
+**Tests** : U sur la traduction exception → message (ce qui s'est passé, où, quoi faire) ; C : pour une même configuration, interface et ligne de commande produisent des fichiers identiques ; I : une préparation complète menée par l'interface sur un peptide court.
