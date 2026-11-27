@@ -21,6 +21,7 @@
 13. [Intégrer un résidu aza-β³ dans CHARMM36m](#13-intégrer-un-résidu-aza-β³-dans-charmm36m)
 14. [Métaux : données livrées et ajout manuel](#14-métaux--données-livrées-et-ajout-manuel)
 15. [Calcul quantique : recommandation et interface](#15-calcul-quantique--recommandation-et-interface)
+16. [Faisabilité des calculs sur un poste de bureau](#16-faisabilité-des-calculs-sur-un-poste-de-bureau)
 
 ---
 
@@ -848,3 +849,56 @@ Un protocole `QuantumTool` dans `pepforge.tools`, avec une implémentation par l
 Chaque appel passe par `ExternalTool` : version du logiciel enregistrée, sortie analysée pour détecter un calcul non convergé plutôt que de se fier au code de retour. Un calcul non convergé lève `ExternalToolError` et n'entre jamais dans une dérivation.
 
 **Point de prudence sur le coût.** Des balayages bidimensionnels pour une trentaine d'entrées représenteraient des centaines de milliers de points de calcul. Le périmètre réaliste est : balayages **unidimensionnels** sur les torsions critiques pour chaque entrée, et traitement approfondi sur **un ou deux résidus de référence**. Ce périmètre est à valider avec Firas avant de lancer la moindre série.
+
+---
+
+## 16. Faisabilité des calculs sur un poste de bureau
+
+Firas a posé deux questions le 27 novembre 2026 : combien coûte l'option C de la section 13.3, et l'outil doit-il tourner sur un PC de bureau plutôt que sur un calculateur ? Réponse : oui, à condition de choisir le bon périmètre. Voici les chiffres et la contrainte qui décide.
+
+### 16.1 L'obstacle n'est pas le temps de calcul, c'est le format
+
+Un acide aminé α a **deux** torsions de squelette, `φ` et `ψ` : c'est pourquoi CMAP est une grille bidimensionnelle. Le squelette aza-β³ `-NH-N(R)-CH2-CO-` en a **trois** : autour de `N–N`, de `N–CH2` et de `CH2–C(=O)`. L'équivalent exact de CMAP pour ce squelette serait donc une grille **tridimensionnelle**.
+
+Or le terme CMAP de CHARMM et de NAMD est, sauf erreur à confirmer dans l'étape bibliographique du fil aza, une grille **2D** déclarée sur huit atomes couvrant deux dièdres consécutifs. **Une correction 3D n'est pas exprimable dans ce format.** Deux vérifications à faire avant toute dépense de calcul, et elles sont gratuites :
+
+1. Le motif de huit atomes exigé par CMAP peut-il être déclaré sur la suite d'atomes du squelette aza-β³ ?
+2. Si oui, lesquelles des trois torsions le couple ainsi formé décrit-il réellement ?
+
+Si la réponse à la première est non, l'option C tombe, et il reste l'option B. Si elle est oui, l'option C n'est possible qu'en 2D : on retient les deux torsions dominantes dans la grille, et la troisième est traitée par des termes dièdres ordinaires validés par balayage 1D.
+
+### 16.2 Ordres de grandeur
+
+Hypothèses, à calibrer (section 16.4) : résidu aza coiffé à petite chaîne latérale, 25 à 45 atomes ; poste de bureau de 8 à 16 cœurs et 32 à 64 Go ; grille à 15°, soit 24 valeurs par torsion ; « niveau modeste » = DFT en petite base, 2 à 5 min par point optimisé sous contrainte ; « niveau de référence » = DFT dispersive en triple zêta ou RI-MP2, 20 à 60 min par point.
+
+| Travail | Points | Niveau modeste | Niveau de référence |
+|---|---|---|---|
+| Balayages 1D, 3 torsions, **un** résidu | 72 | 3 à 6 h | 1 à 3 jours |
+| Balayages 1D, **toute la bibliothèque** (~30 entrées) | 2 160 | 5 à 8 jours | 1 à 3 mois |
+| Grille 2D 24×24, **un** résidu | 576 | 1 à 2 jours | 8 à 24 jours |
+| Grille 3D grossière 12×12×12, **un** résidu | 1 728 | 4 à 6 jours | 3 semaines à 2 mois |
+| Grille 3D 24×24×24, **un** résidu | 13 824 | 1 à 1,5 mois | 6 mois à 1,5 an |
+| Grille 2D × 30 entrées | 17 280 | 1 à 2 mois | 8 mois à 2 ans |
+
+### 16.3 Verdict, et la porte de sortie
+
+| Scénario | Sur un poste de bureau |
+|---|---|
+| Options A puis B, balayages 1D sur toute la bibliothèque | **faisable** : quelques jours au niveau modeste, et le travail se découpe en lots indépendants qui tournent la nuit |
+| Option C en 2D sur **un** résidu de référence | **faisable** : 1 à 2 jours au niveau modeste, jusqu'à trois semaines au niveau de référence |
+| Option C en 3D, même grossière | **à écarter** : des semaines pour un seul résidu, et non exprimable dans NAMD |
+| Option C sur toute la bibliothèque | **non**, ni sur un poste de bureau ni sur un calculateur modeste |
+
+**La porte de sortie est méthodologiquement propre** : CHARMM n'a pas une grille par résidu, il utilise pour l'essentiel **une seule correction pour tous les acides aminés standards**, avec des cas particuliers pour la glycine et la proline. La même logique s'applique ici : dériver **une** correction de squelette sur un résidu aza modèle à petite chaîne latérale, la transférer aux autres entrées, et valider chaque entrée par des balayages 1D. Le coût total tombe à une grille 2D plus 72 points par résidu, ce qui tient sur un poste de bureau. Cas particuliers à prévoir : l'aza-glycine et tout résidu cyclique.
+
+### 16.4 Calibrer avant d'engager
+
+Les chiffres de 16.2 sont des ordres de grandeur, pas des mesures. Première tâche de l'étape 11D, avant toute série : lancer **une seule** optimisation sous contrainte sur le poste réel, au niveau de théorie envisagé, mesurer le temps de paroi, et multiplier par les nombres de points du tableau. Une heure de travail qui remplace toutes les estimations par un chiffre. Le résultat est consigné dans `tests/reference/` avec la description du matériel.
+
+### 16.5 Le vrai poste de calcul, c'est la dynamique
+
+À ne pas perdre de vue : le quantique n'est pas le gros consommateur du projet. Un peptide de 100 résidus solvaté représente 30 000 à 50 000 atomes. Sur un poste sans accélérateur graphique, la production se compte en quelques nanosecondes par jour ; avec un GPU correct, plutôt en dizaines de nanosecondes par jour. **Pour NAMD, le GPU pèse bien plus lourd que le nombre de cœurs.** Conséquences pratiques :
+
+- l'investissement matériel utile est un GPU, pas un processeur à grand nombre de cœurs ;
+- les durées de production et le nombre de répliques (`ProtocolSpec`, étape 9 du plan) doivent être choisis en connaissance de ce débit, et non copiés d'articles utilisant des calculateurs ;
+- le rapport consigne le matériel utilisé, pour que les durées de simulation soient interprétables.

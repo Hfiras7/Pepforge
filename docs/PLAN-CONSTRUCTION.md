@@ -245,6 +245,7 @@ flowchart LR
 **Critères d'acceptation**
 
 - [ ] Aucune valeur numérique dans le code : températures, durées, pas de temps, rayons de coupure viennent de `ProtocolSpec`, chacun avec sa justification.
+- [ ] Durées de production et nombre de répliques choisis en fonction du **débit réel du matériel disponible** ([section 16.5](ARCHITECTURE.md#165-le-vrai-poste-de-calcul-cest-la-dynamique)), et non recopiés d'articles utilisant des calculateurs. Le matériel est consigné dans le rapport.
 - [ ] Contrôles de la section « Protocole de simulation » de la checklist 04 (pas d'intégration cohérent avec les contraintes sur les liaisons hydrogène, électrostatique longue portée déclarée, plusieurs répliques).
 - [ ] Les scripts produits se terminent par leurs propres contrôles (règle 5 de `CLAUDE.md`).
 
@@ -338,15 +339,17 @@ Ce fil réalise la substitution d'un acide aminé par un résidu aza-β³ et la 
 
 **Critères d'acceptation**
 
+- [ ] **Vérification préalable, gratuite** : le motif de huit atomes exigé par CMAP peut-il être déclaré sur la suite d'atomes du squelette aza-β³, et quelles torsions le couple ainsi formé décrit-il ? Si non, l'option C tombe et il reste l'option B ([section 16.1](ARCHITECTURE.md#161-lobstacle-nest-pas-le-temps-de-calcul-cest-le-format)).
+- [ ] **Calibrage avant toute série** : une seule optimisation sous contrainte lancée sur le poste réel, temps de paroi mesuré et multiplié par les nombres de points du tableau 16.2. Résultat consigné dans `tests/reference/` avec la description du matériel.
 - [ ] Tripeptide de référence `Ac-X-aza-Y-NMe` construit, avec `X` et `Y` fixés pour toute la bibliothèque.
 - [ ] Balayages dièdres relaxés **unidimensionnels** sur les torsions critiques : `N–N`, `N–CH2`, `CH2–C(=O)` et l'amide `ω`.
 - [ ] Barrière d'inversion de l'azote substitué comparée entre quantique et champ de force : c'est elle qui gouverne la disparition du centre stéréogène.
 - [ ] Courbes champ de force et courbes quantiques comparées, écart maximal consigné, seuil d'acceptation fixé et justifié avec Firas.
 - [ ] Courbes et données conservées dans `tests/reference/`.
-- [ ] **Volet CMAP** ([section 13.3](ARCHITECTURE.md#133-cmap--ce-qui-sapplique-ce-qui-ne-sapplique-pas)) : vérifier que les références CMAP des résidus **voisins**, qui traversent la jonction, se résolvent vers des atomes existants et typés — un terme omis silencieusement par `psfgen` est le pire des cas. Puis mesurer l'écart et choisir entre l'option A (absence de CMAP documentée), B (torsions réajustées) ou C (grille dédiée, hors périmètre pour l'ensemble de la bibliothèque).
+- [ ] **Volet CMAP** ([section 13.3](ARCHITECTURE.md#133-cmap--ce-qui-sapplique-ce-qui-ne-sapplique-pas)) : vérifier que les références CMAP des résidus **voisins**, qui traversent la jonction, se résolvent vers des atomes existants et typés — un terme omis silencieusement par `psfgen` est le pire des cas. Puis mesurer l'écart et choisir entre l'option A (absence de CMAP documentée), B (torsions réajustées) ou C (grille dédiée). L'option C n'est envisageable qu'**en 2D et sur un seul résidu modèle**, puis transférée aux autres entrées comme CHARMM le fait avec sa correction unique ([section 16.3](ARCHITECTURE.md#163-verdict-et-la-porte-de-sortie)) : 1 à 2 jours de calcul au niveau modeste, contre 1 à 2 mois pour une grille par entrée.
 - [ ] L'absence de CMAP sur le résidu modifié est inscrite **dans le rapport de chaque préparation concernée**, pas seulement dans la documentation.
 - [ ] Un calcul non convergé lève `ExternalToolError` et n'entre jamais dans une dérivation.
-- [ ] Périmètre des calculs validé avec Firas avant de lancer la moindre série : des balayages bidimensionnels pour une trentaine d'entrées sont hors de portée.
+- [ ] Périmètre des calculs validé avec Firas avant de lancer la moindre série : sur un poste de bureau, les balayages 1D de toute la bibliothèque tiennent en quelques jours, une grille 2D sur un résidu modèle en 1 à 2 jours, mais une grille par entrée demanderait des mois ([section 16](ARCHITECTURE.md#16-faisabilité-des-calculs-sur-un-poste-de-bureau)).
 
 **Tests** : V, avec relecture scientifique obligatoire de Firas.
 
