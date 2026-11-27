@@ -272,7 +272,7 @@ flowchart LR
 
 Ce fil réalise la substitution d'un acide aminé par un résidu aza-β³ et la paramétrisation qui va avec. Il démarre dès l'étape 4 passée, en parallèle des étapes 5 à 10.
 
-> **Préalable, avant toute ligne de code : bibliographie.** Déterminer la variante exacte visée (aza-β³ `-NH-N(R)-CH2-CO-` ou azapeptide α `-NH-N(R)-CO-`), et chercher s'il existe des paramètres publiés pour des aza-peptides ou des β-peptides réutilisables, à quel niveau de théorie, et avec quelle validation conformationnelle. Livrable : une note dans `docs/` avec les références et la voie retenue, relue par Firas. Aucun paramètre n'est écrit dans le dépôt sans sa source ou sa procédure de dérivation complète.
+> **Préalable, avant toute ligne de code : bibliographie.** Déterminer la variante exacte visée (aza-β³ `-NH-N(R)-CH2-CO-` ou azapeptide α `-NH-N(R)-CO-`), et chercher s'il existe des paramètres publiés pour des aza-peptides ou des β-peptides réutilisables, à quel niveau de théorie, et avec quelle validation conformationnelle. Livrable : une note dans `docs/` avec les références, la voie retenue et le **niveau de théorie quantique** à fixer pour toute la bibliothèque, relue par Firas. Aucun paramètre n'est écrit dans le dépôt sans sa source ou sa procédure de dérivation complète.
 
 ### Étape 11A — Fragment chimique et template de résidu
 
@@ -319,6 +319,10 @@ Ce fil réalise la substitution d'un acide aminé par un résidu aza-β³ et la 
 - [ ] La charge nette du résidu dérivé est entière, et les atomes de jonction restent compatibles avec les résidus voisins du champ de force protéique.
 - [ ] Tout paramètre obtenu par analogie est signalé avec son niveau de confiance (pénalités CGenFF, avertissements `parmchk2`).
 - [ ] Aucune torsion manquante autour de la liaison N–N.
+- [ ] Les **cinq patches de jonction** existent pour ce type de résidu : `standard → aza`, `aza → standard`, `aza → aza`, `N-ter aza`, `C-ter aza` ([section 13.2](ARCHITECTURE.md#132-stratégie-de-jonction--des-patches-explicites)). Une jonction sans patch lève `MissingParameterError` et n'est jamais rattrapée par le patch peptidique standard.
+- [ ] **Énumération depuis le `.psf` réellement produit** de tous les termes liés et impropres impliquant le résidu aza et ses deux jonctions, chacun retrouvé dans les fichiers de paramètres : liaisons de jonction, angles traversant la jonction, dièdres nouveaux (`N–N`, `N–CH2`, `CH2–C(=O)`) et amide `ω`, impropres du carbonyle et de l'azote substitué.
+- [ ] Paramètres **1-4 explicites** (`eps14`, `rmin14`) déclarés là où CHARMM36m le fait, et termes `NBFIX` éventuels vérifiés.
+- [ ] Neutralité de charge à la jonction après application du patch, à mieux que 0,01 e sur la charge entière attendue.
 - [ ] La dérivation est rejouable à l'identique depuis le seul fichier de configuration (règle 8), et le rapport consigne méthode de charges, niveau de théorie, pénalités et versions des outils.
 - [ ] **Contrôle croisé** : sur un peptide court (deux à cinq résidus) portant une substitution, les charges et paramètres issus de la bibliothèque sont comparés à ceux obtenus en passant la **molécule entière** dans CGenFF. L'écart est consigné ; un écart important révèle une erreur de traitement des jonctions.
 - [ ] Le cas **deux résidus aza-β³ adjacents** a son propre jeu de charges de jonction et son propre test, puisque les deux atomes de jonction qui se font face appartiennent à des résidus dérivés.
@@ -330,12 +334,19 @@ Ce fil réalise la substitution d'un acide aminé par un résidu aza-β³ et la 
 
 **Objectif** : sans cette étape, les conformations produites par la simulation ne sont pas interprétables, et les paramètres ne sont pas défendables dans une thèse.
 
+**Décision requise** : logiciel de calcul quantique et **niveau de théorie, fixé une fois pour toute la bibliothèque** ([section 15](ARCHITECTURE.md#15-calcul-quantique--recommandation-et-interface)). Deux entrées dérivées à des niveaux différents ne sont pas comparables.
+
 **Critères d'acceptation**
 
-- [ ] Balayages dièdres relaxés en calcul quantique pour φ, ψ et la torsion N–N d'un résidu aza-β³ de référence.
+- [ ] Tripeptide de référence `Ac-X-aza-Y-NMe` construit, avec `X` et `Y` fixés pour toute la bibliothèque.
+- [ ] Balayages dièdres relaxés **unidimensionnels** sur les torsions critiques : `N–N`, `N–CH2`, `CH2–C(=O)` et l'amide `ω`.
+- [ ] Barrière d'inversion de l'azote substitué comparée entre quantique et champ de force : c'est elle qui gouverne la disparition du centre stéréogène.
 - [ ] Courbes champ de force et courbes quantiques comparées, écart maximal consigné, seuil d'acceptation fixé et justifié avec Firas.
 - [ ] Courbes et données conservées dans `tests/reference/`.
-- [ ] Si l'écart dépasse le seuil : ajustement des torsions documenté, ou point signalé comme limite connue dans le rapport.
+- [ ] **Volet CMAP** ([section 13.3](ARCHITECTURE.md#133-cmap--ce-qui-sapplique-ce-qui-ne-sapplique-pas)) : vérifier que les références CMAP des résidus **voisins**, qui traversent la jonction, se résolvent vers des atomes existants et typés — un terme omis silencieusement par `psfgen` est le pire des cas. Puis mesurer l'écart et choisir entre l'option A (absence de CMAP documentée), B (torsions réajustées) ou C (grille dédiée, hors périmètre pour l'ensemble de la bibliothèque).
+- [ ] L'absence de CMAP sur le résidu modifié est inscrite **dans le rapport de chaque préparation concernée**, pas seulement dans la documentation.
+- [ ] Un calcul non convergé lève `ExternalToolError` et n'entre jamais dans une dérivation.
+- [ ] Périmètre des calculs validé avec Firas avant de lancer la moindre série : des balayages bidimensionnels pour une trentaine d'entrées sont hors de portée.
 
 **Tests** : V, avec relecture scientifique obligatoire de Firas.
 
@@ -382,6 +393,10 @@ Ce fil réalise la substitution d'un acide aminé par un résidu aza-β³ et la 
 - [ ] Géométrie de coordination contrôlée après construction.
 - [ ] Charge totale du complexe vérifiée contre la charge théorique attendue.
 - [ ] Limites de l'approche signalées dans le rapport de chaque préparation concernée.
+- [ ] Une entrée de données par couple métal–chélateur dans `forcefields/data/metals/`, avec `source` **obligatoire** et niveau de confiance ([section 14](ARCHITECTURE.md#14-métaux--données-livrées-et-ajout-manuel)). Ajouter un métal ne demande aucun code.
+- [ ] **Ajout manuel** possible par fichier déclaré dans la configuration, soumis aux mêmes contrôles qu'une entrée livrée, et refusé si `source` manque.
+- [ ] L'entrée utilisée est recopiée intégralement dans le rapport, pour que la préparation reste rejouable si le fichier d'origine change.
+- [ ] Un couple métal–chélateur sans entrée validée lève `MissingParameterError` : aucune complétion par analogie silencieuse.
 
 **Tests** : U, K ; V : comparaison avec une structure de complexe publiée pour le même chélateur et le même métal, relue par Firas.
 

@@ -18,6 +18,9 @@
 10. [Cas d'usage central : substitution aza-β³](#10-cas-dusage-central--substituer-un-acide-aminé-par-un-résidu-aza-β³)
 11. [Contraintes venues du projet de thèse](#11-contraintes-venues-du-projet-de-thèse)
 12. [Portée confirmée le 26 novembre 2026](#12-portée-confirmée-le-26-novembre-2026)
+13. [Intégrer un résidu aza-β³ dans CHARMM36m](#13-intégrer-un-résidu-aza-β³-dans-charmm36m)
+14. [Métaux : données livrées et ajout manuel](#14-métaux--données-livrées-et-ajout-manuel)
+15. [Calcul quantique : recommandation et interface](#15-calcul-quantique--recommandation-et-interface)
 
 ---
 
@@ -688,3 +691,160 @@ Il n'y a pas de liste figée de séquences candidates : tout peptide est admis d
 - Les **peptides de référence** des tests restent des cas illustratifs choisis pour ce qu'ils exercent (section 7.2), et non les séquences de la thèse.
 - Les tests doivent couvrir les deux extrémités de la gamme : un dipeptide et un peptide d'une centaine de résidus, ce dernier avec plusieurs substitutions.
 - À 100 résidus, on prépare un petit domaine structuré : la correction CMAP de CHARMM36m et la qualité des torsions de squelette comptent davantage, ce qui renforce la conclusion de la section 12.2.
+
+---
+
+## 13. Intégrer un résidu aza-β³ dans CHARMM36m
+
+Firas a posé le point juste, et c'est le vrai risque technique du projet : **paramétrer le fragment aza-β³ séparément ne garantit pas que son insertion dans CHARMM36m soit correcte**. Un aza-β³ n'est pas un acide aminé standard à chaîne latérale modifiée : il modifie le **squelette** lui-même. Tout ce qui, dans CHARMM36m, est ajusté pour le squelette des acides aminés α devient donc une question ouverte à cet endroit de la chaîne.
+
+Cette section décrit la stratégie de jonction, les termes à vérifier un par un, le traitement de CMAP, et le protocole d'acceptation. Elle conditionne les étapes 11C et 11D du plan.
+
+### 13.1 Les cinq familles de termes à vérifier
+
+| Famille | Ce qui est en cause | Comment on le vérifie |
+|---|---|---|
+| **Liaisons de jonction** | les liaisons entre le résidu aza et ses voisins : `C(i-1)–N(i)` et `C(i)–N(i+1)` | types d'atomes des deux côtés présents dans `.prm` ; longueur d'équilibre comparée à l'optimisation quantique du tripeptide |
+| **Angles du squelette** | tout angle dont le sommet ou une branche appartient au résidu aza, y compris ceux qui traversent la jonction | énumération exhaustive depuis le `.psf` produit, puis recherche de chaque triplet de types dans `.prm` |
+| **Dièdres du squelette** | les dièdres qui traversent la jonction, l'amide `ω`, et les torsions **nouvelles** propres à l'aza-β³ : autour de `N–N`, de `N–CH2` et de `CH2–C(=O)` | balayages dièdres relaxés quantiques sur un tripeptide `Ac-X-aza-Y-NMe`, comparés au champ de force |
+| **Impropres** | planéité du carbonyle, et surtout le caractère **pyramidal ou plan de l'azote substitué** : c'est lui qui gouverne la barrière d'inversion, donc la disparition du centre stéréogène | barrière d'inversion quantique comparée à celle du champ de force |
+| **Non liées** | types de Lennard-Jones issus de CGenFF face à ceux de CHARMM36m, les **paramètres 1-4 explicites** de CHARMM (`eps14`, `rmin14`) et les éventuels termes `NBFIX` | les deux jeux partagent la même forme fonctionnelle et ont été développés pour être combinables, ce qui rend la voie viable ; les paramètres 1-4 du résidu dérivé doivent être déclarés explicitement là où CHARMM36m le fait |
+
+Aucune de ces vérifications n'est facultative, et chacune devient un contrôle de `checks` plutôt qu'une relecture humaine : l'énumération se fait sur le `.psf` réellement produit, pas sur ce qu'on croit avoir écrit.
+
+### 13.2 Stratégie de jonction : des patches explicites
+
+Dans CHARMM, le lien entre résidus consécutifs est porté par des *patches* (`PRES`). Un résidu aza-β³ ne peut pas réutiliser le patch peptidique standard, puisque les atomes de jonction et leurs types diffèrent. Pour **chaque** type de résidu aza-β³, la bibliothèque doit donc fournir cinq patches :
+
+| Patch | Jonction couverte |
+|---|---|
+| `standard → aza` | résidu α en i-1, résidu aza en i |
+| `aza → standard` | résidu aza en i, résidu α en i+1 |
+| `aza → aza` | deux résidus aza adjacents (cas signalé en 12.1) |
+| `N-ter aza` | résidu aza en première position, avec l'extrémité choisie |
+| `C-ter aza` | résidu aza en dernière position, avec l'extrémité choisie |
+
+Deux règles qui en découlent, et qui deviennent des contrôles :
+
+1. **Neutralité de charge à la jonction.** Après application du patch, la somme des charges partielles sur la jonction doit rester telle que le système entier porte la charge entière attendue. Un écart, même de 0,01 e, signale une erreur de redistribution.
+2. **Aucune jonction sans patch.** Une combinaison de voisins pour laquelle aucun patch n'existe lève `MissingParameterError`. Elle n'est jamais rattrapée par le patch peptidique standard.
+
+### 13.3 CMAP : ce qui s'applique, ce qui ne s'applique pas
+
+C'est le point le plus délicat, et il faut être précis, parce que CMAP ne se comporte pas comme les autres termes.
+
+Dans CHARMM36m, CMAP est une correction bidimensionnelle sur le couple `φ`/`ψ` du **squelette protéique**, déclarée résidu par résidu dans la topologie, et dont la définition **référence des atomes des résidus voisins** (le carbonyle du précédent, l'azote du suivant). D'où trois constats distincts :
+
+1. **Le résidu aza-β³ ne reçoit aucun CMAP.** Sa suite d'atomes de squelette n'est pas celle d'un acide aminé α : les dièdres `φ`/`ψ` au sens de CMAP n'y sont pas définis, et il porte en plus une torsion que le squelette α ne connaît pas. Aucune grille existante ne lui est applicable. Ce n'est pas un réglage à trouver, c'est une absence.
+2. **Les résidus voisins gardent leur CMAP, mais celui-ci traverse la jonction.** Le CMAP du résidu i+1 référence le carbonyle du résidu i, c'est-à-dire un atome du résidu aza. Deux choses à vérifier séparément : que la référence **se résout** vers un atome existant et typé (sinon `psfgen` échoue ou, pire, omet le terme silencieusement), et que la valeur de la correction reste **pertinente**, ce qui ne se décide que par comparaison quantique.
+3. **La question « une correction complémentaire est-elle nécessaire ? » est ouverte, et son coût est très asymétrique.**
+
+Trois options, avec leur coût réel :
+
+| Option | Ce qu'elle demande | Quand la retenir |
+|---|---|---|
+| **A. Pas de CMAP sur le résidu aza, voisins inchangés, limite documentée** | les balayages dièdres de l'étape 11D, pour mesurer et consigner l'écart | voie par défaut : c'est la seule réaliste à l'échelle d'une bibliothèque d'une trentaine d'entrées |
+| **B. Torsions du résidu aza réajustées pour compenser** | un ajustement des termes dièdres sur les profils quantiques, par type de résidu | si l'écart mesuré en A dépasse le seuil convenu |
+| **C. Dérivation d'une grille de correction propre à l'aza-β³** | un balayage bidimensionnel quantique par type de résidu, soit des centaines de points chacun, puis l'implémentation du terme | hors de portée pour l'ensemble de la bibliothèque ; éventuellement sur **un** résidu de référence, comme contribution méthodologique à part entière |
+
+**Recommandation : commencer par A, mesurer, puis passer à B pour les résidus dont l'écart le justifie.** L'option C ne se décide qu'au vu des chiffres de A, et vaut mieux comme résultat de thèse assumé que comme prérequis à l'outil. Dans tous les cas, **l'absence de CMAP sur le résidu modifié est inscrite dans le rapport de chaque préparation concernée**, pas seulement dans la documentation.
+
+### 13.4 Protocole d'acceptation
+
+Pour chaque type de résidu aza-β³ entrant dans la bibliothèque :
+
+1. Construire le tripeptide de référence `Ac-X-aza-Y-NMe`, avec `X` et `Y` fixés une fois pour toute la bibliothèque afin que les entrées soient comparables.
+2. Optimiser sa géométrie en quantique, au niveau de théorie unique retenu pour tout le projet.
+3. Énumérer, depuis le `.psf` produit par `psfgen`, **tous** les termes liés et impropres impliquant le résidu aza et ses deux jonctions, puis vérifier que chacun existe dans les fichiers de paramètres. Un terme manquant lève `MissingParameterError`.
+4. Lancer les balayages dièdres relaxés sur les torsions de la troisième ligne du tableau 13.1, et comparer les profils champ de force et quantique.
+5. Comparer les géométries d'équilibre, la barrière d'inversion de l'azote substitué et la charge nette.
+6. Consigner tous les écarts, les seuils appliqués et leur justification dans `tests/reference/`, puis dans le rapport.
+
+Un résidu qui ne passe pas ce protocole n'entre pas dans la bibliothèque : il reste marqué comme non validé et son usage lève une erreur.
+
+### 13.5 Effet sur l'architecture
+
+Rien de tout cela ne change les règles de dépendance de la section 3 :
+
+- les patches de jonction sont des **données** de `residues/data/` et de `forcefields/data/`, avec leur provenance ;
+- l'énumération des termes depuis le `.psf` est un **contrôle** de `checks`, appliqué à la sortie de l'étape 5 du pipeline ;
+- les balayages quantiques passent par `pepforge.tools`, comme tout exécutable externe ;
+- la mention de l'absence de CMAP est une entrée de `report`.
+
+---
+
+## 14. Métaux : données livrées et ajout manuel
+
+Firas demande que l'outil porte les paramètres de chaque métal **et** permette d'en ajouter manuellement. Les deux, et c'est le bon compromis.
+
+### 14.1 Un métal est une entrée de données
+
+Un centre métallique est décrit dans `forcefields/data/metals/<élément>-<chélateur>.yaml` :
+
+| Champ | Contenu |
+|---|---|
+| `element`, `oxidation_state`, `charge` | identité du centre |
+| `chelator` | chélateur auquel l'entrée s'applique (DOTA, N4, HYNIC...) |
+| `coordination` | géométrie attendue et atomes donneurs |
+| `approach` | `nonbonded`, `bonded` ou `cationic_dummy` (section 11.4) |
+| `parameters` | les paramètres eux-mêmes, ou le chemin du fichier à charger |
+| `source` | **obligatoire** : publication citée, ou procédure de dérivation complète |
+| `confidence` | niveau de confiance et limites connues, repris dans le rapport |
+
+Ajouter un métal ne demande donc **aucun code** : une entrée de données et son test. C'est ce qui rend la promesse « quel que soit le métal » tenable côté mécanisme.
+
+### 14.2 Ce qui est livré, et ce qui ne peut pas l'être
+
+PepForge livrera les entrées pour lesquelles il existe des paramètres publiés et citables, en commençant par les couples de la thèse : gallium et lutécium dans un DOTA, puis technétium et rhénium, plus difficiles (section 11.4). Chaque entrée livrée porte sa source.
+
+Ce qui ne peut pas être livré : un jeu de paramètres pour un couple métal–chélateur qui n'a pas été publié ni dérivé. Dans ce cas, `MissingParameterError`. **L'outil ne complète jamais un métal par analogie silencieuse** : c'est la règle 2 du projet, et c'est aussi ce qui protège la thèse.
+
+### 14.3 L'ajout manuel, avec sa traçabilité
+
+Un utilisateur peut fournir sa propre entrée, par un fichier déclaré dans la configuration. Deux garde-fous, non négociables :
+
+1. **`source` est obligatoire.** Une entrée sans source est refusée, pas acceptée avec un avertissement. Sans cela, la traçabilité du rapport ne vaut plus rien.
+2. **Les mêmes contrôles s'appliquent** qu'à une entrée livrée : charge totale du complexe conforme, géométrie de coordination vérifiée après construction, aucun paramètre manquant, et interdiction de mélanger des champs de force (section 11.4).
+
+L'entrée manuelle est recopiée intégralement dans le rapport, avec sa source, pour qu'une préparation reste rejouable même si le fichier d'origine a changé entre-temps.
+
+---
+
+## 15. Calcul quantique : recommandation et interface
+
+Firas demande quel logiciel retenir. Voici la recommandation, puis la façon dont l'outil s'en abstrait.
+
+### 15.1 Ce dont le projet a besoin
+
+| Usage | Exigence |
+|---|---|
+| Optimisation de géométrie des fragments et tripeptides de référence | courant, aucun besoin exotique |
+| Balayages dièdres relaxés, y compris autour de `N–N` (étapes 11D et 13.4) | nombreux calculs, donc **le coût et l'automatisation comptent plus que la fonctionnalité** |
+| Barrière d'inversion de l'azote substitué | optimisation sous contrainte |
+| Charges, si l'on va au-delà de CGenFF | dépend du protocole retenu, qui doit être fixé une fois pour toute la bibliothèque |
+
+### 15.2 Recommandation
+
+**ORCA en premier, Psi4 en second, Gaussian seulement si le laboratoire en a déjà la licence.**
+
+| Logiciel | Pour | Contre |
+|---|---|---|
+| **ORCA** | gratuit pour l'usage académique sur enregistrement, très actif, bon rapport performance/précision en DFT et MP2, parallélisation correcte | pas libre au sens des sources ; conditions d'usage à relire |
+| **Psi4** | logiciel libre, **interface Python** qui s'automatise parfaitement depuis PepForge, idéale pour les tests reproductibles | moins rapide qu'ORCA sur les gros calculs |
+| **Gaussian** | référence historique, beaucoup de protocoles publiés le citent, utile si l'on veut reproduire exactement une procédure publiée | licence commerciale coûteuse ; aucun intérêt à l'acheter pour ce projet s'il n'est pas déjà disponible |
+
+**Prendre en charge ORCA et Psi4 derrière la même interface**, ce qui coûte peu et évite d'être prisonnier d'un choix : si le laboratoire obtient Gaussian plus tard, c'est une troisième implémentation, pas une réécriture.
+
+Le point qui compte davantage que le logiciel : **le niveau de théorie et le protocole sont fixés une fois pour toute la bibliothèque**, et consignés dans le rapport. Deux entrées dérivées à des niveaux différents ne sont pas comparables entre elles, et une bibliothèque hétérogène serait critiquable en soutenance. Le choix du niveau se fait au vu de la bibliographie de l'étape préalable au fil aza, pas avant.
+
+### 15.3 Interface
+
+Un protocole `QuantumTool` dans `pepforge.tools`, avec une implémentation par logiciel :
+
+- `optimize(fragment, level) -> Geometry`
+- `scan_dihedral(fragment, atoms, range, level) -> Profile`
+- `charges(fragment, method, level) -> Charges`
+
+Chaque appel passe par `ExternalTool` : version du logiciel enregistrée, sortie analysée pour détecter un calcul non convergé plutôt que de se fier au code de retour. Un calcul non convergé lève `ExternalToolError` et n'entre jamais dans une dérivation.
+
+**Point de prudence sur le coût.** Des balayages bidimensionnels pour une trentaine d'entrées représenteraient des centaines de milliers de points de calcul. Le périmètre réaliste est : balayages **unidimensionnels** sur les torsions critiques pour chaque entrée, et traitement approfondi sur **un ou deux résidus de référence**. Ce périmètre est à valider avec Firas avant de lancer la moindre série.
