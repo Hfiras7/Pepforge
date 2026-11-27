@@ -23,8 +23,11 @@ pip install -e ".[dev]"
 ## Utilisation
 
 ```bash
-pepforge parse "Ac-RGDS-NH2"
-pepforge parse "NH2-Arg-Gly-Asp-Ser-CO-NH2"
+# Le mode de lecture se précise toujours : 1 = code à une lettre, 3 = code à trois lettres
+pepforge parse --notation 1 "Ac-RGDS-NH2"
+pepforge parse --notation 3 "NH2-Arg-Gly-Asp-Ser-CO-NH2"
+pepforge convert --notation 1 "Ac-RGDS-NH2"      # → Ac-Arg-Gly-Asp-Ser-NH2
+pepforge convert --notation 3 "Ac-Ala-NHMe"      # → Ac-A-NHMe
 pepforge config-template > prep.yaml
 ```
 

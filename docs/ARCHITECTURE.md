@@ -45,7 +45,7 @@
 | P3 | **Les dépendances vont dans un seul sens** | Une matrice autorise ou interdit chaque import (section 3). Elle est vérifiée par `tests/test_architecture.py` : un import interdit fait échouer la CI. |
 | P4 | **Les interfaces sont des `Protocol`** | Un adaptateur, un moteur, un constructeur ou une étape se remplace sans toucher au reste, tant qu'il respecte son `Protocol` et passe ses tests de contrat (`tests/contracts.py`). |
 | P5 | **Chaque étape est contrôlée à sa sortie** | `pipeline.run_stage` exécute l'étape, puis ses contrôles (`checks`) ; un contrôle en échec arrête tout (`QualityCheckError`). |
-| P6 | **Rien n'est supposé** | Moteur, champ de force, modèle d'eau, objectif, pH, solvatation : aucune valeur par défaut (`PrepConfig`, `SolvationSpec`). Aucun paramètre numérique codé en dur : les données viennent de fichiers sourcés. |
+| P6 | **Rien n'est supposé** | Moteur, champ de force, modèle d'eau, objectif, pH, solvatation, mode de lecture d'une séquence : aucune valeur par défaut (`PrepConfig`, `SolvationSpec`, `SequenceNotation`). Aucun paramètre numérique codé en dur : les données viennent de fichiers sourcés. |
 | P7 | **Tout est tracé** | Chaque modification de structure est journalisée (`Journal`), chaque outil externe enregistre sa version, chaque contrôle laisse un résultat dans le rapport. |
 | P8 | **Indépendance vis-à-vis du champ de force et du moteur** | `core`, `io`, `residues`, `build` et `checks` ne connaissent aucune nomenclature de champ de force (`NHE`, `HIE`...) ni aucun format moteur (`.prmtop`, `.top`, `.psf`). |
 
@@ -278,9 +278,10 @@ Pour chaque module : ce qu'il reçoit, ce qu'il rend, les erreurs qu'il lève, e
 ### 5.7 `io` — lecture et écriture
 
 - **Entrées** : texte (séquence), fichiers PDB, mmCIF, SMILES, MOL/SDF. **Sorties** : `Peptide`, `Structure` (et, pour le mode « structure personnalisée », un fragment chimique à définir à l'étape 11 du plan).
-- **Erreurs** : `SequenceParseError` (dont les crochets mal formés), `UnknownResidueError`, `UnknownTerminusError`, `StructureError`.
+- **Erreurs** : `SequenceParseError` (dont les crochets mal formés, le mode de lecture inconnu et la minuscule en code à une lettre), `UnknownResidueError`, `UnknownTerminusError`, `UnsupportedFeatureError` (écriture d'une séquence qui perdrait une déclaration ou ne se relirait pas à l'identique), `StructureError`.
+- **Mode de lecture déclaré au départ** (revue du module 1) : `parse_sequence(texte, notation=...)`, avec `SequenceNotation.ONE_LETTER` (code à une lettre, monolitère) ou `SequenceNotation.THREE_LETTER` (code à trois lettres, trilitère). Le paramètre n'a **pas de valeur par défaut**, ni dans l'API, ni dans la CLI (`--notation 1` ou `3`), ni dans `SequenceInputStage`, et `PrepConfig.sequence_notation` est une décision exigée par `missing_decisions()` dès qu'une séquence est donnée. Rien n'est deviné : `ALA` est le tripeptide Ala-Leu-Ala en code à une lettre, l'alanine seule en code à trois lettres. Le mode est inscrit dans `Peptide.metadata` (`SEQUENCE_NOTATION`) et au journal. Une minuscule en code à une lettre est refusée, parce qu'elle désigne d'ordinaire un acide aminé D (le `f` de `c(RGDfK)`), que la bibliothèque ne décrit pas encore. Ce choix explicite remplace la lecture devinée signalée par avertissement, introduite puis retirée pendant la même revue.
+- **Conversion entre les deux codes** (revue du module 1) : `convert_sequence(texte, source, cible)` lit la séquence dans son code et la réécrit dans l'autre, à la manière du réglage `seq_view_format` de PyMOL (0 pour les codes à une lettre, 1 pour les noms à trois lettres, [PyMOL Wiki](https://wiki.pymol.org/index.php?title=Seq_view_format)). `format_sequence(peptide, code)` produit la forme canonique : résidus standards selon l'IUPAC (`R`, `Arg`), non standards entre crochets avec leur code de bibliothèque (`[AIB]`), extrémités sous leur forme usuelle (premier alias de `residues/data/termini.yaml`) ; une extrémité non déclarée le reste. Le texte produit est **relu et comparé** au peptide (inventaire attendu contre sortie, section 17.1), et toute différence lève `UnsupportedFeatureError` : une conversion qui changerait la molécule n'est jamais rendue. Une séquence écrite ne porte ni liaison hors squelette, ni modification, ni état de protonation : leur présence est refusée, pas omise.
 - **Notation des non standards** (étape 1) : code de la bibliothèque entre crochets, dans les deux notations (`Ac-RG[Aib]S-NH2`, `Ac-Arg-Gly-[Aib]-Ser-NH2`), convention reprise de HELM (Zhang *et al.*, *J. Chem. Inf. Model.* 2012, 52, 2796–2806). La règle de lecture complète est dans la docstring de [`io/sequence.py`](../src/pepforge/io/sequence.py).
-- **Lecture ambiguë signalée** (revue du module 1) : un bloc unique de trois lettres hors casse « titre » qui est aussi un code de la bibliothèque (`ALA`, `Ac-ALA-NHMe`) est lu en codes à une lettre, et ce choix est inscrit dans `Peptide.metadata` puis signalé en avertissement par `peptide.unambiguous_reading`. 17 des 20 codes standards en majuscules se liraient sinon en silence comme des tripeptides.
 - **Ne fait jamais** : corriger silencieusement une structure lue. Toute correction est un `StructureModifier` de `build`, journalisé.
 
 ### 5.8 `build` — construction et correction 3D
@@ -313,6 +314,7 @@ Pour chaque module : ce qu'il reçoit, ce qu'il rend, les erreurs qu'il lève, e
 ### 5.12 `cli` — interface en ligne de commande
 
 - **Rôle** : traduire des arguments en appels à `pipeline` ou `io`, afficher les résultats, convertir `PepForgeError` en message lisible et code de sortie 1.
+- **Commandes actuelles** : `pepforge parse --notation 1|3 SÉQUENCE` (analyse, affichage dans les deux codes) ; `pepforge convert --notation 1|3 SÉQUENCE` (réécriture dans l'autre code, seul le résultat sur la sortie standard, avertissements sur la sortie d'erreur) ; `pepforge config-template`. Sans `--notation`, `parse` et `convert` s'arrêtent sur un message qui dit quoi ajouter.
 
 ---
 
@@ -1294,13 +1296,13 @@ Deux pièges à traiter explicitement dans `io`. D'abord, un fichier **multi-mod
 **1. Un manifeste, pour le lot.** C'est la vraie réponse au traitement par lots. Un dossier de deux cents fichiers PDB n'est pas la description d'un lot, parce que les substitutions, les extrémités et le pH ne sont pas dans ces fichiers. Un manifeste CSV ou YAML porte une ligne par peptide :
 
 ```
-id,sequence,substitutions,n_terminus,c_terminus,ph,goal
-P001,Ac-RGDS-NH2,,acetyl,amide,7.4,free_peptide
-P002,Ac-RGDS-NH2,3:aza,acetyl,amide,7.4,free_peptide
-P003,Ac-RGDS-NH2,"1:aza,3:aza",acetyl,amide,7.4,free_peptide
+id,sequence,notation,substitutions,n_terminus,c_terminus,ph,goal
+P001,Ac-RGDS-NH2,one_letter,,acetyl,amide,7.4,free_peptide
+P002,Ac-RGDS-NH2,one_letter,3:aza,acetyl,amide,7.4,free_peptide
+P003,Ac-Arg-Gly-Asp-Ser-NH2,three_letter,"1:aza,3:aza",acetyl,amide,7.4,free_peptide
 ```
 
-La colonne `substitutions` est ce qui fait de PepForge autre chose qu'un convertisseur de fichiers : elle décrit le balayage de positions de l'étape 11E.
+La colonne `substitutions` est ce qui fait de PepForge autre chose qu'un convertisseur de fichiers : elle décrit le balayage de positions de l'étape 11E. La colonne `notation` est obligatoire : le mode de lecture d'une séquence n'est jamais deviné (section 5.7).
 
 **2. La notation HELM**, en second format textuel. Elle a été conçue pour les biopolymères à **monomères non naturels**, c'est-à-dire exactement le cas de ce projet, et elle fait l'aller-retour sans perte. Elle vaut d'être lue en entrée, même si la notation interne reste celle de la séquence.
 
@@ -1396,7 +1398,7 @@ L'interface suit l'ordre du traitement, parce que c'est l'ordre dans lequel l'ut
 
 ### 21.5 Les écrans qui comptent
 
-**Saisie de la séquence.** Un seul champ acceptant le code à une lettre, à trois lettres ou la notation complète (`Ac-RGDS-NH2`). Validation en direct, caractère fautif surligné. Sous le champ, les résidus apparaissent en pastilles numérotées ; cliquer une pastille ouvre ce qu'on peut faire à cette position, substitution aza-β³ comprise. Les extrémités sont deux listes déroulantes, jamais un texte libre. La charge nette au pH choisi s'affiche en permanence et change en direct : c'est le retour qui apprend le plus vite à l'utilisateur.
+**Saisie de la séquence.** Le mode de lecture se choisit **avant** la saisie : code à une lettre ou code à trois lettres, deux boutons exclusifs dont aucun n'est choisi d'avance (section 5.7). Un bouton de bascule réécrit la saisie dans l'autre code (`convert_sequence`), comme le réglage `seq_view_format` de PyMOL, et change le mode en conséquence ; une conversion refusée laisse la saisie intacte et dit pourquoi. Le champ accepte la notation complète (`Ac-RGDS-NH2`, `Ac-Arg-Gly-Asp-Ser-NH2`). Validation en direct, caractère fautif surligné. Sous le champ, les résidus apparaissent en pastilles numérotées ; cliquer une pastille ouvre ce qu'on peut faire à cette position, substitution aza-β³ comprise. Les extrémités sont deux listes déroulantes, jamais un texte libre. La charge nette au pH choisi s'affiche en permanence et change en direct : c'est le retour qui apprend le plus vite à l'utilisateur.
 
 **Les décisions ouvertes, visibles.** `PrepConfig.missing_decisions()` et `SolvationSpec.missing_decisions()` existent déjà et retournent la liste de ce qui reste à décider. L'interface les affiche comme une liste de contrôle permanente, et le bouton de lancement reste désactivé tant qu'elle n'est pas vide, avec le motif écrit. L'utilisateur ne peut donc pas lancer une préparation incomplète sans le savoir.
 

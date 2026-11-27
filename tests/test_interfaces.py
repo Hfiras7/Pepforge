@@ -19,7 +19,7 @@ from pepforge.core import Atom, Peptide, Structure
 from pepforge.engines import EngineFiles
 from pepforge.exceptions import MissingParameterError
 from pepforge.forcefields import ParameterSet
-from pepforge.io import parse_sequence
+from pepforge.io import SequenceNotation, parse_sequence
 from pepforge.pipeline import ProtonationStage, SequenceInputStage
 from pepforge.report import Journal
 
@@ -67,23 +67,30 @@ class _DummyBuilder:
 
 
 def test_forcefield_contract() -> None:
-    assert_forcefield_contract(_DummyForceField(), [parse_sequence("Ac-RGDS-NH2")])
+    assert_forcefield_contract(
+        _DummyForceField(), [parse_sequence("Ac-RGDS-NH2", notation="one_letter")]
+    )
 
 
 def test_engine_writer_contract(tmp_path: Path) -> None:
-    structure = _DummyBuilder().build(parse_sequence("Ac-RGDS-NH2"), Journal())
+    structure = _DummyBuilder().build(
+        parse_sequence("Ac-RGDS-NH2", notation="one_letter"), Journal()
+    )
     assert_engine_writer_contract(_DummyWriter(), structure, tmp_path)
 
 
 def test_builder_contract() -> None:
-    assert_builder_contract(_DummyBuilder(), parse_sequence("Ac-RGDS-NH2"))
+    assert_builder_contract(_DummyBuilder(), parse_sequence("Ac-RGDS-NH2", notation="one_letter"))
 
 
 def test_sequence_stage_contract(tmp_path: Path) -> None:
-    assert_stage_contract(SequenceInputStage(), "Ac-RGDS-NH2", tmp_path)
+    assert_stage_contract(SequenceInputStage(SequenceNotation.ONE_LETTER), "Ac-RGDS-NH2", tmp_path)
 
 
 def test_protonation_stage_contract(tmp_path: Path) -> None:
     assert_stage_contract(
-        ProtonationStage(), parse_sequence("Ac-KDEY-NH2"), tmp_path, PrepConfig(ph=7.4)
+        ProtonationStage(),
+        parse_sequence("Ac-KDEY-NH2", notation="one_letter"),
+        tmp_path,
+        PrepConfig(ph=7.4),
     )

@@ -218,7 +218,7 @@ def test_valid_ph_is_accepted(ph: float) -> None:
 
 
 def test_blocked_termini_carry_no_charge() -> None:
-    result = assign_protonation(parse_sequence("Ac-GGG-NH2"), 7.4)
+    result = assign_protonation(parse_sequence("Ac-GGG-NH2", notation="one_letter"), 7.4)
     assert result.assignments == ()
     assert result.net_charge == 0
     assert result.theoretical_net_charge == 0.0
@@ -227,7 +227,7 @@ def test_blocked_termini_carry_no_charge() -> None:
 
 
 def test_n_methylamide_carries_no_charge() -> None:
-    result = assign_protonation(parse_sequence("Ac-GGG-NHMe"), 7.4)
+    result = assign_protonation(parse_sequence("Ac-GGG-NHMe", notation="one_letter"), 7.4)
     assert result.net_charge == 0
 
 
@@ -240,14 +240,14 @@ def test_n_methylamide_carries_no_charge() -> None:
     ],
 )
 def test_free_termini_follow_the_ph(ph: float, n_state: str, c_state: str, charge: int) -> None:
-    result = assign_protonation(parse_sequence("H-GGG-OH"), ph)
+    result = assign_protonation(parse_sequence("H-GGG-OH", notation="one_letter"), ph)
     assert result.peptide.n_terminus.protonation == n_state
     assert result.peptide.c_terminus.protonation == c_state
     assert result.net_charge == charge
 
 
 def test_terminus_protonation_keeps_the_defaulted_mark() -> None:
-    peptide = parse_sequence("GGG")
+    peptide = parse_sequence("GGG", notation="one_letter")
     assert "n_terminus_source" in peptide.metadata
     result = assign_protonation(peptide, 7.4)
     assert "n_terminus_source" in result.peptide.metadata
@@ -274,7 +274,7 @@ def test_terminus_protonation_keeps_the_defaulted_mark() -> None:
     ],
 )
 def test_each_side_chain_group(code: str, ph: float, state: str, charge: int) -> None:
-    result = assign_protonation(parse_sequence(f"Ac-G{code}G-NH2"), ph)
+    result = assign_protonation(parse_sequence(f"Ac-G{code}G-NH2", notation="one_letter"), ph)
     assert result.peptide.residue_at(2).protonation == state
     (assignment,) = result.assignments
     assert (assignment.site, assignment.state, assignment.charge) == ("2", state, charge)
@@ -283,19 +283,19 @@ def test_each_side_chain_group(code: str, ph: float, state: str, charge: int) ->
 
 
 def test_non_ionizable_residues_get_no_state() -> None:
-    result = assign_protonation(parse_sequence("Ac-ANQGILMFPSTWV-NH2"), 7.4)
+    result = assign_protonation(parse_sequence("Ac-ANQGILMFPSTWV-NH2", notation="one_letter"), 7.4)
     assert result.assignments == ()
     assert all(r.protonation is None for r in result.peptide.residues)
 
 
 def test_neutral_histidine_without_tautomer_is_refused() -> None:
     with pytest.raises(ChemistryError, match="his_delta ou his_epsilon"):
-        assign_protonation(parse_sequence("Ac-GHG-NH2"), 7.4)
+        assign_protonation(parse_sequence("Ac-GHG-NH2", notation="one_letter"), 7.4)
 
 
 @pytest.mark.parametrize("tautomer", ["his_delta", "his_epsilon"])
 def test_imposed_histidine_tautomer_is_kept(tautomer: str) -> None:
-    peptide = parse_sequence("Ac-GHG-NH2").with_protonation(2, tautomer)
+    peptide = parse_sequence("Ac-GHG-NH2", notation="one_letter").with_protonation(2, tautomer)
     result = assign_protonation(peptide, 7.4)
     (assignment,) = result.assignments
     assert assignment.state == tautomer
@@ -305,13 +305,17 @@ def test_imposed_histidine_tautomer_is_kept(tautomer: str) -> None:
 
 def test_ph_equal_to_pka_requires_an_imposed_state() -> None:
     with pytest.raises(ChemistryError, match="égal au pKa"):
-        assign_protonation(parse_sequence("Ac-GKG-NH2"), 10.4)
-    imposed = parse_sequence("Ac-GKG-NH2").with_protonation(2, "lys_protonated")
+        assign_protonation(parse_sequence("Ac-GKG-NH2", notation="one_letter"), 10.4)
+    imposed = parse_sequence("Ac-GKG-NH2", notation="one_letter").with_protonation(
+        2, "lys_protonated"
+    )
     assert assign_protonation(imposed, 10.4).assignments[0].major_form is None
 
 
 def test_imposed_minority_state_is_kept() -> None:
-    peptide = parse_sequence("Ac-GDG-NH2").with_protonation(2, "asp_protonated")
+    peptide = parse_sequence("Ac-GDG-NH2", notation="one_letter").with_protonation(
+        2, "asp_protonated"
+    )
     (assignment,) = assign_protonation(peptide, 7.4).assignments
     assert assignment.state == "asp_protonated"
     assert assignment.imposed
@@ -320,26 +324,30 @@ def test_imposed_minority_state_is_kept() -> None:
 
 
 def test_state_of_another_group_is_refused() -> None:
-    peptide = parse_sequence("Ac-GDG-NH2").with_protonation(2, "his_delta")
+    peptide = parse_sequence("Ac-GDG-NH2", notation="one_letter").with_protonation(2, "his_delta")
     with pytest.raises(ChemistryError, match="his_delta"):
         assign_protonation(peptide, 7.4)
 
 
 def test_state_on_a_non_ionizable_residue_is_refused() -> None:
     """Limite 1 du module 1 : `his_delta` sur une alanine est maintenant refusé."""
-    peptide = parse_sequence("Ac-GAG-NH2").with_protonation(2, "his_delta")
+    peptide = parse_sequence("Ac-GAG-NH2", notation="one_letter").with_protonation(2, "his_delta")
     with pytest.raises(ChemistryError, match="sans groupe ionisable"):
         assign_protonation(peptide, 7.4)
 
 
 def test_state_on_a_blocked_terminus_is_refused() -> None:
-    peptide = parse_sequence("Ac-GGG-NH2").with_n_terminus_protonation("nterm_protonated")
+    peptide = parse_sequence("Ac-GGG-NH2", notation="one_letter").with_n_terminus_protonation(
+        "nterm_protonated"
+    )
     with pytest.raises(ChemistryError, match="extrémité"):
         assign_protonation(peptide, 7.4)
 
 
 def test_disulfide_cysteines_are_not_ionizable() -> None:
-    peptide = parse_sequence("Ac-CGC-NH2").with_link(Link(LinkKind.DISULFIDE, 1, 3))
+    peptide = parse_sequence("Ac-CGC-NH2", notation="one_letter").with_link(
+        Link(LinkKind.DISULFIDE, 1, 3)
+    )
     result = assign_protonation(peptide, 10.0)
     assert result.assignments == ()
     assert result.net_charge == 0
@@ -347,7 +355,7 @@ def test_disulfide_cysteines_are_not_ionizable() -> None:
 
 def test_state_on_a_bridged_cysteine_is_refused() -> None:
     peptide = (
-        parse_sequence("Ac-CGC-NH2")
+        parse_sequence("Ac-CGC-NH2", notation="one_letter")
         .with_link(Link(LinkKind.DISULFIDE, 1, 3))
         .with_protonation(1, "cys_protonated")
     )
@@ -357,25 +365,31 @@ def test_state_on_a_bridged_cysteine_is_refused() -> None:
 
 def test_arginine_is_refused_while_its_pka_is_missing() -> None:
     with pytest.raises(ReferenceDataError, match="arg_side_chain"):
-        assign_protonation(parse_sequence("Ac-RGDS-NH2"), 7.4)
+        assign_protonation(parse_sequence("Ac-RGDS-NH2", notation="one_letter"), 7.4)
     with pytest.raises(ReferenceDataError):
-        theoretical_net_charge(parse_sequence("Ac-RGDS-NH2"), 7.4)
+        theoretical_net_charge(parse_sequence("Ac-RGDS-NH2", notation="one_letter"), 7.4)
 
 
 def test_unclassified_residue_is_refused() -> None:
-    peptide = parse_sequence("Ac-GGG-NH2").mutate(2, Residue("AIB", standard=False))
+    peptide = parse_sequence("Ac-GGG-NH2", notation="one_letter").mutate(
+        2, Residue("AIB", standard=False)
+    )
     with pytest.raises(ReferenceDataError, match="AIB"):
         assign_protonation(peptide, 7.4)
 
 
 def test_cyclic_peptide_is_refused() -> None:
-    peptide = parse_sequence("H-GKG-OH").with_link(Link(LinkKind.HEAD_TO_TAIL, 1, 3))
+    peptide = parse_sequence("H-GKG-OH", notation="one_letter").with_link(
+        Link(LinkKind.HEAD_TO_TAIL, 1, 3)
+    )
     with pytest.raises(UnsupportedFeatureError, match="cyclisation"):
         assign_protonation(peptide, 7.4)
 
 
 def test_modified_peptide_is_refused() -> None:
-    peptide = parse_sequence("Ac-GSG-NH2").with_modification(Modification("phosphorylation", 2))
+    peptide = parse_sequence("Ac-GSG-NH2", notation="one_letter").with_modification(
+        Modification("phosphorylation", 2)
+    )
     with pytest.raises(UnsupportedFeatureError, match="phosphorylation"):
         assign_protonation(peptide, 7.4)
 
@@ -384,7 +398,7 @@ def test_modified_peptide_is_refused() -> None:
 
 
 def test_input_peptide_is_unchanged() -> None:
-    peptide = parse_sequence("H-KDG-OH")
+    peptide = parse_sequence("H-KDG-OH", notation="one_letter")
     before = copy.deepcopy(peptide)
     result = assign_protonation(peptide, 7.4)
     assert peptide == before
@@ -392,40 +406,42 @@ def test_input_peptide_is_unchanged() -> None:
 
 
 def test_assignments_follow_the_chain_order() -> None:
-    result = assign_protonation(parse_sequence("H-KDG-OH"), 7.4)
+    result = assign_protonation(parse_sequence("H-KDG-OH", notation="one_letter"), 7.4)
     assert [a.site for a in result.assignments] == ["N", "1", "2", "C"]
     assert [a.position for a in result.assignments] == [None, 1, 2, None]
 
 
 def test_assignment_records_pka_and_source() -> None:
-    (assignment,) = assign_protonation(parse_sequence("Ac-GKG-NH2"), 7.4).assignments
+    (assignment,) = assign_protonation(
+        parse_sequence("Ac-GKG-NH2", notation="one_letter"), 7.4
+    ).assignments
     assert assignment.pka == 10.4
     assert assignment.pka_source == "grimsley2009_table1"
     assert assignment.group == "lys_side_chain"
 
 
 def test_result_names_its_data_set() -> None:
-    result = assign_protonation(parse_sequence("Ac-GKG-NH2"), 7.4)
+    result = assign_protonation(parse_sequence("Ac-GKG-NH2", notation="one_letter"), 7.4)
     assert result.data_source == "ionizable_groups.yaml v1 (pace_alanine_pentapeptides_v1)"
     assert result.near_pka_window == 1.0
 
 
 def test_theoretical_charge_ignores_imposed_states() -> None:
-    plain = parse_sequence("Ac-GDG-NH2")
+    plain = parse_sequence("Ac-GDG-NH2", notation="one_letter")
     imposed = plain.with_protonation(2, "asp_protonated")
     assert theoretical_net_charge(plain, 7.4) == theoretical_net_charge(imposed, 7.4)
 
 
 def test_protonated_peptide_can_be_reassigned_identically() -> None:
     """Relancer l'étape sur sa propre sortie ne change rien (états vus comme imposés)."""
-    first = assign_protonation(parse_sequence("H-KDG-OH"), 7.4)
+    first = assign_protonation(parse_sequence("H-KDG-OH", notation="one_letter"), 7.4)
     second = assign_protonation(first.peptide, 7.4)
     assert second.peptide == first.peptide
     assert second.net_charge == first.net_charge
 
 
 def test_terminus_protonation_is_part_of_identity() -> None:
-    peptide = parse_sequence("H-GGG-OH")
+    peptide = parse_sequence("H-GGG-OH", notation="one_letter")
     assert peptide.with_n_terminus_protonation("nterm_protonated") != peptide
     assert isinstance(peptide.with_c_terminus_protonation(None), Peptide)
 
@@ -433,3 +449,12 @@ def test_terminus_protonation_is_part_of_identity() -> None:
 def test_terminus_protonation_key_must_be_neutral() -> None:
     with pytest.raises(PeptideModelError):
         Terminus("free_amine", "amine libre", protonation="NH3+")
+
+
+def test_protonated_terminus_is_not_written_as_a_sequence() -> None:
+    """Une séquence écrite ne porte pas d'état de protonation : refus explicite."""
+    from pepforge.io.sequence import format_sequence
+
+    result = assign_protonation(parse_sequence("H-GGG-OH", notation="one_letter"), 7.4)
+    with pytest.raises(UnsupportedFeatureError, match="extrémité N"):
+        format_sequence(result.peptide, "one_letter")

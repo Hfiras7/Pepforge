@@ -79,6 +79,7 @@ Choisir l'état de chaque groupe ionisable au pH de l'étude, calculer la charge
 | `__init__.py` de `core`, `residues`, `checks`, `pipeline` | exports |
 | `tests/test_protonation.py`, `tests/test_protonation_stage.py` | créés, 116 tests |
 | `tests/reference/charges.yaml` | créé : 9 peptides de référence et 3 refus, avec le raisonnement |
+| `src/pepforge/io/sequence.py` | après réintégration du module 1 : `format_sequence` refuse aussi un peptide dont une extrémité porte un état de protonation, avec un message clair (le refus existait déjà, mais par un message de relecture trompeur) |
 | `tests/contracts.py`, `tests/test_interfaces.py` | contrat d'étape avec configuration facultative ; contrat de `ProtonationStage` |
 | `docs/ARCHITECTURE.md` | sections 4, 5.1, 5.2, 5.4 et 6.4 |
 | `docs/PLAN-CONSTRUCTION.md` | étape 2 : statut, prérequis, critères |
@@ -96,6 +97,7 @@ Choisir l'état de chaque groupe ionisable au pH de l'étude, calculer la charge
 | Vérification | Résultat |
 |---|---|
 | `pytest` | **344 réussis** : 224 d'avant l'étape, et 120 ajoutés (116 dans les deux nouveaux fichiers, 1 contrat d'étape, 3 contrôles de dépendances pour les nouveaux fichiers source) |
+| Après réintégration de la revue du module 1 (commit `d8ef025` : mode de lecture déclaré, conversion entre les codes) | **454 réussis** : 333 de la branche de base, et 121 ajoutés (un test de plus : une extrémité protonée n'est pas écrite en séquence) ; 14 défauts sur 14 toujours détectés |
 | `ruff check`, `ruff format --check`, `mypy --strict` | propres |
 | Anciens fichiers de tests sur le nouveau code | les fichiers de tests **dans leur version d'avant l'étape** réussissent sur le nouveau code (194 réussis, 1 ignoré hors du dépôt, le test d'architecture, qui lui est inchangé et passe dans le dépôt) |
 | Défauts injectés volontairement, un à la fois | **14 sur 14 détectés** par le test désigné |

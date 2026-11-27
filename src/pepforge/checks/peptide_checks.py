@@ -6,7 +6,6 @@ from typing import assert_never
 
 from pepforge.checks.base import Check, CheckResult, Status
 from pepforge.core.peptide import (
-    AMBIGUOUS_READING,
     C_TERMINUS_DEFAULTED,
     N_TERMINUS_DEFAULTED,
     Link,
@@ -60,23 +59,6 @@ def _termini_declared(peptide: Peptide) -> CheckResult:
 
 _LINKS_ITEM = "structure.links_and_modifications"
 """Item de la checklist 04 sur les liaisons hors squelette et les modifications."""
-
-
-def _unambiguous_reading(peptide: Peptide) -> CheckResult:
-    note = peptide.metadata.get(AMBIGUOUS_READING)
-    if note is not None:
-        return CheckResult(
-            "peptide.unambiguous_reading",
-            Status.WARN,
-            f"Lecture à confirmer : {note}",
-            "structure.residue_count",
-        )
-    return CheckResult(
-        "peptide.unambiguous_reading",
-        Status.PASS,
-        "La séquence saisie n'admet qu'une lecture",
-        "structure.residue_count",
-    )
 
 
 def _disulfide_problems(peptide: Peptide, link: Link) -> list[str]:
@@ -170,12 +152,6 @@ PEPTIDE_CHECKS: tuple[Check[Peptide], ...] = (
         "Les deux extrémités sont déclarées explicitement",
         _termini_declared,
         "structure.termini",
-    ),
-    Check(
-        "peptide.unambiguous_reading",
-        "La séquence saisie n'admet qu'une lecture",
-        _unambiguous_reading,
-        "structure.residue_count",
     ),
     Check(
         "peptide.links_chemistry",

@@ -98,7 +98,8 @@ pip install -e ".[dev]"
 pytest                 # tests
 ruff check . && ruff format --check .   # style
 mypy                   # typage
-pepforge parse "Ac-RGDS-NH2"   # essai de la CLI
+pepforge parse --notation 1 "Ac-RGDS-NH2"     # essai de la CLI (1 = code à une lettre)
+pepforge convert --notation 1 "Ac-RGDS-NH2"   # → Ac-Arg-Gly-Asp-Ser-NH2 (3 = trois lettres)
 ```
 
 ## Méthode de travail imposée (Firas, 27 novembre 2026)

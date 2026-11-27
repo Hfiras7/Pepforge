@@ -150,7 +150,7 @@ def test_results_carry_both_sources_for_the_report() -> None:
 
 
 def test_expected_from_peptide_fills_what_is_deducible() -> None:
-    inventory = expected_from_peptide(parse_sequence("Ac-RGDS-NH2"))
+    inventory = expected_from_peptide(parse_sequence("Ac-RGDS-NH2", notation="one_letter"))
     assert inventory.residue_sequence == ("ARG", "GLY", "ASP", "SER")
     assert inventory.n_terminus == "acetyl"
     assert inventory.c_terminus == "amide"
@@ -164,7 +164,9 @@ def test_expected_from_peptide_fills_what_is_deducible() -> None:
 
 def test_incomplete_expected_inventory_blocks_rather_than_passes() -> None:
     """Un inventaire attendu encore incomplet ne laisse rien passer en silence."""
-    results = compare(expected_from_peptide(parse_sequence("Ac-RGDS-NH2")), _complete())
+    results = compare(
+        expected_from_peptide(parse_sequence("Ac-RGDS-NH2", notation="one_letter")), _complete()
+    )
     failed = {r.check_id for r in failures(results)}
     assert failed == {
         "inventory.atom_counts",
@@ -177,7 +179,7 @@ def test_incomplete_expected_inventory_blocks_rather_than_passes() -> None:
 
 
 def test_expected_disulfides_come_from_the_declared_links() -> None:
-    peptide = parse_sequence("Ac-CCGCC-NH2")
+    peptide = parse_sequence("Ac-CCGCC-NH2", notation="one_letter")
     peptide = peptide.with_link(Link(LinkKind.DISULFIDE, 5, 2)).with_link(
         Link(LinkKind.DISULFIDE, 1, 4)
     )
@@ -187,7 +189,9 @@ def test_expected_disulfides_come_from_the_declared_links() -> None:
 
 
 def test_a_declared_disulfide_missing_from_the_file_is_caught() -> None:
-    peptide = parse_sequence("Ac-CRGDC-NH2").with_link(Link(LinkKind.DISULFIDE, 1, 5))
+    peptide = parse_sequence("Ac-CRGDC-NH2", notation="one_letter").with_link(
+        Link(LinkKind.DISULFIDE, 1, 5)
+    )
     expected = expected_from_peptide(peptide)
     produced = dataclasses.replace(expected, disulfides=(), source="psf relu")
     failed = {r.check_id for r in failures(compare(expected, produced))}
@@ -195,14 +199,16 @@ def test_a_declared_disulfide_missing_from_the_file_is_caught() -> None:
 
 
 def test_head_to_tail_is_refused_rather_than_inventoried_without_it() -> None:
-    cyclic = parse_sequence("H-RGDS-OH").with_link(Link(LinkKind.HEAD_TO_TAIL, 1, 4))
+    cyclic = parse_sequence("H-RGDS-OH", notation="one_letter").with_link(
+        Link(LinkKind.HEAD_TO_TAIL, 1, 4)
+    )
     with pytest.raises(UnsupportedFeatureError, match="cyclisation tête-queue"):
         expected_from_peptide(cyclic)
 
 
 def test_modification_is_refused_rather_than_inventoried_without_it() -> None:
     peptide = (
-        parse_sequence("H-RGDSK-OH")
+        parse_sequence("H-RGDSK-OH", notation="one_letter")
         .with_modification(Modification("phosphorylation", 4))
         .with_modification(Modification("dota_conjugation", 5))
     )

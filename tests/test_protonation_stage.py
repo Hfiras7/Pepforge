@@ -14,6 +14,7 @@ from pepforge.checks import PROTONATION_CHECKS, Status, run_checks
 from pepforge.config import PrepConfig
 from pepforge.core import GroupAssignment, IonizationForm, Link, LinkKind, ProtonationResult
 from pepforge.exceptions import ConfigurationError, QualityCheckError
+from pepforge.io import SequenceNotation
 from pepforge.io.sequence import parse_sequence
 from pepforge.pipeline import ProtonationStage, SequenceInputStage, StageContext, run_stage
 from pepforge.residues import assign_protonation
@@ -34,13 +35,15 @@ def _results(result: ProtonationResult) -> dict[str, Any]:
 
 def test_missing_ph_raises_configuration_error(tmp_path: Path) -> None:
     with pytest.raises(ConfigurationError, match="pH"):
-        ProtonationStage().run(parse_sequence("H-GGG-OH"), _context(tmp_path))
+        ProtonationStage().run(
+            parse_sequence("H-GGG-OH", notation="one_letter"), _context(tmp_path)
+        )
 
 
 def test_sequence_then_protonation_through_run_stage(tmp_path: Path) -> None:
     """Intégration : `SequenceInputStage` puis `ProtonationStage`, contrôles compris."""
     context = _context(tmp_path, ph=7.4)
-    peptide = run_stage(SequenceInputStage(), "Ac-KDEY-NH2", context)
+    peptide = run_stage(SequenceInputStage(SequenceNotation.ONE_LETTER), "Ac-KDEY-NH2", context)
     result = run_stage(ProtonationStage(), peptide, context, PROTONATION_CHECKS)
     assert result.net_charge == -1
     statuses = {r.check_id: r.status for r in context.check_results["normalize.protonation"]}
@@ -49,7 +52,7 @@ def test_sequence_then_protonation_through_run_stage(tmp_path: Path) -> None:
 
 def test_each_choice_is_journaled_with_its_source(tmp_path: Path) -> None:
     context = _context(tmp_path, ph=7.4)
-    ProtonationStage().run(parse_sequence("H-KG-OH"), context)
+    ProtonationStage().run(parse_sequence("H-KG-OH", notation="one_letter"), context)
     entries = [e for e in context.journal.entries if e.action == "assign_protonation"]
     assert [e.parameters["site"] for e in entries] == ["N", "1", "C"]
     for entry in entries:
@@ -62,7 +65,7 @@ def test_each_choice_is_journaled_with_its_source(tmp_path: Path) -> None:
 
 def test_configured_states_are_imposed_and_journaled(tmp_path: Path) -> None:
     context = _context(tmp_path, ph=7.4, protonation={"2": "his_epsilon"})
-    result = ProtonationStage().run(parse_sequence("Ac-GHG-NH2"), context)
+    result = ProtonationStage().run(parse_sequence("Ac-GHG-NH2", notation="one_letter"), context)
     assert result.peptide.residue_at(2).protonation == "his_epsilon"
     assert result.assignments[0].imposed
     actions = [e.action for e in context.journal.entries]
@@ -71,7 +74,7 @@ def test_configured_states_are_imposed_and_journaled(tmp_path: Path) -> None:
 
 def test_configured_terminus_state(tmp_path: Path) -> None:
     context = _context(tmp_path, ph=7.4, protonation={"N": "nterm_deprotonated"})
-    result = ProtonationStage().run(parse_sequence("H-GGG-OH"), context)
+    result = ProtonationStage().run(parse_sequence("H-GGG-OH", notation="one_letter"), context)
     assert result.peptide.n_terminus.protonation == "nterm_deprotonated"
     assert result.net_charge == -1
 
@@ -80,7 +83,7 @@ def test_configured_terminus_state(tmp_path: Path) -> None:
 def test_invalid_configured_site_is_refused(tmp_path: Path, site: str) -> None:
     context = _context(tmp_path, ph=7.4, protonation={site: "his_epsilon"})
     with pytest.raises(ConfigurationError, match="site"):
-        ProtonationStage().run(parse_sequence("Ac-GHG-NH2"), context)
+        ProtonationStage().run(parse_sequence("Ac-GHG-NH2", notation="one_letter"), context)
 
 
 def test_protonation_survives_a_config_round_trip(tmp_path: Path) -> None:
@@ -102,7 +105,12 @@ def test_protonation_must_be_a_mapping() -> None:
 
 def test_near_pka_is_a_warning_not_a_failure(tmp_path: Path) -> None:
     context = _context(tmp_path, ph=7.4)
-    run_stage(ProtonationStage(), parse_sequence("H-GGG-OH"), context, PROTONATION_CHECKS)
+    run_stage(
+        ProtonationStage(),
+        parse_sequence("H-GGG-OH", notation="one_letter"),
+        context,
+        PROTONATION_CHECKS,
+    )
     (entry,) = [e for e in context.journal.entries if e.action == "stage_completed"]
     assert entry.parameters["warnings"] == ["protonation.near_pka"]
 
@@ -115,58 +123,62 @@ def _assignment(result: ProtonationResult, index: int = 0) -> GroupAssignment:
 
 
 def test_checks_pass_on_a_clean_result() -> None:
-    result = assign_protonation(parse_sequence("Ac-KDEY-NH2"), 7.4)
+    result = assign_protonation(parse_sequence("Ac-KDEY-NH2", notation="one_letter"), 7.4)
     assert {r.status for r in _results(result).values()} == {Status.PASS}
 
 
 def test_state_missing_on_the_peptide_fails() -> None:
-    result = assign_protonation(parse_sequence("Ac-GKG-NH2"), 7.4)
+    result = assign_protonation(parse_sequence("Ac-GKG-NH2", notation="one_letter"), 7.4)
     broken = dataclasses.replace(result, peptide=result.peptide.with_protonation(2, None))
     assert _results(broken)["protonation.states_recorded"].status is Status.FAIL
 
 
 def test_stray_state_on_the_peptide_fails() -> None:
-    result = assign_protonation(parse_sequence("Ac-GKG-NH2"), 7.4)
+    result = assign_protonation(parse_sequence("Ac-GKG-NH2", notation="one_letter"), 7.4)
     broken = dataclasses.replace(result, peptide=result.peptide.with_protonation(1, "his_delta"))
     assert _results(broken)["protonation.states_recorded"].status is Status.FAIL
 
 
 def test_wrong_net_charge_fails() -> None:
-    result = assign_protonation(parse_sequence("Ac-GKG-NH2"), 7.4)
+    result = assign_protonation(parse_sequence("Ac-GKG-NH2", notation="one_letter"), 7.4)
     assert _results(dataclasses.replace(result, net_charge=0))["protonation.net_charge"].status is (
         Status.FAIL
     )
 
 
 def test_non_integer_net_charge_fails() -> None:
-    result = assign_protonation(parse_sequence("Ac-GKG-NH2"), 7.4)
+    result = assign_protonation(parse_sequence("Ac-GKG-NH2", notation="one_letter"), 7.4)
     broken = dataclasses.replace(result, net_charge=1.0)
     assert _results(broken)["protonation.net_charge"].status is Status.FAIL
 
 
 def test_unsourced_pka_fails() -> None:
-    result = assign_protonation(parse_sequence("Ac-GKG-NH2"), 7.4)
+    result = assign_protonation(parse_sequence("Ac-GKG-NH2", notation="one_letter"), 7.4)
     bad = dataclasses.replace(_assignment(result), pka_source=" ")
     broken = dataclasses.replace(result, assignments=(bad,))
     assert _results(broken)["protonation.sources"].status is Status.FAIL
 
 
 def test_deduced_minority_state_fails() -> None:
-    result = assign_protonation(parse_sequence("Ac-GKG-NH2"), 7.4)
+    result = assign_protonation(parse_sequence("Ac-GKG-NH2", notation="one_letter"), 7.4)
     bad = dataclasses.replace(_assignment(result), form=IonizationForm.BASE)
     broken = dataclasses.replace(result, assignments=(bad,))
     assert _results(broken)["protonation.deduced_states_follow_ph"].status is Status.FAIL
 
 
 def test_imposed_minority_state_warns() -> None:
-    peptide = parse_sequence("Ac-GDG-NH2").with_protonation(2, "asp_protonated")
+    peptide = parse_sequence("Ac-GDG-NH2", notation="one_letter").with_protonation(
+        2, "asp_protonated"
+    )
     results = _results(assign_protonation(peptide, 7.4))
     assert results["protonation.imposed_minority"].status is Status.WARN
     assert results["protonation.deduced_states_follow_ph"].status is Status.PASS
 
 
 def test_imposed_state_at_pka_warns() -> None:
-    peptide = parse_sequence("Ac-GKG-NH2").with_protonation(2, "lys_protonated")
+    peptide = parse_sequence("Ac-GKG-NH2", notation="one_letter").with_protonation(
+        2, "lys_protonated"
+    )
     results = _results(assign_protonation(peptide, 10.4))
     assert results["protonation.imposed_minority"].status is Status.WARN
     assert results["protonation.near_pka"].status is Status.WARN
@@ -175,7 +187,7 @@ def test_imposed_state_at_pka_warns() -> None:
 @pytest.mark.parametrize(("ph", "status"), [(9.41, Status.WARN), (9.4, Status.PASS)])
 def test_near_pka_window_boundary(ph: float, status: Status) -> None:
     """Écart strictement inférieur à 1 unité : alerte ; écart de 1 : pas d'alerte."""
-    results = _results(assign_protonation(parse_sequence("Ac-GKG-NH2"), ph))
+    results = _results(assign_protonation(parse_sequence("Ac-GKG-NH2", notation="one_letter"), ph))
     assert results["protonation.near_pka"].status is status
 
 
@@ -187,7 +199,10 @@ def test_stage_fails_when_a_check_fails(tmp_path: Path) -> None:
 
     with pytest.raises(QualityCheckError, match=r"protonation\.net_charge"):
         run_stage(
-            _Broken(), parse_sequence("Ac-GKG-NH2"), _context(tmp_path, ph=7.4), PROTONATION_CHECKS
+            _Broken(),
+            parse_sequence("Ac-GKG-NH2", notation="one_letter"),
+            _context(tmp_path, ph=7.4),
+            PROTONATION_CHECKS,
         )
 
 
@@ -206,7 +221,7 @@ def _ids(entries: list[dict[str, Any]]) -> list[str]:
 
 @pytest.mark.parametrize("entry", _reference()["peptides"], ids=_ids(_reference()["peptides"]))
 def test_reference_charges(entry: dict[str, Any], tmp_path: Path) -> None:
-    peptide = parse_sequence(entry["sequence"])
+    peptide = parse_sequence(entry["sequence"], notation="one_letter")
     if "disulfide" in entry:
         peptide = peptide.with_link(Link(LinkKind.DISULFIDE, *entry["disulfide"]))
     context = _context(tmp_path, ph=entry["ph"], protonation=entry.get("imposed", {}))
@@ -225,5 +240,6 @@ def test_reference_refusals(entry: dict[str, Any], tmp_path: Path) -> None:
     error = getattr(exceptions, entry["error"])
     with pytest.raises(error):
         ProtonationStage().run(
-            parse_sequence(entry["sequence"]), _context(tmp_path, ph=entry["ph"])
+            parse_sequence(entry["sequence"], notation="one_letter"),
+            _context(tmp_path, ph=entry["ph"]),
         )

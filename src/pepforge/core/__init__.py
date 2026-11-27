@@ -1,7 +1,6 @@
 """Représentation interne du peptide, indépendante de tout champ de force."""
 
 from pepforge.core.peptide import (
-    AMBIGUOUS_READING,
     C_TERMINUS_DEFAULTED,
     N_TERMINUS_DEFAULTED,
     Link,
@@ -21,7 +20,6 @@ from pepforge.core.protonation import (
 from pepforge.core.structure import Atom, Structure
 
 __all__ = [
-    "AMBIGUOUS_READING",
     "C_TERMINUS_DEFAULTED",
     "C_TERMINUS_SITE",
     "N_TERMINUS_DEFAULTED",
