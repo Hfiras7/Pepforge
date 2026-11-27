@@ -23,6 +23,7 @@
 15. [Calcul quantique : recommandation et interface](#15-calcul-quantique--recommandation-et-interface)
 16. [Faisabilité des calculs sur un poste de bureau](#16-faisabilité-des-calculs-sur-un-poste-de-bureau)
 17. [Politique d'absence d'erreur silencieuse](#17-politique-dabsence-derreur-silencieuse)
+18. [Comment vérifier et valider une sortie](#18-comment-vérifier-et-valider-une-sortie)
 
 ---
 
@@ -998,3 +999,68 @@ Ces trois valeurs sont consignées dans le rapport, avec le matériel et les ver
 - Chaque contrôle du catalogue 17.2 est une fonction pure de `checks`, avec son test `PASS` et son test `FAIL` (règle 7 du projet).
 - `ExternalTool` analyse la sortie et non le seul code de retour : c'est déjà son contrat, la liste de motifs reste à construire.
 - Un échec arrête le pipeline par `QualityCheckError` et produit un **rapport partiel lisible** : savoir où ça s'est arrêté fait partie de l'absence d'erreur silencieuse.
+
+---
+
+## 18. Comment vérifier et valider une sortie
+
+La section 7 décrit comment on teste le **code**. Celle-ci décrit comment on contrôle une **sortie scientifique** : les fichiers d'un pseudopeptide donné. Question posée par Firas le 27 novembre 2026.
+
+D'abord, deux mots qu'il ne faut pas confondre, parce qu'ils coûtent des choses très différentes :
+
+- **Vérifier** : le fichier dit-il ce que je voulais dire ? C'est une question de conformité. Gratuit, automatisable, et c'est ce qui attrape les erreurs silencieuses.
+- **Valider** : le modèle décrit-il correctement la molécule ? C'est une question de pertinence physique. Coûteux, et cela exige une référence extérieure, quantique ou expérimentale.
+
+Un fichier peut être parfaitement vérifié et complètement invalide. C'est le cas le plus dangereux, et c'est précisément celui du résidu aza-β³ paramétré par analogie.
+
+### 18.1 L'échelle, du moins coûteux au plus coûteux
+
+| Niveau | Ce qu'on contrôle | Coût | Ce qu'il attrape |
+|---|---|---|---|
+| 0 | conformité des fichiers | minutes | erreurs silencieuses de construction |
+| 1 | cohérence numérique | minutes | paramètres absurdes, chevauchements |
+| 2 | cohérence structurale | heures | géométrie fausse du résidu modifié |
+| 3 | cohérence énergétique | jours | énergétique de squelette fausse |
+| 4 | accord expérimental | la thèse | le modèle décrit-il le vrai peptide |
+
+Un niveau ne se saute pas : chacun attrape des défauts que le suivant masquerait.
+
+### 18.2 Niveau 0 — conformité des fichiers
+
+À faire pour **chaque** sortie, sans exception. C'est ce que `pepforge.checks.inventory` automatise, et que l'on peut aussi contrôler à la main.
+
+1. **Charge nette** : sommer les charges partielles du `.psf` et comparer à la charge théorique attendue au pH retenu. Dans VMD, la somme pondérée par la charge d'une sélection donne cette valeur directement. Tolérance stricte : un écart de quelques centièmes trahit une redistribution de jonction approximative.
+2. **Nombre d'atomes et de résidus**, comparés à ce qui était voulu, résidu par résidu. Un résidu ignoré par l'outil se voit ici, et nulle part ailleurs.
+3. **Le résidu modifié existe** sous le nom attendu, avec son nombre d'atomes attendu.
+4. **Les liaisons de jonction existent.** Visuellement, dans VMD, une liaison de squelette absente apparaît comme une rupture dans la chaîne. Par script, on vérifie que les deux atomes de jonction figurent bien dans la liste des liaisons l'un de l'autre.
+5. **Les extrémités** produites correspondent à celles demandées.
+6. **Les termes croisés** : la section du `.psf` qui porte les termes CMAP (`NCRTERM`) doit en compter autant qu'il y a de résidus standards attendus. Un terme manquant ne provoque aucune erreur à l'exécution (section 13.3).
+7. **Aucune coordonnée aberrante** : pas d'atome à l'origine, pas deux atomes au même endroit. C'est la trace d'une coordonnée devinée par l'outil.
+
+### 18.3 Niveau 1 — cohérence numérique
+
+8. **Charger le système dans NAMD pour zéro pas** et lire les énergies initiales. C'est le test le plus rentable du lot : un paramètre lié absent fait échouer NAMD bruyamment, et une énergie absurde ou non finie saute aux yeux. Quelques secondes.
+9. **Minimisation courte** : l'énergie doit décroître régulièrement puis se stabiliser. Une divergence, une stagnation immédiate ou un atome qui part à l'infini signalent un paramètre faux ou un chevauchement.
+10. **Comparer la géométrie avant et après minimisation.** Si le déplacement est concentré sur le résidu modifié, ses paramètres sont en cause ; si tout bouge, c'est la structure de départ.
+
+### 18.4 Niveau 2 — cohérence structurale
+
+11. **Dynamique courte**, puis contrôle que la chimie du résidu modifié tient : longueurs de liaison stables, liaison `N–N` qui ne s'allonge pas anormalement, amide `ω` restant proche de la planéité, chiralité des autres résidus préservée.
+12. **Inspection visuelle** du voisinage modifié dans VMD ou PyMOL. À ne pas négliger : l'œil repère des choses qu'aucun contrôle ne cherche.
+13. **Comparer la géométrie du résidu aza** obtenue en champ de force à la géométrie **optimisée en quantique** du fragment coiffé. C'est la première confrontation à une référence extérieure.
+
+### 18.5 Niveau 3 — cohérence énergétique
+
+14. **Profils de torsion** champ de force contre quantique sur les torsions critiques, dont `N–N` (étapes 11D et 13.4).
+15. **Répliques indépendantes** : deux simulations aux vitesses initiales différentes doivent converger vers les mêmes populations conformationnelles. Si elles divergent, l'échantillonnage est insuffisant, et aucune conclusion n'est permise — ce n'est pas nécessairement une erreur de paramètres, mais cela interdit de conclure.
+16. **Peptide témoin, et c'est le contrôle le plus rentable de toute la liste.** Simuler le peptide **non modifié**, en CHARMM36m pur, dans exactement les mêmes conditions. S'il se comporte conformément à ce qui est publié pour lui et que la version aza part dans tous les sens, le problème est dans les paramètres dérivés, pas dans le protocole. Et inversement : si le témoin se comporte déjà mal, inutile d'accuser le résidu modifié. Ce témoin coûte une simulation et sépare proprement les deux sources d'erreur.
+
+### 18.6 Niveau 4 — accord expérimental
+
+17. **Confrontation aux données RMN** du peptide, que le projet de thèse prévoit de produire (CARA, ARIA) : distances issues des NOE, couplages, déplacements chimiques secondaires. Pour un peptide, c'est la validation décisive, et elle sera disponible en interne.
+18. Pour le complexe, confrontation du comportement simulé aux mesures d'affinité et de spécificité.
+
+### 18.7 Deux règles de méthode
+
+- **Les seuils se fixent avant de regarder les résultats**, et s'écrivent. Un seuil choisi après coup transforme la validation en justification.
+- **Les valeurs de référence vivent dans `tests/reference/`**, avec leur provenance et le matériel utilisé, afin qu'une sortie reste comparable à une autre et qu'un contrôle puisse être rejoué des mois plus tard.
