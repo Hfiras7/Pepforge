@@ -902,3 +902,25 @@ Les chiffres de 16.2 sont des ordres de grandeur, pas des mesures. Première tâ
 - l'investissement matériel utile est un GPU, pas un processeur à grand nombre de cœurs ;
 - les durées de production et le nombre de répliques (`ProtocolSpec`, étape 9 du plan) doivent être choisis en connaissance de ce débit, et non copiés d'articles utilisant des calculateurs ;
 - le rapport consigne le matériel utilisé, pour que les durées de simulation soient interprétables.
+
+### 16.6 Produire les fichiers ne coûte rien ; les défendre coûte
+
+Point à ne pas confondre, parce que la confusion est facile : **les options A, B et C de la section 13.3 ne concernent que la correction CMAP, pas la production des fichiers.** Aucune n'est un prérequis pour obtenir un `.str`, un `.prm`, un `.psf` et un `.pdb` de pseudopeptide.
+
+| Travail | Ce qu'il demande | Coût sur un poste de bureau |
+|---|---|---|
+| `.str` du fragment aza par CGenFF | CGenFF attribue les types et les charges **par analogie**, avec des pénalités. Ce n'est pas un calcul quantique | secondes à une minute |
+| Transformation en résidu de chaîne : `RESI`, patches `PRES`, charges de jonction entières | travail de **développement** (étape 11C), pas de calcul | aucun calcul |
+| `.prm` | CHARMM36m fourni, plus les ajouts dérivés | aucun calcul |
+| `.psf` et `.pdb` par `psfgen` | assemblage du système | secondes |
+| **Valider** que ces fichiers donnent la bonne énergétique de squelette | balayages 1D, options A puis B | heures à jours par résidu |
+| Option C, grille CMAP | voir 16.2 et 16.3 | 1 à 2 jours pour un résidu modèle, au niveau modeste |
+
+Autrement dit : produire les fichiers est immédiat, et c'est précisément le danger. **Un `.psf` incorrect s'assemble et se simule sans rien signaler** ; la trajectoire aura l'air normale alors que les préférences conformationnelles du squelette modifié seront fausses. C'est pour cela que la validation existe, et que les contrôles de la section 13 énumèrent les termes depuis le `.psf` réellement produit : un paramètre manquant doit lever une erreur, jamais être omis en silence.
+
+Ordre de travail recommandé, qui va du moins coûteux au plus coûteux :
+
+1. produire les fichiers (minutes) ;
+2. faire passer les contrôles d'intégration de la section 13.1 (aucun calcul) ;
+3. lancer les balayages 1D et mesurer l'écart (heures à jours) ;
+4. **au vu des chiffres seulement**, décider si l'option B suffit ou si l'option C se justifie.
