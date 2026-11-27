@@ -135,7 +135,7 @@ Commandes : `ruff check .`, `ruff format --check .`, `mypy` (strict, sous Python
 | Tests existants (modules 1 et 2), fichiers inchangés | 460 sur 460 réussis sur le nouveau code |
 | Nouveaux tests | 107 : 55 lecture et écriture, 26 téléchargement, 22 inventaire et correspondance, 3 commande `inspect`, 1 confinement de gemmi |
 | **Total** | **567 réussis, 0 échec** |
-| CI Linux (3.11, 3.12, 3.13) et Windows (3.11, 3.13) | voir la PR |
+| CI Linux (3.11, 3.12, 3.13) et Windows (3.11, 3.13) | **5 jobs sur 5 verts** sur le commit `56a8ed7` (PR #3, 27 novembre 2026), lint, typage et tests compris |
 
 Tests sans Internet : fichiers écrits à la main, et un **serveur HTTP local** (127.0.0.1, port libre) qui simule chaque réponse à refuser (404, 206, HTML, trop gros annoncé, trop gros non annoncé, tronqué, trop lent, vide, redirections). La règle « jamais de `https` vers `http` » est vérifiée sur le gestionnaire de redirections, faute de serveur TLS de test.
 
