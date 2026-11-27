@@ -15,6 +15,57 @@
 - **Étapes bloquées par une décision** : elles sont marquées 🔒. On peut avancer sur les étapes suivantes qui n'en dépendent pas.
 - **Tests** : quatre niveaux (voir [ARCHITECTURE.md, section 7](ARCHITECTURE.md#7-vérification--revue-contrôles-et-tests)). Abréviations ci-dessous : **U** unitaire, **K** contrat, **I** intégration, **V** validation scientifique.
 
+## Méthode de travail imposée (Firas, 27 novembre 2026)
+
+Quatre phases, dans cet ordre, et **une progression module par module**.
+
+1. **Architecture et conception** — objectifs, architecture globale, modules et responsabilités, interfaces et formats d'échange, dépendances, organisation des fichiers, et documentation des choix architecturaux **et scientifiques**. *Livré : [ARCHITECTURE.md](ARCHITECTURE.md) et ce plan.*
+2. **Développement** — les modules un par un, dans l'ordre du plan, en respectant les responsabilités et les interfaces déjà définies. **Pas deux modules à la fois sans nécessité, et pas de module suivant avant que le précédent soit terminé.**
+3. **Tests et validation scientifique** — pour chaque module : tests unitaires, interactions avec les autres composants quand c'est applicable, conformité aux spécifications, validation scientifique propre à sa fonction, comparaison aux références et aux logiciels de référence quand c'est pertinent, et documentation des résultats, des limites et des anomalies.
+4. **DevOps et distribution** — intégration et tests continus, environnement et dépendances, gestion des versions, documentation technique et utilisateur, distribution des versions stables.
+
+> **Un module n'est jamais validé au motif que son code s'exécute sans erreur.** C'est la même exigence que la politique d'absence d'erreur silencieuse ([ARCHITECTURE.md, section 17](ARCHITECTURE.md#17-politique-dabsence-derreur-silencieuse)) : un code de retour nul ne prouve rien.
+
+### Le cycle obligatoire de chaque module
+
+1. Présenter l'objectif et les responsabilités du module.
+2. Définir sa conception technique.
+3. Développer son code.
+4. Exécuter les tests.
+5. Effectuer sa validation scientifique, si elle s'applique.
+6. Documenter les résultats.
+7. Déclarer explicitement le statut du module.
+
+Puis **s'arrêter et attendre l'instruction de Firas.** Aucun enchaînement automatique vers le module suivant : Firas contrôle chaque étape, examine les résultats et confirme la poursuite.
+
+### Le bilan de fin de module
+
+À produire à la fin de chaque module, dans cet ordre :
+
+- nom et numéro du module ;
+- fonctionnalités développées ;
+- fichiers créés ou modifiés ;
+- tests effectués et résultats obtenus ;
+- validation scientifique et références utilisées ;
+- problèmes connus et limitations ;
+- **statut final** : `TERMINÉ ET VALIDÉ`, `TERMINÉ MAIS NON VALIDÉ` ou `INCOMPLET`.
+
+### Règles générales
+
+- Ne pas anticiper le développement des modules futurs.
+- Ne pas modifier l'architecture globale sans **justifier et documenter** la modification.
+- Ne jamais inventer de résultat de test ou de validation.
+- Ne masquer ni erreur ni limitation.
+- Préserver la compatibilité entre modules.
+- Git et commits structurés, pour la traçabilité.
+- Privilégier la fiabilité scientifique et la reproductibilité plutôt que la rapidité.
+
+### Un écart assumé sur la phase 4
+
+La phase 4 place l'intégration continue après le développement. Elle est **déjà en place** depuis l'étape 0, et tourne sur Linux et Windows ([ARCHITECTURE.md, section 19.5](ARCHITECTURE.md#195-comment-on-sassure-que-cest-vrai)). La garder en avance est délibéré : sans elle, chaque module serait déclaré terminé sans preuve que rien n'a cassé ailleurs, ce qui contredirait la règle de fiabilité de la phase 3. Ce qui reste bien en phase 4 : l'empaquetage, la gestion des versions, la documentation utilisateur et la distribution (étape 15).
+
+---
+
 > **Fil central, ajouté le 26 novembre 2026.** La fonction centrale de PepForge est la substitution d'un acide aminé par un résidu **aza-β³**, pour n'importe quel acide aminé et n'importe quelle position, suivie de la génération des fichiers de dynamique moléculaire (voir [ARCHITECTURE.md, section 10](ARCHITECTURE.md#10-cas-dusage-central--substituer-un-acide-aminé-par-un-résidu-aza-β³)). Les étapes 11A à 11E ci-dessous portent ce fil. Elles ne sont plus une extension tardive : dès que l'étape 4 est passée, le fil aza-β³ avance **en parallèle** des étapes 5 à 10, parce que la dérivation des paramètres est l'étape la plus longue et la plus risquée du projet. L'étape 10 (bout en bout) doit être démontrée sur un **pseudopeptide aza-β³**, et pas seulement sur un peptide standard.
 
 ```mermaid

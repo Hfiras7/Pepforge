@@ -101,6 +101,19 @@ mypy                   # typage
 pepforge parse "Ac-RGDS-NH2"   # essai de la CLI
 ```
 
+## Méthode de travail imposée (Firas, 27 novembre 2026)
+
+Quatre phases dans l'ordre — architecture, développement, tests et validation scientifique, DevOps et distribution — et surtout une **progression module par module**, détaillée dans [docs/PLAN-CONSTRUCTION.md](docs/PLAN-CONSTRUCTION.md), section « Méthode de travail imposée ».
+
+Règles contraignantes :
+
+1. **Un module à la fois.** Pas deux en parallèle sans nécessité, pas de module suivant avant que le précédent soit terminé.
+2. **Cycle de sept étapes par module** : objectif et responsabilités, conception technique, code, tests, validation scientifique si applicable, documentation des résultats, déclaration du statut.
+3. **Bilan de fin de module** : nom et numéro, fonctionnalités, fichiers touchés, tests et résultats, validation scientifique et références, problèmes et limitations, puis statut final `TERMINÉ ET VALIDÉ`, `TERMINÉ MAIS NON VALIDÉ` ou `INCOMPLET`.
+4. **S'arrêter après le bilan et attendre l'instruction de Firas.** Jamais d'enchaînement automatique vers le module suivant.
+5. **Un module n'est jamais validé au motif que son code s'exécute sans erreur.**
+6. Ne pas anticiper les modules futurs ; ne pas modifier l'architecture sans justifier et documenter ; ne jamais inventer un résultat de test ou de validation ; ne masquer aucune limitation.
+
 ## Format de réponse pour une tâche de développement
 
 1. Reformuler brièvement la tâche et nommer les modules touchés.
