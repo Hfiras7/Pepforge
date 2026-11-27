@@ -942,6 +942,13 @@ Un code de retour nul ne prouve rien, et un avertissement affiché dans un flot 
 
 Cette méthode ne dépend ni de la version de `psfgen`, ni de la façon dont il formule ses avertissements. C'est ce qui la rend robuste.
 
+**Ce mécanisme est implémenté** dans [`pepforge.checks.inventory`](../src/pepforge/checks/inventory.py), avec ses tests dans [`tests/test_inventory.py`](../tests/test_inventory.py) : un test par piège du catalogue 17.2. Deux décisions de conception y portent toute la valeur :
+
+1. **Un champ non vérifiable est un échec, jamais un succès.** Si l'une des deux faces ignore une valeur, le résultat est `FAIL` avec la mention « non vérifiable ». « Je n'ai pas pu contrôler » ne doit jamais se lire comme « tout va bien » : c'est exactement par là qu'une erreur silencieuse s'installe.
+2. **La comparaison ne s'arrête pas au premier écart** : un résultat par champ, pour qu'un rapport montre tous les problèmes d'un coup.
+
+L'extraction de l'inventaire d'un fichier produit est propre à chaque moteur et vit dans `engines` ; la comparaison, elle, est pure, et se teste donc sans aucun outil externe installé.
+
 ### 17.2 Catalogue des défaillances silencieuses
 
 Ce catalogue est à compléter au fil des outils réellement utilisés. Chaque ligne devient un contrôle nommé dans `checks`, avec son test `PASS` et son test `FAIL`.

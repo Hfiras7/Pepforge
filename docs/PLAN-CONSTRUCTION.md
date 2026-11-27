@@ -42,7 +42,7 @@ flowchart LR
 
 **Objectif** : fixer les modules, leurs contrats et les règles de vérification avant d'écrire les fonctionnalités.
 
-**Livrables** : `docs/ARCHITECTURE.md`, ce plan, `core.Structure`, module `checks`, module `build` (interfaces), `EngineWriter` revu (`write_topology`, `solvate`, `EngineFiles`), `ParameterSet` enrichi, `pipeline.Stage` / `run_stage`, `ExternalTool` déplacé dans `tools`, `SolvationSpec`, `tests/test_architecture.py`, `tests/contracts.py`, modèle de PR.
+**Livrables** : `docs/ARCHITECTURE.md`, ce plan, `core.Structure`, module `checks` **dont la comparaison d'inventaires** (`checks.inventory`, mécanisme central de l'absence d'erreur silencieuse, section 17), module `build` (interfaces), `EngineWriter` revu (`write_topology`, `solvate`, `EngineFiles`), `ParameterSet` enrichi, `pipeline.Stage` / `run_stage`, `ExternalTool` déplacé dans `tools`, `SolvationSpec`, `tests/test_architecture.py`, `tests/contracts.py`, modèle de PR.
 
 **Critères d'acceptation**
 
@@ -51,8 +51,9 @@ flowchart LR
 - [x] Chaque interface a une fonction de contrat réutilisable.
 - [x] Une étape réelle (`SequenceInputStage`) passe par `run_stage` avec ses contrôles.
 - [x] Aucun moteur, champ de force ni paramètre de solvatation par défaut.
+- [x] Le mécanisme d'inventaire attendu contre fichier produit est implémenté et testé, avec un test par piège du catalogue 17.2, et un champ non vérifiable échoue au lieu de passer.
 
-**Tests** : U (`test_structure`, `test_checks`, `test_config`), K (`test_interfaces`), architecture (`test_architecture`).
+**Tests** : U (`test_structure`, `test_checks`, `test_config`, `test_inventory`), K (`test_interfaces`), architecture (`test_architecture`). 92 tests au total.
 
 ---
 
