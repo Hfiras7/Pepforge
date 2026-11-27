@@ -79,8 +79,11 @@ def test_reference_pka_values_are_those_of_the_cited_table() -> None:
     assert table.by_terminus["free_acid"].pka == 3.7
 
 
-def test_arginine_pka_is_missing_until_validated() -> None:
-    assert load_ionizable_groups().by_residue["ARG"].pka is None
+def test_arginine_pka_is_the_value_validated_by_firas() -> None:
+    """Fitch et al. 2015, guanidinium : 13,8 ± 0,1, lu et validé par Firas le 27/11/2026."""
+    arginine = load_ionizable_groups().by_residue["ARG"]
+    assert arginine.pka == 13.8
+    assert arginine.pka_source == "fitch2015"
 
 
 def test_state_keys_are_neutral_internal_keys() -> None:
@@ -363,11 +366,22 @@ def test_state_on_a_bridged_cysteine_is_refused() -> None:
         assign_protonation(peptide, 7.4)
 
 
-def test_arginine_is_refused_while_its_pka_is_missing() -> None:
+def test_missing_pka_is_refused_not_replaced() -> None:
+    """Un pKa à `null` dans le fichier refuse le peptide, au lieu d'une valeur supposée."""
+    data = _raw()
+    _group(data, "arg_side_chain")["pka"] = None
+    table = parse_ionizable_groups(data)
+    peptide = parse_sequence("Ac-RGDS-NH2", notation="one_letter")
     with pytest.raises(ReferenceDataError, match="arg_side_chain"):
-        assign_protonation(parse_sequence("Ac-RGDS-NH2", notation="one_letter"), 7.4)
+        assign_protonation(peptide, 7.4, table)
     with pytest.raises(ReferenceDataError):
-        theoretical_net_charge(parse_sequence("Ac-RGDS-NH2", notation="one_letter"), 7.4)
+        theoretical_net_charge(peptide, 7.4, table)
+
+
+def test_arginine_is_protonated_at_physiological_ph() -> None:
+    result = assign_protonation(parse_sequence("Ac-GRG-NH2", notation="one_letter"), 7.4)
+    (assignment,) = result.assignments
+    assert (assignment.state, assignment.charge, assignment.pka) == ("arg_protonated", 1, 13.8)
 
 
 def test_unclassified_residue_is_refused() -> None:

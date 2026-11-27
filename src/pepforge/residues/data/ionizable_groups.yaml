@@ -13,14 +13,15 @@
 #     ionisable (dans `groups`) ou non (dans `non_ionizable_*`). Aucun n'est
 #     supposé neutre faute d'être cité.
 #
-# STATUT : source CHOISIE par Firas le 27/11/2026 (pentapeptides d'alanine du
-# groupe de Pace). Restent à valider par Firas : les conditions de mesure de
-# Thurlkill 2006, la valeur de l'arginine et la fenêtre d'alerte.
+# STATUT : VALIDÉ par Firas le 27/11/2026 : source (pentapeptides d'alanine du
+# groupe de Pace), pKa de l'arginine (Fitch 2015, lu par Firas), fenêtre
+# d'alerte de 1 unité, et charges des peptides de référence. Reste à relever :
+# les conditions de mesure de Thurlkill 2006.
 version: 1
 source: >-
   pKa mesurés sur des pentapeptides d'alanine (Thurlkill et al. 2006), lus dans
   le tableau I de Grimsley, Scholtz et Pace 2009, colonne « pK value in alanine
-  pentapeptides ». Arginine : non renseignée (voir le groupe arg_side_chain).
+  pentapeptides ». Arginine : Fitch et al. 2015 (guanidinium, 13,8).
 data_set: pace_alanine_pentapeptides_v1
 
 sources:
@@ -49,8 +50,12 @@ sources:
       « Arginine: Its pKa value revisited », Protein Science 24(5), 752-761 (2015).
       DOI 10.1002/pro.2647.
     verified: >-
-      NON LU : seule l'existence de l'article et son DOI ont été vérifiés. La
-      valeur du pKa n'est pas reprise ici tant qu'elle n'a pas été lue sur l'article.
+      Lu par Firas le 27/11/2026 (tableau 1, p. 753, et Materials and Methods) :
+      pKa du guanidinium 13,8 ± 0,1, par potentiométrie à 25 ± 0,1 °C, arginine
+      500 mM, KCl 100 mM. Confirmé par RMN : 13,9 ± 0,15 pour l'arginine libre,
+      13,8 ± 0,1 pour le tripeptide Ac-Gly-Arg-Gly-NH2. Source et conditions
+      différentes du reste du fichier (pentapeptides d'alanine) : la valeur du
+      tripeptide, modèle peptidique, est celle retenue.
 
 # Fenêtre d'alerte autour du pKa, en unités de pH.
 near_pka_window:
@@ -60,7 +65,7 @@ near_pka_window:
     1 / (1 + 10^|pH - pKa|). Elle dépasse 9,1 % quand |pH - pKa| < 1 (et 50 % à
     pH = pKa) : un état unique par groupe y est une approximation grossière, et
     le choix doit être relu. À 2 unités, elle tombe à 1 %. Le seuil de 1 unité
-    est un choix de prudence, à confirmer par Firas ; il ne tient pas compte du
+    est un choix de prudence, validé par Firas le 27/11/2026 ; il ne tient pas compte du
     déplacement des pKa dans une protéine repliée ou un complexe (écarts types
     de 0,5 à 2,7 unités selon le groupe, Grimsley 2009, tableau I).
 
@@ -144,10 +149,10 @@ groups:
   - key: arg_side_chain
     label: guanidinium de l'arginine
     residue: ARG
-    # Absent du tableau I de Grimsley 2009. Valeur à lire sur Fitch et al. 2015
-    # et à saisir après validation par Firas. D'ici là, tout peptide contenant
-    # une arginine est refusé (MissingReferenceDataError).
-    pka: null
+    # Absent du tableau I de Grimsley 2009 : valeur de Fitch et al. 2015
+    # (tripeptide Ac-Gly-Arg-Gly-NH2 par RMN, et arginine par potentiométrie),
+    # validée par Firas le 27/11/2026.
+    pka: 13.8
     pka_source: fitch2015
     states:
       - {key: arg_protonated, form: acid, charge: 1}

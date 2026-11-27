@@ -3,7 +3,7 @@
 # Calculées À LA MAIN, indépendamment du code de pepforge.residues.protonation,
 # avec les pKa de ionizable_groups.yaml (pentapeptides d'alanine, tableau I de
 # Grimsley 2009) : N-ter 8,0 ; C-ter 3,7 ; Asp 3,9 ; Glu 4,3 ; His 6,5 ;
-# Cys 8,6 ; Tyr 9,8 ; Lys 10,4. Arginine : pKa non renseigné.
+# Cys 8,6 ; Tyr 9,8 ; Lys 10,4 ; Arg 13,8 (Fitch et al. 2015).
 #
 # Deux grandeurs par peptide :
 #   net_charge     somme des charges formelles des états majoritaires (entière) ;
@@ -12,7 +12,9 @@
 #                  groupe basique (amine, imidazole) : charge = +f ;
 #                  groupe acide (carboxyle, thiol, phénol) : charge = -(1 - f).
 #
-# Statut : EN ATTENTE DE VALIDATION PAR FIRAS (source des pKa et charges attendues).
+# Statut : les neuf premières charges ont été VÉRIFIÉES PAR FIRAS le 27/11/2026.
+# Les deux peptides RGD, ajoutés ensuite avec le pKa de l'arginine qu'il a
+# fourni, sont à relire.
 version: 1
 tolerance_theoretical: 0.001
 peptides:
@@ -105,18 +107,26 @@ peptides:
       Les deux Cys forment un pont disulfure : plus de thiol, donc aucun groupe
       ionisable en chaîne latérale. Restent les extrémités, comme H-GGG-OH.
 
-refused:
   - sequence: Ac-RGDS-NH2
     ph: 7.4
-    error: ReferenceDataError
+    net_charge: 0
+    theoretical: 0.0003
+    near_pka: []
     reasoning: >-
-      pKa de l'arginine non renseigné (Fitch 2015 non lu). Quel que soit ce pKa
-      pourvu qu'il dépasse 8,4, la charge entière attendue est 0 (Arg +1,
-      Asp -1, extrémités bloquées) ; elle sera ajoutée une fois la valeur validée.
+      Arg 13,8 : guanidinium +1, f = 1/(1+10^-6,4) = 0,9999996. Asp 3,9 : -1
+      (-0,9997). Extrémités acétylée et amidée, Gly et Ser non ionisables.
+      Entière 0 ; moyenne 0,0003.
+
   - sequence: H-RGDS-OH
     ph: 7.4
-    error: ReferenceDataError
-    reasoning: Même raison ; charge entière attendue +1 - 1 + 1 - 1 = 0.
+    net_charge: 0
+    theoretical: -0.2002
+    near_pka: ["N"]
+    reasoning: >-
+      N-ter +1 (0,7992, à relire). Arg +1 (1,0000). Asp -1 (-0,9997). C-ter -1
+      (-0,9998). Entière +1 + 1 - 1 - 1 = 0 ; moyenne -0,2002.
+
+refused:
   - sequence: Ac-GHG-NH2
     ph: 7.4
     error: ChemistryError

@@ -140,7 +140,7 @@ flowchart LR
 
 ## Étape 2 — Protonation et charge nette théorique
 
-**Statut : TERMINÉ MAIS NON VALIDÉ.** Code, tests et documentation livrés le 27 novembre 2026 sur une branche et une PR dédiées. Source des pKa choisie par Firas (pentapeptides d'alanine) ; la validation attend sa relecture des charges de référence, et le pKa de l'arginine reste à saisir. Bilan complet : [bilans/module-02-protonation.md](bilans/module-02-protonation.md).
+**Statut : TERMINÉ ET VALIDÉ** (27 novembre 2026). Code, tests et documentation livrés sur une branche et une PR dédiées (PR #2), CI verte sur Linux et Windows. Firas a validé la source des pKa, les charges de référence, le pKa de l'arginine (Fitch 2015, qu'il a lu) et la fenêtre d'alerte. Bilan complet : [bilans/module-02-protonation.md](bilans/module-02-protonation.md).
 
 **Objectif** : choisir l'état de chaque groupe ionisable au pH de l'étude et calculer la charge nette théorique, référence de tous les contrôles de charge ultérieurs.
 
@@ -158,12 +158,12 @@ flowchart LR
 
 - [x] Une extrémité acétylée ou amidée ne porte pas de charge ; une extrémité libre en porte une selon le pH.
 - [x] Le pH vient de `PrepConfig.ph` ; s'il manque, `ConfigurationError`.
-- [x] Un pH proche d'un pKa (fenêtre définie et justifiée) produit un `WARN` : l'état choisi doit être relu. *Fenêtre : \|pH − pKa\| < 1, justifiée par Henderson–Hasselbalch dans le fichier de données (forme minoritaire au-delà de 9 %), à confirmer par Firas.*
+- [x] Un pH proche d'un pKa (fenêtre définie et justifiée) produit un `WARN` : l'état choisi doit être relu. *Fenêtre : \|pH − pKa\| < 1, justifiée par Henderson–Hasselbalch dans le fichier de données (forme minoritaire au-delà de 9 %), validée par Firas.*
 - [x] Le choix de chaque état est journalisé avec la source du pKa.
 
 **Tests** : U (chaque groupe, cas limites de pH) ; I (`SequenceInputStage` puis `ProtonationStage`) ; V : charges nettes des peptides de référence calculées à la main et consignées dans `tests/reference/charges.yaml` avec le raisonnement.
 
-**Revue** : Firas valide la source des pKa et les charges attendues des peptides de référence. *Source validée le 27 novembre 2026 ; charges de référence (`tests/reference/charges.yaml`) à relire.*
+**Revue** : Firas valide la source des pKa et les charges attendues des peptides de référence. *Faite par Firas le 27 novembre 2026 : source, charges de référence, pKa de l'arginine et fenêtre d'alerte validés.*
 
 ---
 

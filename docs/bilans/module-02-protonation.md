@@ -2,7 +2,7 @@
 
 > Étape 2 de [PLAN-CONSTRUCTION.md](../PLAN-CONSTRUCTION.md). Bilan établi le 27 novembre 2026, selon le modèle de la méthode de travail imposée. Livré sur une branche et une PR dédiées, empilées sur la PR #1.
 
-**Statut final : TERMINÉ MAIS NON VALIDÉ.** Le code, les tests et la documentation sont livrés, et la CI est verte sur Linux et Windows. La source des pKa a été choisie par Firas. La validation attend trois choses de sa part (section 8) : relire les charges de référence, fournir le pKa de l'arginine lu sur l'article, et confirmer la fenêtre d'alerte. Tant que le pKa de l'arginine manque, **aucun peptide contenant une arginine ne passe cette étape**, ce qui inclut les peptides RGD.
+**Statut final : TERMINÉ ET VALIDÉ** (27 novembre 2026). Le code, les tests et la documentation sont livrés, la CI est verte sur Linux et Windows, et Firas a validé les trois points scientifiques : charges de référence, pKa de l'arginine (qu'il a lu sur l'article) et fenêtre d'alerte. Détail de sa revue en section 9.
 
 ---
 
@@ -28,7 +28,7 @@ Choisir l'état de chaque groupe ionisable au pH de l'étude, calculer la charge
 | Cys (libre) | `CYS` | 8,6 | `cys_protonated` (0), `cys_deprotonated` (−1) |
 | Tyr | `TYR` | 9,8 | `tyr_protonated` (0), `tyr_deprotonated` (−1) |
 | Lys | `LYS` | 10,4 | `lys_protonated` (+1), `lys_deprotonated` (0) |
-| Arg | `ARG` | **non renseigné** | `arg_protonated` (+1), `arg_deprotonated` (0) |
+| Arg | `ARG` | 13,8 (Fitch 2015) | `arg_protonated` (+1), `arg_deprotonated` (0) |
 
 - **Noms définitifs des clés de protonation** (promis au module 1) : `<groupe>_protonated` et `<groupe>_deprotonated`, plus `his_delta` et `his_epsilon` pour les deux tautomères neutres de l'histidine (proton sur Nδ1 ou sur Nε2). Les trois clés d'histidine annoncées au module 1 sont conservées.
 - Les 13 autres résidus standards sont classés **non ionisables** explicitement, comme les extrémités `acetyl`, `amide` et `n_methylamide`. Un test vérifie que les 20 résidus et les 5 extrémités de la bibliothèque sont tous classés : aucun n'est supposé neutre faute d'être cité.
@@ -126,7 +126,7 @@ Choisir l'état de chaque groupe ionisable au pH de l'étude, calculer la charge
 **Ce que je n'ai pas pu vérifier, et qui n'est donc pas dans le fichier** :
 
 - **l'article de Thurlkill 2006 lui-même** : PubMed Central m'a renvoyé une page de vérification anti-robot, et le site de l'éditeur a refusé l'accès. Les conditions de mesure (séquences exactes, température, force ionique) restent à relever ;
-- **le pKa de l'arginine** : absent du tableau de Grimsley 2009. La source prévue est Fitch C. A. *et al.*, « Arginine: Its pKa value revisited », *Protein Science* 24(5), 752–761 (2015), DOI 10.1002/pro.2647, dont je n'ai pu vérifier que l'existence et le DOI. Je ne reprends pas la valeur de mémoire.
+- **le pKa de l'arginine**, absent du tableau de Grimsley 2009 : je n'ai pu vérifier que l'existence et le DOI de Fitch C. A. *et al.*, « Arginine: Its pKa value revisited », *Protein Science* 24(5), 752–761 (2015), DOI 10.1002/pro.2647. **Firas l'a lu** (section 9) : 13,8 ± 0,1 pour le guanidinium, valeur saisie depuis.
 
 **Pourquoi ce choix est défendable pour la thèse.** Ce sont des mesures faites sur des peptides courts, dans un même laboratoire, avec un même protocole : c'est le modèle le plus proche d'un peptide libre en solution. Pour le complexe peptide–récepteur, l'environnement déplace les pKa (écarts types de 0,5 à 2,7 unités selon le groupe dans le même tableau I) : ces valeurs y deviennent une première approximation, ce qui est écrit dans le fichier de données.
 
@@ -144,13 +144,20 @@ Choisir l'état de chaque groupe ionisable au pH de l'étude, calculer la charge
 | H-CG-OH | 7,4 | 0 | −0,2599 | extrémité N |
 | H-CGC-OH, pont 1–3 | 7,4 | 0 | −0,2006 | extrémité N |
 
-Refusés, comme attendu : Ac-RGDS-NH2 et H-RGDS-OH (pKa de l'arginine manquant ; charge entière attendue 0 dans les deux cas dès que ce pKa dépasse 8,4), et Ac-GHG-NH2 à pH 7,4 sans tautomère imposé.
+Refusé, comme attendu : Ac-GHG-NH2 à pH 7,4 sans tautomère imposé.
+
+**Ajoutés après la revue de Firas**, avec le pKa de l'arginine qu'il a fourni (calcul à la main dans `tests/reference/charges.yaml`) :
+
+| Peptide | pH | Charge entière | Charge moyenne | À relire |
+|---|---|---|---|---|
+| Ac-RGDS-NH2 | 7,4 | 0 | +0,0003 | — |
+| H-RGDS-OH | 7,4 | 0 | −0,2002 | extrémité N |
 
 **Comparaison à un logiciel de référence** : non faite. Les calculateurs de charge en ligne utilisent chacun leur propre jeu de pKa, si bien qu'un écart ne prouverait rien ; la vérification repose sur le calcul à la main avec les mêmes pKa. La comparaison pertinente viendra à l'étape 7 : la charge relue dans le `.psf` devra égaler `net_charge`.
 
 ## 7. Problèmes connus et limitations
 
-1. **Arginine bloquée.** Tout peptide contenant une arginine est refusé tant que son pKa n'est pas saisi avec sa source. C'est voulu, mais cela bloque les peptides RGD de référence.
+1. **Deux sources pour un même jeu.** Le pKa de l'arginine (Fitch 2015, 25 °C, KCl 100 mM ; tripeptide Ac-Gly-Arg-Gly-NH2 par RMN) ne vient pas de la même série de mesures que les autres (pentapeptides d'alanine). L'écart avec le pH physiologique (6,4 unités) rend la conséquence nulle sur l'état choisi, mais le fichier le dit.
 2. **pKa de groupes isolés.** Les interactions entre groupes voisins (quatre Glu adjacents, paire Asp–Lys) et l'environnement d'un complexe ne sont pas modélisés. Un calcul sur structure (PROPKA par exemple) pourra s'ajouter comme seconde source après l'étape 3, sans changer l'interface.
 3. **Conditions de mesure non relevées** (Thurlkill 2006 non lu) : température et force ionique ne sont pas encore dans le fichier.
 4. **Histidine neutre** : le tautomère doit toujours être imposé. C'est le bon comportement sans structure 3D, mais il demande à Firas une décision par histidine, à justifier dans `notes`.
@@ -161,7 +168,7 @@ Refusés, comme attendu : Ac-RGDS-NH2 et H-RGDS-OH (pKa de l'arginine manquant ;
 9. **Interface** : la CLI (`pepforge parse`) n'affiche pas encore la charge ; ce n'était pas demandé par le plan pour cette étape.
 10. **Inventaire attendu** : son champ `net_charge` reste à `None`. Il sera relié à `ProtonationResult.net_charge` à l'étape 7, qui en a besoin, et pas avant (pas d'anticipation).
 
-## 8. Ce qu'il faut pour valider
+## 8. Ce qu'il fallait pour valider
 
 1. **Relire les charges de référence** de la section 6 (et leur raisonnement dans `tests/reference/charges.yaml`).
 2. **Fournir le pKa de l'arginine** lu sur Fitch *et al.* 2015 (valeur, incertitude, conditions), ou choisir une autre source publiée. Je l'ajouterai avec sa référence, et Ac-RGDS-NH2 passera dans les peptides de référence.
@@ -169,3 +176,15 @@ Refusés, comme attendu : Ac-RGDS-NH2 et H-RGDS-OH (pKa de l'arginine manquant ;
 4. Si possible, **relever les conditions de mesure** de Thurlkill 2006, pour les inscrire dans le fichier.
 
 Le statut passera à **TERMINÉ ET VALIDÉ** quand les points 1 à 3 seront faits.
+
+## 9. Revue de Firas, 27 novembre 2026
+
+1. **Charges de référence : validées.** Firas a vérifié les neuf peptides de la section 6 à partir des pKa de la section 3.1 : charges entières correctes, charges moyennes cohérentes avec les équilibres de protonation, extrémités bloquées et pont disulfure correctement pris en compte.
+2. **pKa de l'arginine : 13,8 ± 0,1**, lu par Firas dans Fitch *et al.* 2015 (tableau 1, p. 753, et Materials and Methods) : groupement guanidinium, potentiométrie à 25 ± 0,1 °C, arginine 500 mM, KCl 100 mM ; confirmé par RMN, 13,9 ± 0,15 pour l'arginine libre et 13,8 ± 0,1 pour le tripeptide Ac-Gly-Arg-Gly-NH2. Valeur saisie dans `ionizable_groups.yaml` avec ces conditions.
+3. **Fenêtre d'alerte de 1 unité : validée** (forme minoritaire d'environ 9,1 % à cet écart).
+
+**Après la revue** : 455 tests réussis. Les tests qui attendaient le refus des peptides contenant une arginine sont remplacés par un test qui force un pKa à `null` dans une copie du fichier (le refus d'une donnée manquante reste ainsi vérifié) et par un test de l'arginine protonée à pH 7,4. Ac-RGDS-NH2 et H-RGDS-OH entrent dans les peptides de référence (section 6). Les 14 défauts injectés sont toujours détectés.
+
+Seul point encore ouvert, sans effet sur le statut : relever les conditions de mesure de Thurlkill 2006 pour les inscrire dans le fichier.
+
+**Statut : TERMINÉ ET VALIDÉ.**
