@@ -24,6 +24,8 @@
 16. [Faisabilité des calculs sur un poste de bureau](#16-faisabilité-des-calculs-sur-un-poste-de-bureau)
 17. [Politique d'absence d'erreur silencieuse](#17-politique-dabsence-derreur-silencieuse)
 18. [Comment vérifier et valider une sortie](#18-comment-vérifier-et-valider-une-sortie)
+    - [18.8 Exemple complet de référence quantique](#188-exemple-complet-de-référence-quantique)
+    - [18.9 Choisir le niveau de validation dans l'outil](#189-choisir-le-niveau-de-validation-dans-loutil)
 
 ---
 
@@ -1064,3 +1066,50 @@ Un niveau ne se saute pas : chacun attrape des défauts que le suivant masquerai
 
 - **Les seuils se fixent avant de regarder les résultats**, et s'écrivent. Un seuil choisi après coup transforme la validation en justification.
 - **Les valeurs de référence vivent dans `tests/reference/`**, avec leur provenance et le matériel utilisé, afin qu'une sortie reste comparable à une autre et qu'un contrôle puisse être rejoué des mois plus tard.
+
+### 18.8 Exemple complet de référence quantique
+
+Une « référence quantique » n'est pas un nombre isolé : c'est une **courbe d'énergie** calculée sur un fragment défini, à un niveau de théorie fixé, que le champ de force doit reproduire. Voici l'exemple de bout en bout pour la torsion la plus critique du projet, la liaison `N–N` du squelette aza-β³.
+
+**1. Le fragment, et non le peptide.** On ne fait pas de quantique sur un peptide de 20 résidus. On construit le plus petit fragment qui porte la torsion avec son environnement électronique réel : le résidu aza-β³ **capé** des deux côtés par des groupes acétyle et *N*-méthylamide, soit `CH₃-CO-NH-N(R)-CH₂-CO-NH-CH₃`. Les capes imitent les liaisons peptidiques voisines ; sans elles, la torsion mesurée serait celle d'une amine terminale, pas celle d'un squelette.
+
+**2. Le balayage.** Balayage **relaxé** de la torsion `C(=O)–N–N–CH₂` : on contraint l'angle à une valeur, on optimise tout le reste, on relève l'énergie, et on recommence. 36 points tous les 10°, soit un tour complet. Relaxé et non rigide : un balayage rigide attribue à la torsion le coût de recouvrements stériques qu'une molécule réelle évite en se réarrangeant.
+
+**3. Le niveau de théorie, fixé une fois pour toute la bibliothèque.** Deux entrées dérivées à des niveaux différents ne sont pas comparables (section 15). Le protocole publié de CGenFF utilise des balayages au niveau MP2 avec une base de type 6-31G(d) : s'aligner sur lui est l'option la plus défendable, puisque les paramètres dérivés doivent cohabiter avec les siens. **À confirmer sur la publication de référence avant de lancer la première série**, et à inscrire dans la configuration. Une alternative moderne, moins coûteuse à précision comparable sur des torsions, est une fonctionnelle à dispersion corrigée avec une base triple-zêta ; le choix est à arrêter avec Firas, pas par défaut.
+
+**4. L'entrée, concrètement.** Avec ORCA, le balayage ci-dessus s'écrit ainsi (les indices d'atomes sont ceux du fichier de géométrie, et sont écrits par PepForge, jamais à la main) :
+
+```
+! MP2 6-31G(d) Opt TightSCF
+%geom Scan
+  D 1 2 3 4 = 0.0, 350.0, 36
+  end
+end
+* xyzfile 0 1 fragment_aza.xyz
+```
+
+Avec Psi4, le même balayage se pilote depuis Python, ce qui est la raison de le garder en second outil derrière la même interface `QuantumTool` : la boucle sur les 36 points, l'extraction des énergies et l'écriture du fichier de référence tiennent dans le même script que le reste de PepForge.
+
+**5. Ce à quoi on compare.** Le même balayage est refait **avec le champ de force**, sur le même fragment, dans NAMD : même torsion contrainte, mêmes 36 valeurs, minimisation à chaque point. On obtient deux courbes. Pour l'**ajustement** du paramètre dièdre, ce n'est pas la courbe quantique qu'on reproduit directement mais la **différence** entre la courbe quantique et la courbe du champ de force calculée *sans* le terme dièdre en cours d'ajustement : le reste des termes (angles, non liées, 1-4) contribue déjà au profil, et l'ignorer reviendrait à compter deux fois la même énergie.
+
+**6. Le critère de réussite, écrit avant de regarder.** Trois conditions, à fixer avec Firas puis à inscrire dans `tests/reference/` :
+
+- les **minima** des deux courbes au même endroit, à une tolérance angulaire près ;
+- l'**ordre** des minima préservé, c'est-à-dire que le conformère le plus stable en quantique reste le plus stable avec le champ de force ;
+- l'**écart quadratique moyen** sur la fenêtre énergétique réellement peuplée à température ambiante sous un seuil donné, exprimé en kcal/mol.
+
+Le troisième critère ne se juge que sur la fenêtre peuplée : reproduire le sommet d'une barrière à 15 kcal/mol n'a aucune conséquence sur une trajectoire, alors qu'une erreur de 1 kcal/mol entre deux minima proches change les populations.
+
+**7. Ce que le fichier de référence contient.** Pour chaque entrée de la bibliothèque, un fichier versionné portant : la géométrie du fragment, la torsion balayée par ses indices d'atomes, le niveau de théorie, le logiciel et sa version, les 36 énergies, la date, et le matériel. C'est ce qui rend le contrôle rejouable des mois plus tard, et c'est ce qui sera montré en soutenance pour justifier les paramètres.
+
+### 18.9 Choisir le niveau de validation dans l'outil
+
+Le niveau est un **choix de l'utilisateur**, porté par `PrepConfig.validation_level` (`pepforge.config.ValidationLevel`), parce que le coût varie d'un facteur énorme d'un palier à l'autre. Trois propriétés sont garanties par le code (`pepforge.checks.levels`, testé par `tests/test_levels.py`) :
+
+1. **Les niveaux sont cumulatifs.** Demander le niveau 3 exige aussi les niveaux 0, 1 et 2. Un contrôle énergétique sur un fichier dont la conformité n'a pas été vérifiée ne veut rien dire.
+2. **Un contrôle demandé et non exécuté est une erreur.** `audit()` confronte le catalogue des contrôles du niveau demandé aux résultats réellement produits, et rapporte un `FAIL` pour chaque contrôle manquant, en distinguant deux cas : « pas encore implémenté dans PepForge », avec l'étape du plan qui le fournira, et « demandé mais non exécuté par cette préparation ». Sans ce mécanisme, un niveau de validation serait une promesse : l'utilisateur demanderait le niveau 3, l'outil ferait ce qu'il sait faire, et le rapport ne dirait pas que les profils de torsion n'ont jamais été calculés.
+3. **Un niveau supérieur ne masque jamais un échec inférieur.** Les résultats des paliers bas sont repris tels quels dans l'audit.
+
+`unavailable(level)` permet d'avertir **avant** de lancer une préparation longue, et non de le découvrir dans le rapport final. État actuel du catalogue : le niveau 0 est entièrement outillé sauf le contrôle de géométrie (étape 4) ; les niveaux 1 à 3 sont déclarés et refusés tant que les étapes 7, 9, 11D et 14 ne sont pas écrites ; le niveau 4 est hors de l'outil par nature, la confrontation aux données RMN restant manuelle.
+
+Jusqu'où est-ce faisable sur un poste de bureau ? **Le niveau 3 est atteignable**, à deux conditions : le palier 3 n'est exécuté que sur **un ou deux peptides de référence**, pas sur chaque préparation, et le peptide témoin de la section 18.5 est simulé une seule fois par protocole, pas une fois par peptide. Le niveau 0 tourne en quelques secondes et peut rester actif en permanence ; les niveaux 1 et 2 coûtent de quelques minutes à quelques heures et se justifient à chaque nouvelle entrée de la bibliothèque ; le niveau 3 coûte des jours, et c'est le palier qui rend les paramètres défendables en soutenance.

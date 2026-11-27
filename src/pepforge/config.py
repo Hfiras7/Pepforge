@@ -9,7 +9,7 @@ avant de pouvoir lancer une préparation.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from enum import StrEnum
+from enum import IntEnum, StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +34,36 @@ class SimulationGoal(StrEnum):
 
     PEPTIDE_RECEPTOR_COMPLEX = "peptide_receptor_complex"
     """Complexe peptide–récepteur (DCC, TrkC, UNC5)."""
+
+
+class ValidationLevel(IntEnum):
+    """Jusqu'où pousser la vérification d'une sortie (`docs/ARCHITECTURE.md`, section 18).
+
+    Les niveaux sont **cumulatifs** : demander le niveau 2 exige aussi les
+    niveaux 0 et 1. Le coût croît d'un facteur considérable à chaque palier,
+    d'où le choix laissé à l'utilisateur. Un niveau demandé dont un contrôle
+    n'a pas pu être exécuté est rapporté en échec, jamais passé sous silence
+    (`pepforge.checks.levels.audit`).
+    """
+
+    FILE_CONFORMITY = 0
+    """Conformité des fichiers : le fichier dit-il ce que la représentation interne disait ?
+
+    Gratuit, automatisable, entièrement hors ligne. C'est ce palier qui attrape
+    les erreurs silencieuses du catalogue de la section 17.2.
+    """
+
+    NUMERIC_COHERENCE = 1
+    """Cohérence numérique : énergie en point unique, minimisation courte qui converge."""
+
+    STRUCTURAL_COHERENCE = 2
+    """Cohérence structurale : dynamique courte, géométrie comparée au fragment quantique."""
+
+    ENERGETIC_COHERENCE = 3
+    """Cohérence énergétique : profils de torsion contre quantique, répliques, peptide témoin."""
+
+    EXPERIMENTAL_AGREEMENT = 4
+    """Accord expérimental (RMN, affinité). Hors de l'outil : la confrontation est manuelle."""
 
 
 @dataclass(frozen=True)
@@ -81,6 +111,14 @@ class PrepConfig:
     solvation: SolvationSpec = field(default_factory=SolvationSpec)
     """Vérifiée par l'étape de solvatation elle-même (`SolvationSpec.missing_decisions`)."""
 
+    validation_level: ValidationLevel = ValidationLevel.FILE_CONFORMITY
+    """Seul champ avec une valeur par défaut, parce que le niveau 0 ne coûte rien.
+
+    Les paliers supérieurs demandent des simulations ou du calcul quantique :
+    ils sont choisis explicitement, et l'outil refuse de les déclarer satisfaits
+    tant qu'il ne les a pas réellement exécutés.
+    """
+
     notes: dict[str, str] = field(default_factory=dict)
 
     def missing_decisions(self) -> list[str]:
@@ -112,6 +150,7 @@ class PrepConfig:
         data = asdict(self)
         data["engine"] = self.engine.value if self.engine else None
         data["goal"] = self.goal.value if self.goal else None
+        data["validation_level"] = int(self.validation_level)
         return data
 
     @classmethod
@@ -126,6 +165,8 @@ class PrepConfig:
                 values["engine"] = Engine(values["engine"])
             if values.get("goal") is not None:
                 values["goal"] = SimulationGoal(values["goal"])
+            if values.get("validation_level") is not None:
+                values["validation_level"] = ValidationLevel(values["validation_level"])
             if "solvation" in values:
                 solvation = values["solvation"] or {}
                 if not isinstance(solvation, dict):

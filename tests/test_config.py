@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from pepforge.config import Engine, PrepConfig, SimulationGoal
+from pepforge.config import Engine, PrepConfig, SimulationGoal, ValidationLevel
 from pepforge.exceptions import ConfigurationError
 
 
@@ -67,3 +67,20 @@ def test_solvation_has_no_default_and_round_trips(tmp_path: Path) -> None:
 def test_unknown_solvation_key_is_rejected() -> None:
     with pytest.raises(ConfigurationError):
         PrepConfig.from_dict({"solvation": {"padding": 10}})
+
+
+def test_validation_level_defaults_to_the_free_level() -> None:
+    """Le niveau 0 ne coûte rien : c'est le seul choix pris par défaut."""
+    assert PrepConfig().validation_level is ValidationLevel.FILE_CONFORMITY
+
+
+def test_validation_level_survives_a_round_trip(tmp_path: Path) -> None:
+    config = PrepConfig(validation_level=ValidationLevel.ENERGETIC_COHERENCE)
+    path = tmp_path / "prep.yaml"
+    config.to_yaml(path)
+    assert PrepConfig.from_yaml(path).validation_level is ValidationLevel.ENERGETIC_COHERENCE
+
+
+def test_an_unknown_validation_level_is_refused() -> None:
+    with pytest.raises(ConfigurationError):
+        PrepConfig.from_dict({"validation_level": 9})
