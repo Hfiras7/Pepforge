@@ -6,17 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from pepforge.core.peptide import C_TERMINUS_DEFAULTED, N_TERMINUS_DEFAULTED, LinkKind
 from pepforge.core.structure import (
     Atom,
-    Connection,
-    ConnectionKind,
-    ResidueId,
     Structure,
 )
-from pepforge.exceptions import StructureError, UnknownResidueError, UnsupportedFeatureError
-from pepforge.io import inventory, read_structure, structure_to_peptide
-from pepforge.io.structure_inventory import STRUCTURE_CHAIN
+from pepforge.io import inventory, read_structure
 from pepforge.report.journal import Journal
 from pepforge.residues.structure_components import load_structure_components
 
@@ -120,7 +114,7 @@ def test_numbering_gap_is_reported_not_repaired() -> None:
     structure = Structure(atoms=_chain((1, "ALA"), (2, "GLY"), (5, "SER")))
     inv = inventory(structure)
     assert inv.chains[0].numbering_gaps == (("A:GLY2", "A:SER5"),)
-    assert any("trou(s) de numérotation" in d for d in inv.pending_decisions)
+    assert any("saut(s) de numérotation" in d for d in inv.pending_decisions)
     assert len(structure.atoms) == 12  # rien n'a été ajouté ni retiré
 
 
@@ -164,118 +158,17 @@ def test_inventory_is_serializable() -> None:
     assert yaml.safe_load(yaml.safe_dump(data, allow_unicode=True))["atoms"] == 32
 
 
-# --- Correspondance Structure → Peptide -------------------------------------------------
+def test_peptide_bond_criterion_is_sourced_and_can_be_imposed() -> None:
+    from pepforge.exceptions import ReferenceDataError
+    from pepforge.residues.structure_components import load_peptide_bond_criterion
 
-
-@pytest.mark.parametrize("name", ["capped_peptide.pdb", "capped_peptide.cif"])
-def test_capped_peptide_is_recognized_with_its_termini_and_disulfide(name: str) -> None:
-    journal = Journal()
-    peptide = structure_to_peptide(_read(name), "A", journal=journal)
-    assert [r.code for r in peptide.residues] == ["ALA", "CYS", "GLY", "GLY", "CYS"]
-    assert peptide.n_terminus.key == "acetyl"
-    assert peptide.c_terminus.key == "amide"  # NH2 n'est pas pris pour un ion
-    assert [(link.kind, link.positions) for link in peptide.links] == [(LinkKind.DISULFIDE, (2, 5))]
-    assert N_TERMINUS_DEFAULTED not in peptide.metadata
-    assert C_TERMINUS_DEFAULTED not in peptide.metadata
-    assert peptide.metadata[STRUCTURE_CHAIN] == "A"
-    entry = journal.entries[-1]
-    assert entry.action == "structure_to_peptide"
-    assert entry.parameters["n_terminus_from_structure"] is True
-
-
-def test_free_termini_are_proven_by_h1_and_oxt() -> None:
-    peptide = structure_to_peptide(_read("nmr_two_models.pdb", model=1), "B", journal=Journal())
-    assert [r.code for r in peptide.residues] == ["GLY", "SER"]
-    assert peptide.n_terminus.key == "free_amine"
-    assert peptide.c_terminus.key == "free_acid"
-    assert N_TERMINUS_DEFAULTED not in peptide.metadata
-    assert C_TERMINUS_DEFAULTED not in peptide.metadata
-
-
-def test_termini_without_evidence_are_defaulted_and_marked() -> None:
-    peptide = structure_to_peptide(
-        Structure(atoms=_chain((1, "ALA"), (2, "GLY"))), "A", journal=Journal()
-    )
-    assert N_TERMINUS_DEFAULTED in peptide.metadata
-    assert C_TERMINUS_DEFAULTED in peptide.metadata
-
-
-def test_unknown_residue_is_refused() -> None:
-    with pytest.raises(UnknownResidueError, match="A:MSE2"):
-        structure_to_peptide(
-            Structure(atoms=_chain((1, "ALA"), (2, "MSE"))), "A", journal=Journal()
-        )
-
-
-def test_numbering_gap_is_refused() -> None:
-    with pytest.raises(StructureError, match="saut de numérotation"):
-        structure_to_peptide(
-            Structure(atoms=_chain((1, "ALA"), (3, "GLY"))), "A", journal=Journal()
-        )
-
-
-def test_declared_missing_residue_is_refused() -> None:
-    structure = Structure(
-        atoms=_chain((2, "ALA"), (3, "GLY")),
-        declared_missing_residues=(ResidueId("A", 1, "", "MET"),),
-    )
-    with pytest.raises(StructureError, match="non observé"):
-        structure_to_peptide(structure, "A", journal=Journal())
-
-
-def test_missing_residue_of_another_chain_does_not_block() -> None:
-    structure = Structure(
-        atoms=_chain((1, "ALA"), (2, "GLY")),
-        declared_missing_residues=(ResidueId("B", 1, "", "MET"),),
-    )
-    assert len(structure_to_peptide(structure, "A", journal=Journal())) == 2
-
-
-def test_microheterogeneous_residue_is_refused() -> None:
-    atoms = (
-        *_residue("A", 1, "ALA", BACKBONE),
-        Atom(9, "CA", "C", "SER", 2, "A", 0.0, 0.0, 0.0, alt_loc="A"),
-        Atom(10, "CA", "C", "THR", 2, "A", 0.1, 0.0, 0.0, alt_loc="B"),
-    )
-    with pytest.raises(StructureError, match="change de nom"):
-        structure_to_peptide(Structure(atoms=atoms), "A", journal=Journal())
-
-
-def test_interchain_disulfide_is_refused() -> None:
-    atoms = (
-        *_residue("A", 1, "CYS", (*BACKBONE, "SG")),
-        *_residue("B", 1, "CYS", (*BACKBONE, "SG")),
-    )
-    link = Connection(
-        ConnectionKind.DISULFIDE,
-        ResidueId("A", 1, "", "CYS"),
-        "SG",
-        ResidueId("B", 1, "", "CYS"),
-        "SG",
-    )
-    with pytest.raises(UnsupportedFeatureError, match="autre chaîne"):
-        structure_to_peptide(Structure(atoms=atoms, connections=(link,)), "A", journal=Journal())
-
-
-def test_declared_peptide_bond_is_accepted_but_other_covalent_links_are_refused() -> None:
-    atoms = _chain((1, "ALA"), (2, "GLY"), (3, "SER"))
-    first, second, third = (
-        ResidueId("A", n, "", r) for n, r in ((1, "ALA"), (2, "GLY"), (3, "SER"))
-    )
-    peptide_bond = Connection(ConnectionKind.COVALENT, first, "C", second, "N")
-    structure = Structure(atoms=atoms, connections=(peptide_bond,))
-    assert len(structure_to_peptide(structure, "A", journal=Journal())) == 3
-    odd = Connection(ConnectionKind.COVALENT, first, "CA", third, "CA")
-    with pytest.raises(UnsupportedFeatureError, match="non représentable"):
-        structure_to_peptide(Structure(atoms=atoms, connections=(odd,)), "A", journal=Journal())
-
-
-def test_absent_chain_is_refused() -> None:
-    with pytest.raises(StructureError, match="absente"):
-        structure_to_peptide(_read("capped_peptide.pdb"), "Z", journal=Journal())
-
-
-def test_waters_and_ions_are_not_part_of_the_peptide() -> None:
-    peptide = structure_to_peptide(_read("capped_peptide.pdb"), "A", journal=Journal())
-    assert "HOH" not in {r.code for r in peptide.residues}
-    assert len(peptide) == 5
+    criterion = load_peptide_bond_criterion()
+    assert criterion.max_c_n_distance == 1.8
+    assert "PPBuilder" in criterion.source
+    assert criterion.reference_length == 1.329
+    assert "Engh" in criterion.reference_source
+    imposed = load_peptide_bond_criterion(2.2)
+    assert imposed.max_c_n_distance == 2.2
+    assert "imposée" in imposed.source and "1.8" in imposed.source
+    with pytest.raises(ReferenceDataError, match="inférieur ou égal"):
+        load_peptide_bond_criterion(1.3)

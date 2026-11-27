@@ -95,3 +95,15 @@ class QualityCheckError(PepForgeError):
         self.failures = failures
         details = "; ".join(failures)
         super().__init__(f"Étape « {stage} » : contrôle(s) en échec : {details}")
+
+
+class ExtractionRefusedError(StructureError):
+    """L'extraction d'un peptide depuis une chaîne de structure est refusée.
+
+    Porte le rapport d'extraction complet (`report`), pour que le refus soit
+    expliqué jonction par jonction et composant par composant.
+    """
+
+    def __init__(self, message: str, report: object) -> None:
+        super().__init__(message)
+        self.report = report

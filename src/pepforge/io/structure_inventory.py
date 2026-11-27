@@ -22,9 +22,10 @@ sourcé, jamais d'une liste écrite dans le code :
   classé par supposition.
 
 Un **trou de numérotation** est un saut de plus d'une unité entre deux résidus
-consécutifs de type acide aminé d'une même chaîne. Ce n'est pas la preuve d'un
-résidu manquant (une numérotation peut sauter), mais une rupture possible de la
-chaîne, à examiner ; le contrôle géométrique de continuité vient à l'étape 4.
+consécutifs de type acide aminé d'une même chaîne. Ce n'est ni la preuve d'un
+résidu manquant ni celle d'une rupture (numérotation de la chymotrypsine,
+protéine de fusion) : c'est le rapport d'extraction
+(`pepforge.io.peptide_extraction`) qui mesure la liaison C–N de chaque jonction.
 """
 
 from __future__ import annotations
@@ -34,23 +35,13 @@ from dataclasses import asdict, dataclass, field
 from itertools import pairwise
 from typing import Any
 
-from pepforge.core.peptide import (
-    C_TERMINUS_DEFAULTED,
-    N_TERMINUS_DEFAULTED,
-    Link,
-    LinkKind,
-    Peptide,
-)
 from pepforge.core.structure import (
     STRUCTURE_FORMAT,
     STRUCTURE_MODEL_COUNT,
     Atom,
-    ConnectionKind,
     ResidueId,
     Structure,
 )
-from pepforge.exceptions import StructureError, UnknownResidueError, UnsupportedFeatureError
-from pepforge.report.journal import Journal
 from pepforge.residues.library import ResidueLibrary, load_default_library
 from pepforge.residues.structure_components import (
     StructureComponents,
@@ -254,7 +245,8 @@ def _decisions(inv: StructureInventory) -> tuple[str, ...]:
     gaps = [g for c in inv.chains for g in c.numbering_gaps]
     if gaps:
         decisions.append(
-            f"{len(gaps)} trou(s) de numérotation : rupture possible de chaîne, à examiner "
+            f"{len(gaps)} saut(s) de numérotation, qui ne prouvent pas une rupture : le "
+            "rapport d'extraction (--chain) mesure la liaison C–N de chaque jonction "
             f"({'; '.join(f'{a} → {b}' for a, b in gaps[:5])}{' ...' if len(gaps) > 5 else ''})."
         )
     unrecognized = Counter[str]()
@@ -324,156 +316,3 @@ def inventory(
         atoms_with_zero_occupancy=sum(1 for a in structure.atoms if a.occupancy == 0.0),
     )
     return StructureInventory(**{**draft.__dict__, "pending_decisions": _decisions(draft)})
-
-
-# --- Correspondance Structure → Peptide -----------------------------------------------------
-
-
-def structure_to_peptide(
-    structure: Structure,
-    chain_id: str,
-    *,
-    journal: Journal,
-    library: ResidueLibrary | None = None,
-    components: StructureComponents | None = None,
-) -> Peptide:
-    """Peptide décrit par la chaîne `chain_id`, ou refus motivé.
-
-    Refusé (`StructureError`, `UnknownResidueError`, `UnsupportedFeatureError`)
-    plutôt que lu faux :
-
-    - résidu absent de la bibliothèque (ligand inclus dans la chaîne, résidu
-      modifié comme `MSE`) ;
-    - résidu déclaré non observé dans cette chaîne, ou trou de numérotation :
-      la séquence lue ne serait pas celle de la molécule ;
-    - conformations alternatives qui changent le nom d'un résidu ;
-    - liaison déclarée que le `Peptide` ne sait pas représenter (pont disulfure
-      entre chaînes, liaison covalente hors squelette).
-
-    Extrémités : un groupe terminal présent comme résidu (`ACE`, `NH2`, `NME`,
-    `structure_components.yaml`) fixe l'extrémité ; l'atome `OXT` prouve un
-    carboxyle libre, et `H1`/`H2`/`H3` une amine libre. Sans indice,
-    l'extrémité par défaut de la bibliothèque est appliquée **et marquée**
-    (`N_TERMINUS_DEFAULTED`, `C_TERMINUS_DEFAULTED`), comme pour une séquence.
-    Les eaux et les ions de la chaîne sont ignorés : ils ne font pas partie du
-    peptide, et l'inventaire les rapporte.
-    """
-    library = library or load_default_library()
-    components = components or load_structure_components(library)
-    residues = _residues_by_chain(structure).get(chain_id)
-    if residues is None:
-        raise StructureError(
-            f"Chaîne {chain_id!r} absente ; chaînes présentes : {structure.chain_ids}"
-        )
-    where = f"{structure.source or 'structure'}, chaîne {chain_id}"
-    missing = [r.label() for r in structure.declared_missing_residues if r.chain_id == chain_id]
-    if missing:
-        raise StructureError(
-            f"{where} : {len(missing)} résidu(s) déclaré(s) non observé(s) "
-            f"({', '.join(missing[:5])}) ; "
-            "la séquence observée n'est pas celle de la molécule"
-        )
-    for site in _alt_sites(structure):
-        if site.residue.chain_id == chain_id and site.residue_names:
-            raise StructureError(
-                f"{where} : le résidu {site.residue.label()} change de nom selon la conformation"
-            )
-
-    ordered: list[tuple[ResidueId, list[Atom]]] = []
-    positions: set[tuple[int, str]] = set()
-    for rid, atoms in residues.items():
-        if rid.name.upper() in components.water or _is_ion(rid, atoms, library, components):
-            continue
-        key = (rid.number, rid.insertion_code)
-        if key in positions:
-            continue
-        positions.add(key)
-        ordered.append((rid, atoms))
-    if not ordered:
-        raise StructureError(f"{where} : aucun résidu")
-
-    n_key: str | None = None
-    c_key: str | None = None
-    if ordered[0][0].name.upper() in components.n_terminal_caps:
-        n_key = components.n_terminal_caps[ordered.pop(0)[0].name.upper()]
-    if ordered and ordered[-1][0].name.upper() in components.c_terminal_caps:
-        c_key = components.c_terminal_caps[ordered.pop()[0].name.upper()]
-    if not ordered:
-        raise StructureError(f"{where} : aucun résidu entre les groupes terminaux")
-
-    unknown = [rid.label() for rid, _ in ordered if not library.has_code(rid.name)]
-    if unknown:
-        raise UnknownResidueError(
-            f"{where} : résidu(s) absent(s) de la bibliothèque : {', '.join(unknown[:8])}"
-        )
-    for (before, _), (after, _) in pairwise(ordered):
-        if after.number - before.number > 1 or after.number < before.number:
-            raise StructureError(
-                f"{where} : saut de numérotation entre {before.label()} et {after.label()} ; "
-                "chaîne interrompue, la séquence lue serait fausse"
-            )
-
-    first_names = {a.name for a in ordered[0][1]}
-    last_names = {a.name for a in ordered[-1][1]}
-    if c_key is None and last_names & components.free_c_terminus_atoms:
-        c_key = components.free_c_terminus
-    if n_key is None and first_names & components.free_n_terminus_hydrogens:
-        n_key = components.free_n_terminus
-
-    index = {rid: position for position, (rid, _) in enumerate(ordered, start=1)}
-    by_position = {(rid.chain_id, rid.number, rid.insertion_code): rid for rid in index}
-    links: list[Link] = []
-    for conn in structure.connections:
-        ends = [c for c in (conn.first, conn.second) if c.chain_id == chain_id]
-        if not ends:
-            continue
-        first = by_position.get((conn.first.chain_id, conn.first.number, conn.first.insertion_code))
-        second = by_position.get(
-            (conn.second.chain_id, conn.second.number, conn.second.insertion_code)
-        )
-        if conn.kind == ConnectionKind.DISULFIDE:
-            if first is None or second is None:
-                raise UnsupportedFeatureError(
-                    f"{where} : pont disulfure {conn.first.label()}–{conn.second.label()} "
-                    "vers un résidu hors du peptide (autre chaîne) : non représentable"
-                )
-            links.append(Link(LinkKind.DISULFIDE, index[first], index[second]))
-            continue
-        if first is not None and second is not None and conn.kind == ConnectionKind.COVALENT:
-            a, b = sorted(((index[first], conn.first_atom), (index[second], conn.second_atom)))
-            if b[0] - a[0] == 1 and (a[1], b[1]) == ("C", "N"):
-                continue  # liaison peptidique déclarée (LINK autour d'un résidu HETATM)
-        if conn.kind in (ConnectionKind.METAL, ConnectionKind.HYDROGEN):
-            continue  # ni l'une ni l'autre n'est une liaison covalente du peptide
-        raise UnsupportedFeatureError(
-            f"{where} : liaison déclarée {conn.kind} {conn.first.label()}:{conn.first_atom} – "
-            f"{conn.second.label()}:{conn.second_atom} non représentable dans le peptide"
-        )
-
-    metadata = {STRUCTURE_SOURCE: structure.source, STRUCTURE_CHAIN: chain_id}
-    if n_key is None:
-        metadata[N_TERMINUS_DEFAULTED] = _FROM_STRUCTURE_DEFAULT
-    if c_key is None:
-        metadata[C_TERMINUS_DEFAULTED] = _FROM_STRUCTURE_DEFAULT
-    peptide = Peptide(
-        residues=tuple(library.by_code(rid.name) for rid, _ in ordered),
-        n_terminus=library.n_termini[n_key] if n_key else library.n_terminus(),
-        c_terminus=library.c_termini[c_key] if c_key else library.c_terminus(),
-        links=tuple(links),
-        metadata=metadata,
-    )
-    journal.record(
-        "structure_to_peptide",
-        "correspondance entre une chaîne de la structure et un peptide",
-        source=structure.source,
-        chain=chain_id,
-        length=len(peptide),
-        first=ordered[0][0].label(),
-        last=ordered[-1][0].label(),
-        n_terminus=peptide.n_terminus.key,
-        n_terminus_from_structure=n_key is not None,
-        c_terminus=peptide.c_terminus.key,
-        c_terminus_from_structure=c_key is not None,
-        disulfides=[link.positions for link in peptide.links],
-    )
-    return peptide

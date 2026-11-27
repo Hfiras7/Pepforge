@@ -54,6 +54,17 @@ class ResidueId:
 
 
 @dataclass(frozen=True)
+class MissingAtom:
+    """Atome que le fichier déclare non observé (`REMARK 470`, `pdbx_unobs_or_zero_occ_atoms`)."""
+
+    residue: ResidueId
+    atom: str
+
+    def label(self) -> str:
+        return f"{self.residue.label()}:{self.atom}"
+
+
+@dataclass(frozen=True)
 class Atom:
     """Atome d'une structure 3D."""
 
@@ -145,6 +156,9 @@ class Structure:
 
     declared_missing_residues: tuple[ResidueId, ...] = ()
     """Résidus déclarés non observés (`REMARK 465`, `pdbx_unobs_or_zero_occ_residues`)."""
+
+    declared_missing_atoms: tuple[MissingAtom, ...] = ()
+    """Atomes déclarés non observés dans des résidus présents (`REMARK 470`, mmCIF)."""
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "metadata", MappingProxyType(dict(self.metadata)))

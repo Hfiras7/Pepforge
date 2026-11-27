@@ -148,6 +148,9 @@ def parse_structure(
     if not atoms:
         raise StructureFormatError(f"{origin} : le modèle {chosen} ne contient aucun atome")
     missing = parsed.declared_missing.get(None, ()) + parsed.declared_missing.get(chosen, ())
+    missing_atoms = parsed.declared_missing_atoms.get(None, ()) + parsed.declared_missing_atoms.get(
+        chosen, ()
+    )
     metadata = {
         STRUCTURE_FORMAT: structure_format.value,
         STRUCTURE_SHA256: retrieved.sha256,
@@ -162,6 +165,7 @@ def parse_structure(
         model=chosen if len(parsed.models) > 1 or model is not None else None,
         connections=parsed.connections,
         declared_missing_residues=missing,
+        declared_missing_atoms=missing_atoms,
     )
     journal.record(
         "read_structure",
@@ -176,6 +180,7 @@ def parse_structure(
         atoms_without_occupancy=parsed.atoms_without_occupancy,
         declared_connections=len(parsed.connections),
         declared_missing_residues=len(missing),
+        declared_missing_atoms=len(missing_atoms),
         reader=f"gemmi {GEMMI_VERSION}",
     )
     return structure

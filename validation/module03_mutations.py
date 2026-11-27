@@ -117,38 +117,123 @@ M = [
     ),
     (
         "src/pepforge/io/structure_inventory.py",
-        "    if missing:\n        raise StructureError(",
-        "    if False:\n        raise StructureError(",
-    ),
-    (
-        "src/pepforge/io/structure_inventory.py",
-        "        if after.number - before.number > 1 or after.number < before.number:\n            raise",
-        "        if False:\n            raise",
-    ),
-    (
-        "src/pepforge/io/structure_inventory.py",
-        "            if first is None or second is None:\n                raise UnsupportedFeatureError",
-        "            if False:\n                raise UnsupportedFeatureError",
-    ),
-    (
-        "src/pepforge/io/structure_inventory.py",
-        "    if c_key is None and last_names & components.free_c_terminus_atoms:",
-        "    if c_key is None and False:",
-    ),
-    (
-        "src/pepforge/io/structure_inventory.py",
         "    if inv.model_count and inv.model_count > 1:",
         "    if False:",
-    ),
-    (
-        "src/pepforge/io/structure_inventory.py",
-        "        if site.residue.chain_id == chain_id and site.residue_names:",
-        "        if False:",
     ),
     (
         "src/pepforge/core/structure.py",
         "            if not math.isfinite(value):",
         "            if False:",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        "    bonded = [m.distance <= threshold for m in measurements]",
+        "    bonded = [True for m in measurements]",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        "        regular = step == 1 and not icode",
+        "        regular = True",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        "        regular = step == 1 and not icode",
+        "        regular = step == 1",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        "JunctionCategory.BREAK_DECLARED if between else JunctionCategory.BREAK_UNDECLARED",
+        "JunctionCategory.BREAK_UNDECLARED",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        "        if not (c.alt_loc and n.alt_loc and c.alt_loc != n.alt_loc)",
+        "        if True",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        '    else:\n        category = JunctionCategory.CONTINUITY_UNMEASURABLE\n        evidence = f"conformations',
+        '    elif False:\n        category = JunctionCategory.CONTINUITY_UNMEASURABLE\n        evidence = f"conformations',
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        "    if category in (JunctionCategory.CONTINUOUS, JunctionCategory.NUMBERING_DISCONTINUITY):\n        decision = Decision.ACCEPT",
+        "    if True:\n        decision = Decision.ACCEPT",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        "        if len(names) > 1:\n            refusals.append(",
+        "        if False:\n            refusals.append(",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        "        if name in components.n_terminal_caps and position != 0:",
+        "        if False:",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        "        if m.label() not in placed:",
+        "        if False:",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        "                if here in frontier and there in other_ids and there not in attached:",
+        "                if False:",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        "        elif not library.has_code(rid.name):\n            component_list.append(",
+        "        elif False:\n            component_list.append(",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        "            if partner in attached:\n                continue",
+        "            if True:\n                continue",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        '        if hi - lo == 1 and (lo_atom, hi_atom) == ("C", "N"):',
+        "        if True:",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        "        if terminus.decision is Decision.REJECT:",
+        "        if False:",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        "        if junction.decision is Decision.REJECT:\n            refusals.append(",
+        "        if False:\n            refusals.append(",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        "    if crossing:\n",
+        "    if False:\n",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        "    if c_key is None and {a.name for a in part[-1][1]} & components.free_c_terminus_atoms:",
+        "    if False:",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        "    n_side = [m for m in missing if _order_key(m) < _order_key(first)]",
+        "    n_side: list[ResidueId] = []",
+    ),
+    (
+        "src/pepforge/residues/structure_components.py",
+        "        threshold = float(max_c_n_distance)",
+        "        threshold = threshold",
+    ),
+    (
+        "src/pepforge/io/structure_formats.py",
+        '        if get("occupancy_flag") != "1":\n            continue',
+        "        if False:\n            continue",
+    ),
+    (
+        "src/pepforge/io/structure_formats.py",
+        '            started = "RES CSSEQI" in body and "ATOMS" in body',
+        "            started = True",
     ),
 ]
 env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
@@ -171,6 +256,7 @@ for i, (path, old, new) in enumerate(M, 1):
                 "tests/test_structure_io.py",
                 "tests/test_retrieval.py",
                 "tests/test_structure_inventory.py",
+                "tests/test_peptide_extraction.py",
                 "tests/test_cli.py",
             ],
             capture_output=True,

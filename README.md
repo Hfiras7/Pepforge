@@ -34,6 +34,8 @@ pepforge config-template > prep.yaml
 pepforge inspect structure.cif
 pepforge inspect ensemble.pdb --model 1 --chain A     # modèle à choisir si plusieurs
 pepforge inspect --url https://exemple.org/structure.cif
+pepforge inspect structure.cif --chain A              # rapport d'extraction : jonctions C–N, composants, refus
+pepforge inspect structure.cif --chain A --breaks split   # décision explicite, journalisée
 ```
 
 ## Développement

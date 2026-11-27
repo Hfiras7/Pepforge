@@ -385,6 +385,59 @@ def test_mmcif_unobserved_residues_are_read(tmp_path: Path) -> None:
     assert structure.declared_missing_residues == (ResidueId("A", -1, "", "MET"),)
 
 
+_REMARK_470 = """REMARK 470
+REMARK 470 MISSING ATOM
+REMARK 470 THE FOLLOWING RESIDUES HAVE MISSING ATOMS (M=MODEL NUMBER;
+REMARK 470 RES=RESIDUE NAME; C=CHAIN IDENTIFIER; SSEQ=SEQUENCE NUMBER;
+REMARK 470 I=INSERTION CODE):
+REMARK 470   M RES CSSEQI  ATOMS
+REMARK 470     CYS A   2    SG   CB
+REMARK 470     GLY A   3A   O
+"""
+
+
+def test_remark_470_missing_atoms_are_read(tmp_path: Path) -> None:
+    target = _copy(tmp_path, PDB_FILE, "SSBOND", _REMARK_470 + "SSBOND")
+    journal = Journal()
+    structure = read_structure(target, journal=journal)
+    assert [m.label() for m in structure.declared_missing_atoms] == [
+        "A:CYS2:SG",
+        "A:CYS2:CB",
+        "A:GLY3A:O",
+    ]
+    assert journal.entries[0].parameters["declared_missing_atoms"] == 3
+
+
+def test_unreadable_remark_470_is_refused(tmp_path: Path) -> None:
+    bad = _REMARK_470.replace("REMARK 470     GLY A   3A   O", "REMARK 470     GLY A three O")
+    target = _copy(tmp_path, PDB_FILE, "SSBOND", bad + "SSBOND")
+    with pytest.raises(StructureFormatError, match="REMARK 470 illisible"):
+        _read(target)
+
+
+_UNOBS_ATOMS = """loop_
+_pdbx_unobs_or_zero_occ_atoms.id
+_pdbx_unobs_or_zero_occ_atoms.polymer_flag
+_pdbx_unobs_or_zero_occ_atoms.occupancy_flag
+_pdbx_unobs_or_zero_occ_atoms.PDB_model_num
+_pdbx_unobs_or_zero_occ_atoms.auth_asym_id
+_pdbx_unobs_or_zero_occ_atoms.auth_comp_id
+_pdbx_unobs_or_zero_occ_atoms.auth_seq_id
+_pdbx_unobs_or_zero_occ_atoms.PDB_ins_code
+_pdbx_unobs_or_zero_occ_atoms.auth_atom_id
+1 Y 1 1 A CYS 2 ? SG
+2 Y 0 1 A CYS 2 ? CB
+#
+"""
+
+
+def test_mmcif_unobserved_atoms_are_read(tmp_path: Path) -> None:
+    target = _copy(tmp_path, CIF_FILE, "loop_\n_atom_site", _UNOBS_ATOMS + "loop_\n_atom_site")
+    structure = _read(target)
+    # occupancy_flag 0 : atome présent d'occupation nulle, pas un atome manquant.
+    assert [m.label() for m in structure.declared_missing_atoms] == ["A:CYS2:SG"]
+
+
 # --- Écriture ---------------------------------------------------------------------------
 
 

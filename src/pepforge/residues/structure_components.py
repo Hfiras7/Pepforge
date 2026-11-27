@@ -85,3 +85,47 @@ def load_structure_components(library: ResidueLibrary | None = None) -> Structur
         free_n_terminus_hydrogens=_names(data, "free_n_terminus_hydrogens"),
         source=str(source),
     )
+
+
+GEOMETRY_FILE = "structure_geometry.yaml"
+
+
+@dataclass(frozen=True)
+class PeptideBondCriterion:
+    """Seuil C(i)–N(i+1) au-delà duquel deux résidus consécutifs ne sont pas liés."""
+
+    max_c_n_distance: float
+    """Seuil en Å."""
+
+    source: str
+    reference_length: float
+    reference_source: str
+
+    def describe(self) -> str:
+        return f"C–N ≤ {self.max_c_n_distance} Å"
+
+
+def load_peptide_bond_criterion(max_c_n_distance: float | None = None) -> PeptideBondCriterion:
+    """Charge le seuil de `structure_geometry.yaml` ; une autre valeur peut être imposée.
+
+    Une valeur imposée remplace celle du fichier et sa source devient « valeur
+    imposée par l'utilisateur » : elle est recopiée telle quelle dans le rapport.
+    """
+    data = read_data_file(GEOMETRY_FILE).get("peptide_bond")
+    if not isinstance(data, dict):
+        raise ReferenceDataError(f"{GEOMETRY_FILE} : section « peptide_bond » absente")
+    for key in ("max_c_n_distance", "source", "reference_length", "reference_source"):
+        if data.get(key) in (None, ""):
+            raise ReferenceDataError(f"{GEOMETRY_FILE} : « peptide_bond.{key} » absent")
+    threshold = float(data["max_c_n_distance"])
+    source = str(data["source"])
+    if max_c_n_distance is not None:
+        threshold = float(max_c_n_distance)
+        source = f"valeur imposée par l'utilisateur (fichier : {data['max_c_n_distance']} Å)"
+    reference = float(data["reference_length"])
+    if not threshold > reference:
+        raise ReferenceDataError(
+            f"Seuil C–N de {threshold} Å inférieur ou égal à la longueur de référence "
+            f"{reference} Å : aucune liaison réelle ne serait reconnue"
+        )
+    return PeptideBondCriterion(threshold, source, reference, str(data["reference_source"]))

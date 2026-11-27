@@ -36,6 +36,9 @@ files:
   - check: écriture mmcif puis relecture sans perte
     ok: true
     detail: 644 atomes
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['modified_residue'], attendus ['modified_residue']
   inventory:
     atoms: 644
     hydrogens: 0
@@ -62,8 +65,23 @@ files:
     - 3 atome(s) d'occupation nulle (position non déterminée).
     - 'Liaisons déclarées par le fichier (covalent ×6, disulfide ×1) : à confirmer.'
   peptides:
-    A: 'refusé (UnknownResidueError) : résidu(s) absent(s) de la bibliothèque : A:MSE151,
-      A:MSE185, A:MSE214, A:MSE215'
+    A:
+      accepted: false
+      junctions_by_category:
+        continuous: 69
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components:
+        A:MSE151: modified_residue
+        A:MSE185: modified_residue
+        A:MSE214: modified_residue
+        A:MSE215: modified_residue
+      waters: 88
+      unobserved_termini: {}
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - modified_residue
 - file: 1A8O.cif
   url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/1A8O.cif
   exercises: 'même entrée en mmCIF : MSE y est en ATOM'
@@ -98,6 +116,9 @@ files:
   - check: écriture mmcif puis relecture sans perte
     ok: true
     detail: 644 atomes
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['modified_residue'], attendus ['modified_residue']
   inventory:
     atoms: 644
     hydrogens: 0
@@ -124,8 +145,23 @@ files:
     - 3 atome(s) d'occupation nulle (position non déterminée).
     - 'Liaisons déclarées par le fichier (covalent ×6, disulfide ×1) : à confirmer.'
   peptides:
-    A: 'refusé (UnknownResidueError) : résidu(s) absent(s) de la bibliothèque : A:MSE151,
-      A:MSE185, A:MSE214, A:MSE215'
+    A:
+      accepted: false
+      junctions_by_category:
+        continuous: 69
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components:
+        A:MSE151: modified_residue
+        A:MSE185: modified_residue
+        A:MSE214: modified_residue
+        A:MSE215: modified_residue
+      waters: 88
+      unobserved_termini: {}
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - modified_residue
 - file: 2XHE.pdb
   url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/2XHE.pdb
   exercises: complexe de deux protéines (6 315 atomes) ; 142 résidus non observés
@@ -162,6 +198,14 @@ files:
   - check: écriture mmcif puis relecture sans perte
     ok: true
     detail: 6315 atomes
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['break_declared', 'unobserved_C'], attendus ['break_declared',
+      'unobserved_C']
+  - check: 'chaîne B : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['break_declared', 'unobserved_C', 'unobserved_N'], attendus ['break_declared',
+      'unobserved_C', 'unobserved_N']
   inventory:
     atoms: 6315
     hydrogens: 0
@@ -194,17 +238,52 @@ files:
     pending_decisions:
     - '142 résidu(s) déclaré(s) non observé(s) par le fichier : les reconstruire,
       ou tronquer et coiffer les extrémités.'
-    - '3 trou(s) de numérotation : rupture possible de chaîne, à examiner (A:LYS509
-      → A:GLU561; B:GLN15 → B:PRO39; B:GLY192 → B:ASN210).'
+    - '3 saut(s) de numérotation, qui ne prouvent pas une rupture : le rapport d''extraction
+      (--chain) mesure la liaison C–N de chaque jonction (A:LYS509 → A:GLU561; B:GLN15
+      → B:PRO39; B:GLY192 → B:ASN210).'
     - '48 molécule(s) d''eau cristallographique : les garder ou les retirer.'
     - 'Aucun hydrogène : ils devront être ajoutés selon les états de protonation.'
   peptides:
-    A: 'refusé (StructureError) : 83 résidu(s) déclaré(s) non observé(s) (A:ARG510,
-      A:ALA511, A:SER512, A:LYS513, A:SER514) ; la séquence observée n''est pas celle
-      de la molécule'
-    B: 'refusé (StructureError) : 59 résidu(s) déclaré(s) non observé(s) (B:MET1,
-      B:PRO16, B:ALA17, B:GLU18, B:ALA19) ; la séquence observée n''est pas celle
-      de la molécule'
+    A:
+      accepted: false
+      junctions_by_category:
+        break_declared: 1
+        continuous: 565
+      notable_junctions:
+      - 'A:LYS509 → A:GLU561 : break_declared, 27.630 Å'
+      insertion_code_junctions: 0
+      components: {}
+      waters: 46
+      unobserved_termini:
+        C: 32
+      declared_missing_atoms: 4
+      absent_backbone_atoms:
+      - A:ALA617:CA
+      - A:ALA617:C
+      - A:ALA617:O
+      refusal_causes:
+      - break_declared
+      - unobserved_C
+    B:
+      accepted: false
+      junctions_by_category:
+        break_declared: 2
+        continuous: 217
+      notable_junctions:
+      - 'B:GLN15 → B:PRO39 : break_declared, 29.003 Å'
+      - 'B:GLY192 → B:ASN210 : break_declared, 15.130 Å'
+      insertion_code_junctions: 0
+      components: {}
+      waters: 2
+      unobserved_termini:
+        N: 1
+        C: 18
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - break_declared
+      - unobserved_C
+      - unobserved_N
 - file: 2XHE.cif
   url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/2XHE.cif
   exercises: même entrée en mmCIF
@@ -241,6 +320,14 @@ files:
   - check: écriture mmcif puis relecture sans perte
     ok: true
     detail: 6315 atomes
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['break_declared', 'unobserved_C'], attendus ['break_declared',
+      'unobserved_C']
+  - check: 'chaîne B : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['break_declared', 'unobserved_C', 'unobserved_N'], attendus ['break_declared',
+      'unobserved_C', 'unobserved_N']
   inventory:
     atoms: 6315
     hydrogens: 0
@@ -273,17 +360,52 @@ files:
     pending_decisions:
     - '142 résidu(s) déclaré(s) non observé(s) par le fichier : les reconstruire,
       ou tronquer et coiffer les extrémités.'
-    - '3 trou(s) de numérotation : rupture possible de chaîne, à examiner (A:LYS509
-      → A:GLU561; B:GLN15 → B:PRO39; B:GLY192 → B:ASN210).'
+    - '3 saut(s) de numérotation, qui ne prouvent pas une rupture : le rapport d''extraction
+      (--chain) mesure la liaison C–N de chaque jonction (A:LYS509 → A:GLU561; B:GLN15
+      → B:PRO39; B:GLY192 → B:ASN210).'
     - '48 molécule(s) d''eau cristallographique : les garder ou les retirer.'
     - 'Aucun hydrogène : ils devront être ajoutés selon les états de protonation.'
   peptides:
-    A: 'refusé (StructureError) : 83 résidu(s) déclaré(s) non observé(s) (A:ARG510,
-      A:ALA511, A:SER512, A:LYS513, A:SER514) ; la séquence observée n''est pas celle
-      de la molécule'
-    B: 'refusé (StructureError) : 59 résidu(s) déclaré(s) non observé(s) (B:MET1,
-      B:PRO16, B:ALA17, B:GLU18, B:ALA19) ; la séquence observée n''est pas celle
-      de la molécule'
+    A:
+      accepted: false
+      junctions_by_category:
+        break_declared: 1
+        continuous: 565
+      notable_junctions:
+      - 'A:LYS509 → A:GLU561 : break_declared, 27.630 Å'
+      insertion_code_junctions: 0
+      components: {}
+      waters: 46
+      unobserved_termini:
+        C: 32
+      declared_missing_atoms: 4
+      absent_backbone_atoms:
+      - A:ALA617:CA
+      - A:ALA617:C
+      - A:ALA617:O
+      refusal_causes:
+      - break_declared
+      - unobserved_C
+    B:
+      accepted: false
+      junctions_by_category:
+        break_declared: 2
+        continuous: 217
+      notable_junctions:
+      - 'B:GLN15 → B:PRO39 : break_declared, 29.003 Å'
+      - 'B:GLY192 → B:ASN210 : break_declared, 15.130 Å'
+      insertion_code_junctions: 0
+      components: {}
+      waters: 2
+      unobserved_termini:
+        N: 1
+        C: 18
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - break_declared
+      - unobserved_C
+      - unobserved_N
 - file: 1LCD.pdb
   url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/1LCD.pdb
   exercises: RMN, 3 modèles ; complexe protéine–ADN ; ion Na
@@ -330,6 +452,17 @@ files:
   - check: écriture mmcif puis relecture sans perte
     ok: true
     detail: 1137 atomes
+  - check: chaîne B refusée comme non peptidique
+    ok: true
+    detail: 'Chaîne B : aucun acide aminé (ni N, CA, C, ni groupe terminal) ; chaîne
+      non peptidique, composants : DA, DC, DG, DT, HOH'
+  - check: chaîne C refusée comme non peptidique
+    ok: true
+    detail: 'Chaîne C : aucun acide aminé (ni N, CA, C, ni groupe terminal) ; chaîne
+      non peptidique, composants : DA, DC, DG, DT, HOH, NA'
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus aucun (acceptée), attendus []
   inventory:
     atoms: 1137
     hydrogens: 243
@@ -382,11 +515,22 @@ files:
       choisis, ou les retirer pour les reconstruire.'
     - 'Liaisons déclarées par le fichier (metal_coordination ×4) : à confirmer.'
   peptides:
-    B: 'refusé (UnknownResidueError) : résidu(s) absent(s) de la bibliothèque : B:DA1,
-      B:DA2, B:DT3, B:DT4, B:DG5, B:DT6, B:DG7, B:DA8'
-    C: 'refusé (UnknownResidueError) : résidu(s) absent(s) de la bibliothèque : C:DC1,
-      C:DG2, C:DC3, C:DT4, C:DC5, C:DA6, C:DC7, C:DA8'
+    B: 'refusé (StructureError) : Chaîne B : aucun acide aminé (ni N, CA, C, ni groupe
+      terminal) ; chaîne non peptidique, composants : DA, DC, DG, DT, HOH'
+    C: 'refusé (StructureError) : Chaîne C : aucun acide aminé (ni N, CA, C, ni groupe
+      terminal) ; chaîne non peptidique, composants : DA, DC, DG, DT, HOH, NA'
     A:
+      accepted: true
+      junctions_by_category:
+        continuous: 50
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components: {}
+      waters: 26
+      unobserved_termini: {}
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes: []
       residues: MET-LYS-PRO-VAL-THR-LEU-TYR-ASP-VAL-ALA-GLU-TYR-ALA-GLY-VAL-SER-TYR-GLN-THR-VAL-SER-ARG-VAL-VAL-ASN-GLN-ALA-SER-HIS-VAL-SER-ALA-LYS-THR-ARG-GLU-LYS-VAL-GLU-ALA-ALA-MET-ALA-GLU-LEU-ASN-TYR-ILE-PRO-ASN-ARG
       n_terminus_from_structure: true
       c_terminus_from_structure: true
@@ -440,9 +584,20 @@ files:
   - check: écriture mmcif puis relecture sans perte
     ok: true
     detail: 1137 atomes
+  - check: chaîne B refusée comme non peptidique
+    ok: true
+    detail: 'Chaîne B : aucun acide aminé (ni N, CA, C, ni groupe terminal) ; chaîne
+      non peptidique, composants : DA, DC, DG, DT, HOH'
+  - check: chaîne C refusée comme non peptidique
+    ok: true
+    detail: 'Chaîne C : aucun acide aminé (ni N, CA, C, ni groupe terminal) ; chaîne
+      non peptidique, composants : DA, DC, DG, DT, HOH, NA'
   - check: séquence de la chaîne A = séquence déclarée (_entity_poly)
     ok: true
     detail: lue MKPVTLYDVAEYAGVSYQTVSRVVNQASHVSAKTREKVEAAMAELNYIPNR, déclarée MKPVTLYDVAEYAGVSYQTVSRVVNQASHVSAKTREKVEAAMAELNYIPNR
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus aucun (acceptée), attendus []
   inventory:
     atoms: 1137
     hydrogens: 243
@@ -497,11 +652,22 @@ files:
     - 'Liaisons déclarées par le fichier (hydrogen_bond ×27, metal_coordination ×4)
       : à confirmer.'
   peptides:
-    B: 'refusé (UnknownResidueError) : résidu(s) absent(s) de la bibliothèque : B:DA1,
-      B:DA2, B:DT3, B:DT4, B:DG5, B:DT6, B:DG7, B:DA8'
-    C: 'refusé (UnknownResidueError) : résidu(s) absent(s) de la bibliothèque : C:DC1,
-      C:DG2, C:DC3, C:DT4, C:DC5, C:DA6, C:DC7, C:DA8'
+    B: 'refusé (StructureError) : Chaîne B : aucun acide aminé (ni N, CA, C, ni groupe
+      terminal) ; chaîne non peptidique, composants : DA, DC, DG, DT, HOH'
+    C: 'refusé (StructureError) : Chaîne C : aucun acide aminé (ni N, CA, C, ni groupe
+      terminal) ; chaîne non peptidique, composants : DA, DC, DG, DT, HOH, NA'
     A:
+      accepted: true
+      junctions_by_category:
+        continuous: 50
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components: {}
+      waters: 26
+      unobserved_termini: {}
+      declared_missing_atoms: 304
+      absent_backbone_atoms: []
+      refusal_causes: []
       residues: MET-LYS-PRO-VAL-THR-LEU-TYR-ASP-VAL-ALA-GLU-TYR-ALA-GLY-VAL-SER-TYR-GLN-THR-VAL-SER-ARG-VAL-VAL-ASN-GLN-ALA-SER-HIS-VAL-SER-ALA-LYS-THR-ARG-GLU-LYS-VAL-GLU-ALA-ALA-MET-ALA-GLU-LEU-ASN-TYR-ILE-PRO-ASN-ARG
       n_terminus_from_structure: true
       c_terminus_from_structure: true
@@ -542,6 +708,21 @@ files:
   - check: écriture mmcif puis relecture sans perte
     ok: true
     detail: 1855 atomes
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['unobserved_N'], attendus ['unobserved_N']
+  - check: 'chaîne B : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['unobserved_N'], attendus ['unobserved_N']
+  - check: 'chaîne C : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['unobserved_N'], attendus ['unobserved_N']
+  - check: 'chaîne D : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['unobserved_N'], attendus ['unobserved_N']
+  - check: 'chaîne E : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['unobserved_N'], attendus ['unobserved_N']
   inventory:
     atoms: 1855
     hydrogens: 955
@@ -597,21 +778,76 @@ files:
     - '955 hydrogène(s) présents : vérifier qu''ils correspondent aux états de protonation
       choisis, ou les retirer pour les reconstruire.'
   peptides:
-    A: 'refusé (StructureError) : 16 résidu(s) déclaré(s) non observé(s) (A:ASP1,
-      A:ALA2, A:GLU3, A:PHE4, A:ARG5) ; la séquence observée n''est pas celle de la
-      molécule'
-    B: 'refusé (StructureError) : 16 résidu(s) déclaré(s) non observé(s) (B:ASP1,
-      B:ALA2, B:GLU3, B:PHE4, B:ARG5) ; la séquence observée n''est pas celle de la
-      molécule'
-    C: 'refusé (StructureError) : 16 résidu(s) déclaré(s) non observé(s) (C:ASP1,
-      C:ALA2, C:GLU3, C:PHE4, C:ARG5) ; la séquence observée n''est pas celle de la
-      molécule'
-    D: 'refusé (StructureError) : 16 résidu(s) déclaré(s) non observé(s) (D:ASP1,
-      D:ALA2, D:GLU3, D:PHE4, D:ARG5) ; la séquence observée n''est pas celle de la
-      molécule'
-    E: 'refusé (StructureError) : 16 résidu(s) déclaré(s) non observé(s) (E:ASP1,
-      E:ALA2, E:GLU3, E:PHE4, E:ARG5) ; la séquence observée n''est pas celle de la
-      molécule'
+    A:
+      accepted: false
+      junctions_by_category:
+        continuous: 25
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components: {}
+      waters: 0
+      unobserved_termini:
+        N: 16
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - unobserved_N
+    B:
+      accepted: false
+      junctions_by_category:
+        continuous: 25
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components: {}
+      waters: 0
+      unobserved_termini:
+        N: 16
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - unobserved_N
+    C:
+      accepted: false
+      junctions_by_category:
+        continuous: 25
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components: {}
+      waters: 0
+      unobserved_termini:
+        N: 16
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - unobserved_N
+    D:
+      accepted: false
+      junctions_by_category:
+        continuous: 25
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components: {}
+      waters: 0
+      unobserved_termini:
+        N: 16
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - unobserved_N
+    E:
+      accepted: false
+      junctions_by_category:
+        continuous: 25
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components: {}
+      waters: 0
+      unobserved_termini:
+        N: 16
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - unobserved_N
 - file: 2BEG.pdb
   url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/2BEG.pdb
   exercises: 'copie raccourcie par Biopython : 1 modèle, mais NUMMDL 10'
@@ -659,6 +895,9 @@ files:
   - check: écriture mmcif puis relecture sans perte
     ok: true
     detail: 357 atomes
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['modified_residue'], attendus ['modified_residue']
   inventory:
     atoms: 357
     hydrogens: 172
@@ -687,8 +926,23 @@ files:
       choisis, ou les retirer pour les reconstruire.'
     - 'Liaisons déclarées par le fichier (covalent ×6, disulfide ×3) : à confirmer.'
   peptides:
-    A: 'refusé (UnknownResidueError) : résidu(s) absent(s) de la bibliothèque : A:HYP2,
-      A:HYP3, A:HYP14'
+    A:
+      accepted: false
+      junctions_by_category:
+        continuous: 24
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components:
+        A:HYP2: modified_residue
+        A:HYP3: modified_residue
+        A:HYP14: modified_residue
+        A:NH225: terminal_cap
+      waters: 0
+      unobserved_termini: {}
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - modified_residue
 - file: 2n0n_M1.pdb
   url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/2n0n_M1.pdb
   exercises: 'copie d''un modèle d''un ensemble RMN : NUMMDL 20 ; AIB, NH2'
@@ -738,6 +992,13 @@ files:
   - check: écriture mmcif puis relecture sans perte
     ok: true
     detail: 6468 atomes
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['side_chain_modification'], attendus ['side_chain_modification']
+  - check: 'chaîne C : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['side_chain_modification', 'unobserved_C', 'unobserved_N'], attendus
+      ['side_chain_modification', 'unobserved_C', 'unobserved_N']
   inventory:
     atoms: 6468
     hydrogens: 0
@@ -779,11 +1040,41 @@ files:
     - 'Liaisons déclarées par le fichier (covalent ×4, disulfide ×7, metal_coordination
       ×3) : à confirmer.'
   peptides:
-    A: 'refusé (UnknownResidueError) : résidu(s) absent(s) de la bibliothèque : A:NAG902,
-      A:NAG903, A:NAG904'
-    C: 'refusé (StructureError) : 15 résidu(s) déclaré(s) non observé(s) (C:ARG319,
-      C:VAL320, C:GLN321, C:PRO322, C:THR323) ; la séquence observée n''est pas celle
-      de la molécule'
+    A:
+      accepted: false
+      junctions_by_category:
+        continuous: 596
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components:
+        A:ZN901: ion
+        A:NAG902: side_chain_modification
+        A:NAG903: side_chain_modification
+        A:NAG904: side_chain_modification
+      waters: 0
+      unobserved_termini: {}
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - side_chain_modification
+    C:
+      accepted: false
+      junctions_by_category:
+        continuous: 193
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components:
+        C:NAG601: side_chain_modification
+      waters: 0
+      unobserved_termini:
+        N: 14
+        C: 1
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - side_chain_modification
+      - unobserved_C
+      - unobserved_N
 - file: 6WQA.cif
   url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/6WQA.cif
   exercises: 98 atomes à conformations alternatives ; ligand
@@ -818,6 +1109,9 @@ files:
   - check: écriture mmcif puis relecture sans perte
     ok: true
     detail: 3003 atomes
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['break_undeclared'], attendus ['break_undeclared']
   inventory:
     atoms: 3003
     hydrogens: 0
@@ -843,13 +1137,32 @@ files:
     pending_decisions:
     - '6 résidu(s) à conformations alternatives : en choisir une par résidu avant
       toute paramétrisation.'
-    - '3 trou(s) de numérotation : rupture possible de chaîne, à examiner (A:LEU208
-      → A:ALA1001; A:ALA1043 → A:ASP1060; A:LEU1106 → A:GLU219).'
+    - '3 saut(s) de numérotation, qui ne prouvent pas une rupture : le rapport d''extraction
+      (--chain) mesure la liaison C–N de chaque jonction (A:LEU208 → A:ALA1001; A:ALA1043
+      → A:ASP1060; A:LEU1106 → A:GLU219).'
     - 'Composants non reconnus par la bibliothèque : ZMA×1 ; pour chacun, le garder
       (et le paramétrer) ou le retirer.'
     - 'Aucun hydrogène : ils devront être ajoutés selon les états de protonation.'
   peptides:
-    A: 'refusé (UnknownResidueError) : résidu(s) absent(s) de la bibliothèque : A:ZMA1202'
+    A:
+      accepted: false
+      junctions_by_category:
+        break_undeclared: 1
+        continuous: 387
+        numbering_discontinuity: 2
+      notable_junctions:
+      - 'A:LEU208 → A:ALA1001 : numbering_discontinuity, 1.355 Å'
+      - 'A:ALA1043 → A:ASP1060 : break_undeclared, 14.081 Å'
+      - 'A:LEU1106 → A:GLU219 : numbering_discontinuity, 1.351 Å'
+      insertion_code_junctions: 0
+      components:
+        A:ZMA1202: unbound_ligand
+      waters: 0
+      unobserved_termini: {}
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - break_undeclared
 - file: 4ZHL.cif
   url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/4ZHL.cif
   exercises: codes d'insertion (numérotation chymotrypsine) ; chaîne peptidique P
@@ -887,9 +1200,19 @@ files:
   - check: écriture mmcif puis relecture sans perte
     ok: true
     detail: 2080 atomes
+  - check: séquence de la chaîne U = séquence déclarée (_entity_poly)
+    ok: true
+    detail: lue IIGGEFTTIENQPWFAAIYRRHRGGSVTYVCGGSLISPCWVISATHCFIDYPKKEDYIVYLGRSRLNSNTQGEMKFEVENLILHKDYSADTLAYHNDIALLKIRSKEGRCAQPSRTIQTIALPSMYNDPQFGTSCEITGFGKEQSTDYLYPEQLKMTVVKLISHRECQQPHYYGSEVTTKMLCAADPQWKTDSCQGDSGGPLVCSLQGRMTLTGIVSWGRGCALKDKPGVYTRVSHFLPWIRSHTKE,
+      déclarée IIGGEFTTIENQPWFAAIYRRHRGGSVTYVCGGSLISPCWVISATHCFIDYPKKEDYIVYLGRSRLNSNTQGEMKFEVENLILHKDYSADTLAYHNDIALLKIRSKEGRCAQPSRTIQTIALPSMYNDPQFGTSCEITGFGKEQSTDYLYPEQLKMTVVKLISHRECQQPHYYGSEVTTKMLCAADPQWKTDSCQGDSGGPLVCSLQGRMTLTGIVSWGRGCALKDKPGVYTRVSHFLPWIRSHTKE
+  - check: 'chaîne U : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus aucun (acceptée), attendus []
   - check: séquence de la chaîne P = séquence déclarée (_entity_poly)
     ok: true
     detail: lue CPAYSRYIGC, déclarée CPAYSRYIGC
+  - check: 'chaîne P : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus aucun (acceptée), attendus []
   inventory:
     atoms: 2080
     hydrogens: 0
@@ -917,15 +1240,50 @@ files:
     connections:
       disulfide: 4
     pending_decisions:
-    - '1 trou(s) de numérotation : rupture possible de chaîne, à examiner (U:ARG217
-      → U:GLY219).'
+    - '1 saut(s) de numérotation, qui ne prouvent pas une rupture : le rapport d''extraction
+      (--chain) mesure la liaison C–N de chaque jonction (U:ARG217 → U:GLY219).'
     - '50 molécule(s) d''eau cristallographique : les garder ou les retirer.'
     - 'Aucun hydrogène : ils devront être ajoutés selon les états de protonation.'
     - 'Liaisons déclarées par le fichier (disulfide ×4) : à confirmer.'
   peptides:
-    U: 'refusé (StructureError) : saut de numérotation entre U:ARG217 et U:GLY219
-      ; chaîne interrompue, la séquence lue serait fausse'
+    U:
+      accepted: true
+      junctions_by_category:
+        continuous: 218
+        numbering_discontinuity: 28
+      notable_junctions:
+      - 'U:ARG217 → U:GLY219 : numbering_discontinuity, 1.316 Å'
+      insertion_code_junctions: 27
+      components: {}
+      waters: 48
+      unobserved_termini: {}
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes: []
+      residues: ILE-ILE-GLY-GLY-GLU-PHE-THR-THR-ILE-GLU-ASN-GLN-PRO-TRP-PHE-ALA-ALA-ILE-TYR-ARG-ARG-HIS-ARG-GLY-GLY-SER-VAL-THR-TYR-VAL-CYS-GLY-GLY-SER-LEU-ILE-SER-PRO-CYS-TRP-VAL-ILE-SER-ALA-THR-HIS-CYS-PHE-ILE-ASP-TYR-PRO-LYS-LYS-GLU-ASP-TYR-ILE-VAL-TYR-LEU-GLY-ARG-SER-ARG-LEU-ASN-SER-ASN-THR-GLN-GLY-GLU-MET-LYS-PHE-GLU-VAL-GLU-ASN-LEU-ILE-LEU-HIS-LYS-ASP-TYR-SER-ALA-ASP-THR-LEU-ALA-TYR-HIS-ASN-ASP-ILE-ALA-LEU-LEU-LYS-ILE-ARG-SER-LYS-GLU-GLY-ARG-CYS-ALA-GLN-PRO-SER-ARG-THR-ILE-GLN-THR-ILE-ALA-LEU-PRO-SER-MET-TYR-ASN-ASP-PRO-GLN-PHE-GLY-THR-SER-CYS-GLU-ILE-THR-GLY-PHE-GLY-LYS-GLU-GLN-SER-THR-ASP-TYR-LEU-TYR-PRO-GLU-GLN-LEU-LYS-MET-THR-VAL-VAL-LYS-LEU-ILE-SER-HIS-ARG-GLU-CYS-GLN-GLN-PRO-HIS-TYR-TYR-GLY-SER-GLU-VAL-THR-THR-LYS-MET-LEU-CYS-ALA-ALA-ASP-PRO-GLN-TRP-LYS-THR-ASP-SER-CYS-GLN-GLY-ASP-SER-GLY-GLY-PRO-LEU-VAL-CYS-SER-LEU-GLN-GLY-ARG-MET-THR-LEU-THR-GLY-ILE-VAL-SER-TRP-GLY-ARG-GLY-CYS-ALA-LEU-LYS-ASP-LYS-PRO-GLY-VAL-TYR-THR-ARG-VAL-SER-HIS-PHE-LEU-PRO-TRP-ILE-ARG-SER-HIS-THR-LYS-GLU
+      n_terminus_from_structure: false
+      c_terminus_from_structure: false
+      n_terminus: free_amine
+      c_terminus: free_acid
+      disulfides:
+      - - 31
+        - 47
+      - - 167
+        - 183
+      - - 194
+        - 222
     P:
+      accepted: true
+      junctions_by_category:
+        continuous: 9
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components: {}
+      waters: 2
+      unobserved_termini: {}
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes: []
       residues: CYS-PRO-ALA-TYR-SER-ARG-TYR-ILE-GLY-CYS
       n_terminus_from_structure: false
       c_terminus_from_structure: false
@@ -968,6 +1326,9 @@ files:
   - check: écriture mmcif puis relecture sans perte
     ok: true
     detail: 1107 atomes
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['unobserved_C'], attendus ['unobserved_C']
   inventory:
     atoms: 1107
     hydrogens: 7
@@ -996,8 +1357,24 @@ files:
     - '7 hydrogène(s) présents : vérifier qu''ils correspondent aux états de protonation
       choisis, ou les retirer pour les reconstruire.'
   peptides:
-    A: 'refusé (StructureError) : 2 résidu(s) déclaré(s) non observé(s) (A:VAL1971,
-      A:SER1972) ; la séquence observée n''est pas celle de la molécule'
+    A:
+      accepted: false
+      junctions_by_category:
+        continuous: 114
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components:
+        A:ZYB2971: unbound_ligand
+        A:MOH2972: unbound_ligand
+        A:MOH2973: unbound_ligand
+        A:MOH2974: unbound_ligand
+      waters: 146
+      unobserved_termini:
+        C: 2
+      declared_missing_atoms: 16
+      absent_backbone_atoms: []
+      refusal_causes:
+      - unobserved_C
 cross_format:
 - entry: 1A8O
   same_atoms_pdb_vs_mmcif: true
@@ -1033,5 +1410,5 @@ cross_format:
   - 148
   - 148
 summary:
-  checks: 112
+  checks: 137
   failed: []

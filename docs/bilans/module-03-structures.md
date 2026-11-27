@@ -2,7 +2,7 @@
 
 > Étape 3 de [PLAN-CONSTRUCTION.md](../PLAN-CONSTRUCTION.md). Bilan établi le 27 novembre 2026, selon le modèle de la méthode de travail imposée. Livré sur une branche et une PR dédiées, partie de la branche par défaut (modules 1 et 2 fusionnés).
 
-**Statut final : TERMINÉ MAIS NON VALIDÉ.** Le code, les tests, la validation sur 14 fichiers réels et la documentation sont livrés. Tous les contrôles passent. Le module n'est pas déclaré validé, pour trois raisons détaillées en section 8 : Firas n'a pas encore répondu sur la bibliothèque de lecture, les structures de validation ne sont pas celles de la thèse, et la revue prévue par le plan reste à faire.
+**Statut final : TERMINÉ MAIS NON VALIDÉ.** Revue de Firas du 27 novembre 2026 : gemmi **validé**, structures de validation en **validation provisoire**, extraction d'un peptide **à corriger**. La correction est livrée (section 9) : rapport d'extraction par jonction, trois défauts corrigés, tests sur 4ZHL, 6WQA et 7DDO. Le module reste non validé : la représentation d'une extrémité non chimique (décisions `split` et `observed_segment`) attend la réponse de Firas, et sa validation finale est requise avant la fusion de la PR #3.
 
 ---
 
@@ -79,6 +79,8 @@ Règles de classement, toutes structurelles ou tirées d'un fichier sourcé :
 - tout le reste est un composant non reconnu, rapporté par son nom, jamais classé par supposition.
 
 ### 3.5 Correspondance : `structure_to_peptide(structure, chaîne, journal=...)`
+
+> **Remplacé après la revue** : la version décrite ci-dessous est celle soumise à la revue. Elle confondait un saut de numérotation avec une rupture, et comptait ligands et glycanes comme résidus. Voir la section 9 pour l'extraction actuelle.
 
 Établit le `Peptide` d'une chaîne, ou refuse avec le motif :
 
@@ -195,15 +197,15 @@ Sur la même entrée, le PDB et le mmCIF ne portent pas tout à fait la même ch
 
 ## 7. Problèmes connus et limitations
 
-1. **Bibliothèque de lecture non confirmée par Firas.** Je lui ai posé la question au démarrage (carte de décision) et j'ai travaillé sur l'option recommandée, gemmi. Changer de bibliothèque ne toucherait que `structure_formats.py`.
+1. ~~Bibliothèque de lecture non confirmée par Firas.~~ *Validée le 27 novembre 2026 : gemmi, à condition que ses objets restent dans `io` (vérifié par `test_third_party_library_is_confined`).*
 2. **Les récepteurs de la thèse (DCC, TrkC, UNC5) ne sont pas dans la validation.** La PDB est inaccessible depuis l'environnement de développement. Le test V du plan prévoyait un récepteur ciblé : il reste à faire avec les fichiers ou liens de Firas (`pepforge inspect --url ...` sur son poste, ou un fichier local).
 3. **Le test d'intégration sur une sortie de docking n'est pas fait** : aucune n'existe encore dans le projet.
 4. **Lecture d'un seul modèle à la fois.** Un ensemble RMN se lit modèle par modèle ; l'analyse d'un ensemble entier n'est pas prévue avant l'étape 14.
 5. **Numérotation de l'auteur seulement.** Les identifiants `label_asym_id` et `label_seq_id` du mmCIF ne sont pas gardés dans `Structure`. Ils servent à la relecture stricte, pas au-delà.
 6. **Charge formelle non lue** (colonnes 79-80 du PDB, `pdbx_formal_charge`). Elle n'a pas encore d'usage, et la charge des ions sera traitée à la paramétrisation.
 7. **Enregistrements `CONECT` et `ANISOU` non importés.** Les liaisons déclarées viennent de `SSBOND`, `LINK` et `struct_conn` ; `CONECT` (utile pour les ligands) n'est pas lu ni signalé.
-8. **Le trou de numérotation n'est pas une preuve de rupture.** Il est signalé à l'inventaire et refusé par la correspondance avec un peptide (cas de la chymotrypsine 4ZHL). Le contrôle géométrique de continuité, qui tranchera, vient à l'étape 4.
-9. **Une chaîne qui porte un résidu non observé est refusée par la correspondance**, même si ce résidu est à une extrémité (Aβ 1-16 dans 2BEG). C'est voulu (la séquence lue ne serait pas celle de la molécule), mais cela demandera une décision explicite (tronquer et coiffer) à l'étape 5.
+8. ~~Le trou de numérotation est refusé par la correspondance.~~ *Corrigé (section 9) : la liaison C–N est mesurée à chaque jonction ; un saut avec liaison est accepté et signalé.*
+9. **Une chaîne dont des résidus ne sont pas observés est refusée par défaut**, à une extrémité comme dans une rupture (Aβ 1-16 dans 2BEG). Les décisions `observed_segment` et `split` sont classées et journalisées, mais la production des peptides correspondants attend la représentation d'une extrémité non chimique (section 9.5).
 10. **Un élément absent est déduit par gemmi du nom d'atome.** Le nombre d'atomes concernés est inscrit au journal, mais la déduction n'est pas refusée, parce que beaucoup de fichiers produits par des outils de modélisation n'ont pas de colonne d'élément.
 11. **Le contenu entier est gardé en mémoire** (plafond par défaut 100 Mio), ce qui suffit pour un récepteur ou un complexe, pas pour un ribosome sans relever le plafond.
 12. **Formats binaires non pris en charge** (BinaryCIF, MMTF) : refusés avec un message clair.
@@ -215,3 +217,68 @@ Sur la même entrée, le PDB et le mmCIF ne portent pas tout à fait la même ch
 3. **Relire les refus de la correspondance avec un peptide** (section 3.5 et limitations 8 et 9) : sont-ils ceux que tu veux, en particulier pour une chaîne dont les extrémités ne sont pas observées ?
 4. **Revue prévue par le plan** : gestion des conformations alternatives et des codes d'insertion.
 5. **Quand tu le souhaites**, une structure de tes récepteurs ou de tes peptides, par fichier ou par lien, pour refaire la section 6 sur un cas de la thèse.
+
+## 9. Correction après la revue du 27 novembre 2026 : extraction d'un peptide
+
+Orientations validées par Firas : gemmi encapsulé dans `io` ; seuil C–N de 1,8 Å, sourcé et modifiable, distance toujours rapportée ; classement explicite de la continuité, des sauts de numérotation, des ruptures et des composants non peptidiques ; ligands et glycanes jamais intégrés à la séquence ; mode strict par défaut, décisions `reject`, `split`, `observed_segment` journalisées ; aucune reconnexion ni reconstruction. Analyse préalable : [module-03-extraction-analyse.md](module-03-extraction-analyse.md).
+
+### 9.1 Ce qui a changé
+
+| Fichier | Changement |
+|---|---|
+| `src/pepforge/io/peptide_extraction.py` | **nouveau** : `analyze_chain`, `extract_peptides`, `structure_to_peptide` (forme stricte), `ExtractionReport`, `ExtractionDecisions` |
+| `src/pepforge/io/structure_inventory.py` | l'ancienne correspondance en est retirée ; un saut de numérotation n'y est plus présenté comme une rupture |
+| `src/pepforge/residues/data/structure_geometry.yaml` | **nouveau** : seuil 1,8 Å (Biopython 1.88, `PPBuilder`, Cock 2009, Hamelryck 2003), longueur de référence 1,329 Å (Engh et Huber 1991), validé par Firas |
+| `src/pepforge/residues/structure_components.py` | `PeptideBondCriterion`, `load_peptide_bond_criterion(valeur)` ; une valeur imposée est inscrite comme telle et refusée si elle ne dépasse pas 1,329 Å |
+| `src/pepforge/core/structure.py`, `io/structure_formats.py`, `io/structure.py` | `MissingAtom` ; atomes déclarés non observés lus (`REMARK 470`, `pdbx_unobs_or_zero_occ_atoms` avec `occupancy_flag` 1) et comptés au journal |
+| `src/pepforge/exceptions.py` | `ExtractionRefusedError(StructureError)`, qui porte le rapport |
+| `src/pepforge/cli/main.py` | `inspect --chain` imprime le rapport, même en cas de refus ; options `--breaks {reject,split}` et `--unobserved-termini {reject,observed_segment}` |
+| `tests/test_peptide_extraction.py`, `tests/data/structures/reference/` | **nouveaux** : 39 tests ; 4ZHL, 6WQA, 7DDO compressés, empreinte SHA-256 vérifiée à chaque test |
+
+La matrice de dépendances ne change pas.
+
+### 9.2 Le rapport d'extraction
+
+Chaque **jonction** porte les résidus, les atomes C et N utilisés (avec leur conformation, `A:SER6:C[A]`), chaque distance mesurée, l'écart de numérotation, la présence d'un code d'insertion, les résidus déclarés non observés entre les deux, la catégorie et la décision. Les conformations alternatives sont appariées par leur indicateur ; si elles ne concordent pas, la continuité est non mesurable.
+
+| Catégorie de jonction | Critère | Par défaut |
+|---|---|---|
+| `continuous` | C–N ≤ 1,8 Å, numérotation n → n+1 sans code d'insertion | accepté |
+| `numbering_discontinuity` | C–N ≤ 1,8 Å, saut, retour en arrière ou code d'insertion | **accepté et signalé** |
+| `break_declared` | C–N > 1,8 Å, résidus déclarés entre les deux | refus, ou `split` |
+| `break_undeclared` | C–N > 1,8 Å, aucun résidu déclaré | refus, ou `split` |
+| `continuity_unmeasurable` | C ou N absent, conformations discordantes | refus |
+
+| Catégorie de composant | Critère | Par défaut |
+|---|---|---|
+| `terminal_cap` | `ACE`, `NH2`, `NME`, à son extrémité | accepté (fixe l'extrémité) |
+| `modified_residue` | N, CA, C présents, absent de la bibliothèque | refus, position donnée |
+| `side_chain_modification` | relié à la chaîne par une liaison covalente déclarée, directement ou par un autre composant | refus, liaison donnée |
+| `unbound_ligand` | aucune liaison covalente déclarée | exclu et listé, plus courte distance à la chaîne |
+| `ion`, `water` | un atome ; nom d'eau | exclu et listé |
+
+Aussi rapportés : extrémités non observées (`unobserved_termini`, refus ou `observed_segment`), résidus déclarés sans place dans la chaîne observée (contradiction, refus), atomes déclarés non observés, atomes de squelette absents (N, CA, C, O), segments.
+
+### 9.3 Tests et résultats
+
+- `ruff`, `ruff format`, `mypy --strict` propres ; **599 tests réussis, 0 échec** (39 nouveaux pour l'extraction, 3 pour les atomes déclarés manquants, 1 pour le seuil, 1 pour le rapport de refus en ligne de commande).
+- Tests synthétiques à géométrie connue : chaque catégorie de jonction et de composant a un cas accepté et un cas refusé.
+- Structures réelles (sans réseau) : 4ZHL chaîne U acceptée, 247 résidus, ARG217 → GLY219 à 1,316 Å classé `numbering_discontinuity`, 27 jonctions à code d'insertion, aucune distance au-delà de 1,8 Å ; 4ZHL chaîne P, 10 résidus, pont 1–10 ; 6WQA, `ZMA` classé ligand non lié (2,834 Å de la chaîne) et exclu, sauts +793 et −887 liés (1,355 et 1,351 Å), seule la rupture ALA1043 → ASP1060 (14,081 Å, non déclarée) bloque, et `split` donne deux segments de 254 et 137 résidus ; 7DDO, trois `NAG` classés modifications de chaîne latérale (Asn53, Asn90, Asn546) avec leur liaison `LINK`, Zn ion exclu avec ses trois coordinations, 596 jonctions continues ; 7DDO chaîne C, 14 résidus non observés à l'extrémité N et 1 à l'extrémité C.
+- **Défauts injectés** (`validation/module03_mutations.py`) : 50 gardes désactivées une à une, dont 19 dans l'extraction, 1 sur le seuil et 2 dans la lecture des atomes déclarés manquants ; **50 sur 50 font échouer au moins un test**. La première passe sur l'extraction en avait laissé 2 sans test (appariement des conformations alternatives, liaison covalente vers une autre chaîne) : les deux tests ont été ajoutés.
+- **Validation refaite** sur les 14 fichiers : **137 contrôles, 0 échec**. Les motifs de refus de chaque chaîne lisible sont comparés à ceux établis à la main dans l'analyse avant le code (`EXPECTED_REFUSALS`) : 20 chaînes conformes, et les 4 chaînes d'ADN de 1LCD refusées comme non peptidiques.
+
+### 9.4 Défauts de la section 1 de l'analyse
+
+| Défaut | Avant | Après |
+|---|---|---|
+| saut de numérotation pris pour une rupture (4ZHL U) | refus « chaîne interrompue » | extrait, saut signalé avec sa distance |
+| ligand non lié compté comme résidu (6WQA `ZMA`) | refus « hors bibliothèque » | exclu et listé ; la vraie rupture est trouvée |
+| glycane lié compté comme résidu (7DDO `NAG`) | refus « hors bibliothèque » | refus motivé : modification covalente de chaîne latérale, avec la liaison |
+| rupture non déclarée invisible | non détectée | `break_undeclared`, par la géométrie |
+
+### 9.5 Ce qui reste ouvert
+
+1. **Extrémité non chimique** (question C posée à Firas) : bord d'un segment `observed_segment` ou `split`. Le rapport classe et journalise ces décisions, mais `extract_peptides` refuse encore de produire un peptide à un tel bord, plutôt que de lui donner une amine ou un acide inventés.
+2. **Saut de numérotation avec liaison** (question A) et **granularité des décisions** (question B) : appliqués selon mes recommandations (accepté et signalé ; décision par catégorie et par chaîne), à confirmer.
+3. Une liaison covalente non déclarée (fichier de docking sans `LINK`) ne peut pas être vue : le ligand est alors classé non lié. Sa plus courte distance à la chaîne est rapportée pour que l'utilisateur en juge ; aucun seuil n'est appliqué.
+4. La liste complète des atomes absents par résidu, comparée au dictionnaire de la PDB, reste à l'étape 4.

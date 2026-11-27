@@ -47,8 +47,14 @@ from Bio.PDB.MMCIF2Dict import MMCIF2Dict
 
 from pepforge.core.peptide import C_TERMINUS_DEFAULTED, N_TERMINUS_DEFAULTED
 from pepforge.core.structure import Atom
-from pepforge.exceptions import PepForgeError, StructureError
-from pepforge.io import inventory, read_structure, read_structure_url, structure_to_peptide
+from pepforge.exceptions import ExtractionRefusedError, PepForgeError, StructureError
+from pepforge.io import (
+    ExtractionReport,
+    extract_peptides,
+    inventory,
+    read_structure,
+    read_structure_url,
+)
 from pepforge.io.retrieval import download_file
 from pepforge.io.structure import write_structure
 from pepforge.io.structure_formats import GEMMI_VERSION
@@ -73,6 +79,69 @@ FILES: dict[str, str] = {
     "4ZHL.cif": "codes d'insertion (numérotation chymotrypsine) ; chaîne peptidique P de 10 résidus",
     "4CUP.cif": "conformations alternatives ; ligands ; résidus non observés",
 }
+
+
+# Motifs de refus attendus pour chaque chaîne peptidique, établis à la main dans l'analyse
+# du 27 novembre 2026 (bilans/module-03-extraction-analyse.md, section 1) avant le code :
+# liste vide = extraction acceptée. Les chaînes d'ADN de 1LCD (B, C) sont refusées comme
+# non peptidiques. 2BEG.pdb et 2n0n_M1.pdb ne sont pas lus (NUMMDL incohérent), donc absents.
+EXPECTED_REFUSALS: dict[tuple[str, str], list[str]] = {
+    **{(f, "A"): ["modified_residue"] for f in ("1A8O.pdb", "1A8O.cif", "1AS5.cif")},
+    **{(f, "A"): ["break_declared", "unobserved_C"] for f in ("2XHE.pdb", "2XHE.cif")},
+    **{
+        (f, "B"): ["break_declared", "unobserved_C", "unobserved_N"]
+        for f in ("2XHE.pdb", "2XHE.cif")
+    },
+    **{(f, "A"): [] for f in ("1LCD.pdb", "1LCD.cif")},
+    **{("2BEG.cif", c): ["unobserved_N"] for c in "ABCDE"},
+    ("7DDO.pdb", "A"): ["side_chain_modification"],
+    ("7DDO.pdb", "C"): ["side_chain_modification", "unobserved_C", "unobserved_N"],
+    ("6WQA.cif", "A"): ["break_undeclared"],
+    ("4ZHL.cif", "U"): [],
+    ("4ZHL.cif", "P"): [],
+    ("4CUP.cif", "A"): ["unobserved_C"],
+}
+
+
+def _refusal_causes(report: ExtractionReport) -> list[str]:
+    """Motifs de refus d'un rapport, par catégorie."""
+    causes = {j.category.value for j in report.junctions if j.decision.value == "reject"}
+    causes |= {
+        f"unobserved_{t.side}" for t in report.unobserved_termini if t.decision.value == "reject"
+    }
+    causes |= {c.category.value for c in report.components if c.decision.value == "reject"}
+    for word, cause in (
+        ("sans place", "unplaced_missing"),
+        ("liaison déclarée", "declared_link"),
+        ("disulfure", "disulfide"),
+        ("microhétérogénéité", "microheterogeneity"),
+        ("groupe terminal", "terminal_cap"),
+    ):
+        if any(word in reason for reason in report.refusals):
+            causes.add(cause)
+    return sorted(causes)
+
+
+def _report_summary(report: ExtractionReport) -> dict[str, Any]:
+    return {
+        "accepted": report.accepted,
+        "junctions_by_category": report.junctions_by_category(),
+        "notable_junctions": [
+            f"{j.before} → {j.after} : {j.category.value}, "
+            + ", ".join(f"{m.distance:.3f} Å" for m in j.measurements)
+            for j in report.junctions
+            if j.category.value not in ("continuous",) and not j.insertion_code
+        ],
+        "insertion_code_junctions": sum(1 for j in report.junctions if j.insertion_code),
+        "components": {
+            c.residue: c.category.value for c in report.components if c.category.value != "water"
+        },
+        "waters": sum(1 for c in report.components if c.category.value == "water"),
+        "unobserved_termini": {t.side: len(t.residues) for t in report.unobserved_termini},
+        "declared_missing_atoms": len(report.declared_missing_atoms),
+        "absent_backbone_atoms": list(report.absent_backbone_atoms),
+        "refusal_causes": _refusal_causes(report),
+    }
 
 
 def _pepforge_key(atom: Atom) -> tuple[Any, ...]:
@@ -311,12 +380,29 @@ def validate(name: str, workdir: Path) -> dict[str, Any]:
                 str(exc)[:200],
             )
 
-    # 5. Correspondance avec un peptide, chaîne par chaîne (refus motivés consignés).
+    # 5. Extraction d'un peptide, chaîne par chaîne : rapport et motifs de refus attendus.
     peptides = {}
     for chain in first.chain_ids:
         try:
-            peptide = structure_to_peptide(first, chain, journal=Journal())
+            extraction = extract_peptides(first, chain, journal=Journal())
+        except ExtractionRefusedError as exc:
+            assert isinstance(exc.report, ExtractionReport)
+            report = exc.report
+            peptides[chain] = _report_summary(report)
+        except PepForgeError as exc:
+            peptides[chain] = f"refusé ({type(exc).__name__}) : {str(exc)[:160]}"
+            _check(
+                result,
+                f"chaîne {chain} refusée comme non peptidique",
+                (name, chain) not in EXPECTED_REFUSALS and "non peptidique" in str(exc),
+                str(exc)[:160],
+            )
+            continue
+        else:
+            report = extraction.report
+            (peptide,) = extraction.peptides
             peptides[chain] = {
+                **_report_summary(report),
                 "residues": "-".join(r.code for r in peptide.residues),
                 "n_terminus_from_structure": N_TERMINUS_DEFAULTED not in peptide.metadata,
                 "c_terminus_from_structure": C_TERMINUS_DEFAULTED not in peptide.metadata,
@@ -333,10 +419,14 @@ def validate(name: str, workdir: Path) -> dict[str, Any]:
                     read == declared,
                     f"lue {read}, déclarée {declared}",
                 )
-        except PepForgeError as exc:
-            peptides[chain] = (
-                f"refusé ({type(exc).__name__}) : {str(exc).split(' : ', 1)[-1][:160]}"
-            )
+        expected = EXPECTED_REFUSALS.get((name, chain))
+        causes = _refusal_causes(report)
+        _check(
+            result,
+            f"chaîne {chain} : motifs de refus attendus par l'analyse",
+            expected is not None and causes == expected,
+            f"obtenus {causes or 'aucun (acceptée)'}, attendus {expected}",
+        )
     result["peptides"] = peptides
     return result
 

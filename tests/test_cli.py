@@ -115,8 +115,33 @@ def test_inspect_prints_provenance_inventory_and_peptide(
     assert report["provenance"]["format"] == "pdb"
     assert len(report["provenance"]["sha256"]) == 64
     assert report["inventaire"]["atoms"] == 32
-    assert report["peptide"]["résidus"] == "ALA-CYS-GLY-GLY-CYS"
-    assert report["peptide"]["ponts_disulfure"] == [[2, 5]]
+    (peptide,) = report["peptides"]
+    assert peptide["résidus"] == "ALA-CYS-GLY-GLY-CYS"
+    assert peptide["ponts_disulfure"] == [[2, 5]]
+    extraction = report["extraction"]
+    assert extraction["acceptée"] is True
+    assert extraction["critère"]["max_c_n_distance"] == 1.8
+    assert extraction["jonctions"][0].startswith("A:ACE0 → A:ALA1 | A:ACE0:C–A:ALA1:N ")
+    assert extraction["jonctions"][0].endswith("| continuous | accept")
+    assert extraction["eaux"] == 1
+
+
+def test_inspect_prints_the_report_of_a_refused_extraction(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import yaml
+
+    path = STRUCTURES / "reference" / "6WQA.cif.gz"
+    assert main(["inspect", str(path), "--chain", "A"]) == 1
+    captured = capsys.readouterr()
+    extraction = yaml.safe_load(captured.out)["extraction"]
+    assert extraction["acceptée"] is False
+    assert extraction["jonctions_par_catégorie"]["break_undeclared"] == 1
+    assert any(
+        line.startswith("A:ZMA1202 | unbound_ligand | exclude") for line in extraction["composants"]
+    )
+    assert "A:ALA1043 → A:ASP1060" in captured.err
+    assert "Traceback" not in captured.err
 
 
 def test_inspect_requires_the_model_of_an_ensemble(capsys: pytest.CaptureFixture[str]) -> None:

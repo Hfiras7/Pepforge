@@ -1,0 +1,30 @@
+# Critères géométriques utilisés à la lecture d'une structure (étape 3).
+#
+# Aucun paramètre de champ de force. Ces valeurs servent à classer ce que la
+# structure montre (liaison présente ou non), jamais à la corriger. Chaque
+# valeur est modifiable ici, avec sa source ; la valeur réellement utilisée est
+# recopiée dans chaque rapport d'extraction et dans le journal.
+version: 1
+
+peptide_bond:
+  # Une liaison peptidique est « présente » entre deux résidus consécutifs quand
+  # la distance C(i)–N(i+1) est inférieure ou égale à ce seuil, en Å.
+  max_c_n_distance: 1.8
+  source: >-
+    Biopython 1.88, Bio.PDB.Polypeptide.PPBuilder : seuil par défaut de 1,8 Å
+    (paramètre radius) entre le C d'un résidu et le N du suivant pour décider
+    que deux résidus sont liés. Cock P. J. A. et al., « Biopython: freely
+    available Python tools for computational molecular biology and
+    bioinformatics », Bioinformatics 25(11), 1422-1423 (2009),
+    DOI 10.1093/bioinformatics/btp163 ; Hamelryck T., Manderick B.,
+    Bioinformatics 19(17), 2308-2310 (2003), DOI 10.1093/bioinformatics/btg299.
+  reference_length: 1.329
+  reference_source: >-
+    Longueur de la liaison peptidique C–N, 1,329 Å (écart type 0,014 Å) :
+    Engh R. A., Huber R., « Accurate bond and angle parameters for X-ray
+    protein structure refinement », Acta Crystallographica A47, 392-400 (1991),
+    DOI 10.1107/S0108767391001071.
+  validated: >-
+    Seuil de 1,8 Å validé par Firas le 27/11/2026, comme valeur par défaut
+    modifiable. Sur les structures de validation du module 3, les liaisons
+    mesurent 1,32 à 1,35 Å et les ruptures 14,1 Å ou plus.

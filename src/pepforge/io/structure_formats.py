@@ -43,7 +43,7 @@ from pathlib import PurePath
 
 import gemmi
 
-from pepforge.core.structure import Atom, Connection, ConnectionKind, ResidueId
+from pepforge.core.structure import Atom, Connection, ConnectionKind, MissingAtom, ResidueId
 from pepforge.exceptions import StructureFormatError
 
 GEMMI_VERSION: str = importlib.metadata.version("gemmi")
@@ -161,6 +161,9 @@ class ParsedFile:
     connections: tuple[Connection, ...]
     declared_missing: dict[int | None, tuple[ResidueId, ...]]
     """Résidus déclarés non observés, par modèle ; clé `None` : valables pour tous les modèles."""
+
+    declared_missing_atoms: dict[int | None, tuple[MissingAtom, ...]]
+    """Atomes déclarés non observés, par modèle ; clé `None` : valables pour tous les modèles."""
 
     declared_model_count: int | None
     atoms_without_element: int
@@ -507,6 +510,72 @@ def _unobserved_mmcif(
     return {k: tuple(v) for k, v in found.items()}
 
 
+_REMARK_470 = re.compile(
+    r"^\s*(?P<model>\d+)?\s*(?P<res>[A-Z0-9]{1,3})\s+(?P<chain>\S)\s*(?P<num>-?\d+)(?P<icode>[A-Z]?)"
+    r"\s+(?P<atoms>\S.*?)\s*$"
+)
+
+
+def _remark_470(
+    structure: gemmi.Structure, origin: str
+) -> dict[int | None, tuple[MissingAtom, ...]]:
+    """Atomes déclarés manquants (`REMARK 470`, spécification PDB 3.3)."""
+    found: dict[int | None, list[MissingAtom]] = {}
+    started = False
+    for line in structure.raw_remarks:
+        if not line.startswith("REMARK 470"):
+            continue
+        body = line[10:].rstrip()
+        if not started:
+            started = "RES CSSEQI" in body and "ATOMS" in body
+            continue
+        if not body.strip():
+            continue
+        match = _REMARK_470.match(body)
+        if not match:
+            raise StructureFormatError(f"{origin} : ligne REMARK 470 illisible : {line.rstrip()!r}")
+        model = int(match["model"]) if match["model"] else None
+        residue = ResidueId(match["chain"], int(match["num"]), match["icode"], match["res"])
+        found.setdefault(model, []).extend(
+            MissingAtom(residue, name) for name in match["atoms"].split()
+        )
+    return {k: tuple(v) for k, v in found.items()}
+
+
+def _unobserved_atoms_mmcif(
+    block: gemmi.cif.Block, origin: str
+) -> dict[int | None, tuple[MissingAtom, ...]]:
+    prefix = "_pdbx_unobs_or_zero_occ_atoms."
+    table = block.find_mmcif_category(prefix)
+    if len(table) == 0:
+        return {}
+    tags = {tag.removeprefix(prefix): i for i, tag in enumerate(table.tags)}
+    found: dict[int | None, list[MissingAtom]] = {}
+    for number, row in enumerate(table, start=1):
+        where = f"{origin}, {prefix.rstrip('.')} ligne {number}"
+
+        def get(name: str, row: gemmi.cif.Table.Row = row) -> str:
+            index = tags.get(name)
+            if index is None:
+                return ""
+            raw = row.str(index)
+            return "" if raw in ("?", ".") else raw
+
+        # occupancy_flag 1 : atome non observé ; 0 : présent, d'occupation nulle.
+        if get("occupancy_flag") != "1":
+            continue
+        model_text = get("PDB_model_num")
+        model = _strict_int(model_text, "numéro de modèle", where) if model_text else None
+        residue = ResidueId(
+            get("auth_asym_id"),
+            _strict_int(get("auth_seq_id") or "?", "numéro de résidu", where),
+            get("PDB_ins_code"),
+            get("auth_comp_id"),
+        )
+        found.setdefault(model, []).append(MissingAtom(residue, get("auth_atom_id")))
+    return {k: tuple(v) for k, v in found.items()}
+
+
 # --- Lecteurs et écrivains inscrits au registre -------------------------------------------
 
 
@@ -524,6 +593,7 @@ def read_pdb(text: str, origin: str) -> ParsedFile:
         models=models,
         connections=_connections(structure),
         declared_missing=_remark_465(structure, origin),
+        declared_missing_atoms=_remark_470(structure, origin),
         declared_model_count=declared,
         atoms_without_element=no_element,
         atoms_without_occupancy=no_occupancy,
@@ -552,6 +622,7 @@ def read_mmcif(text: str, origin: str) -> ParsedFile:
         models=models,
         connections=_connections(structure),
         declared_missing=_unobserved_mmcif(block, origin),
+        declared_missing_atoms=_unobserved_atoms_mmcif(block, origin),
         declared_model_count=None,
         atoms_without_element=no_element,
         atoms_without_occupancy=no_occupancy,

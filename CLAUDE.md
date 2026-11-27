@@ -101,6 +101,7 @@ mypy                   # typage
 pepforge parse --notation 1 "Ac-RGDS-NH2"     # essai de la CLI (1 = code à une lettre)
 pepforge convert --notation 1 "Ac-RGDS-NH2"   # → Ac-Arg-Gly-Asp-Ser-NH2 (3 = trois lettres)
 pepforge inspect fichier.cif --model 1        # inventaire d'une structure (ou --url https://...)
+pepforge inspect fichier.cif --chain A        # rapport d'extraction (--breaks split, --unobserved-termini observed_segment)
 python validation/module03_structures.py      # validation du module 3 (réseau, pip install -e ".[validation]")
 ```
 
