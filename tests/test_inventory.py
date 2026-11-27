@@ -211,3 +211,8 @@ def test_modification_is_refused_rather_than_inventoried_without_it() -> None:
     # Toutes les déclarations non représentables sont nommées, pas seulement la première.
     assert "phosphorylation en position 4" in str(error.value)
     assert "dota_conjugation en position 5" in str(error.value)
+
+
+def test_disulfide_comparison_points_to_the_checklist_item() -> None:
+    result = _result(compare(_complete(), _complete()), "inventory.disulfides")
+    assert result.checklist_item == "structure.links_and_modifications"

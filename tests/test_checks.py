@@ -117,3 +117,18 @@ def test_a_problem_on_a_link_stops_the_input_stage(tmp_path: Path) -> None:
 
     with pytest.raises(QualityCheckError, match=r"peptide\.links_chemistry"):
         run_stage(_CappedCyclicStage(), "Ac-RGDS-NH2", _context(tmp_path), PEPTIDE_CHECKS)
+
+
+def test_ambiguous_reading_warns_but_does_not_block(tmp_path: Path) -> None:
+    context = _context(tmp_path)
+    peptide = run_stage(SequenceInputStage(), "Ac-ALA-NHMe", context, PEPTIDE_CHECKS)
+    assert len(peptide) == 3
+    results = {r.check_id: r for r in context.check_results["input.sequence"]}
+    assert results["peptide.unambiguous_reading"].status is Status.WARN
+    assert "écrire « Ala »" in results["peptide.unambiguous_reading"].message
+
+
+def test_link_checks_point_to_the_checklist_item() -> None:
+    results = {r.check_id: r for r in run_checks(PEPTIDE_CHECKS, parse_sequence("Ac-RGDS-NH2"))}
+    for check_id in ("peptide.links_chemistry", "peptide.modifications_verifiable"):
+        assert results[check_id].checklist_item == "structure.links_and_modifications"

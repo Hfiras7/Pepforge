@@ -277,6 +277,7 @@ Pour chaque module : ce qu'il reçoit, ce qu'il rend, les erreurs qu'il lève, e
 - **Entrées** : texte (séquence), fichiers PDB, mmCIF, SMILES, MOL/SDF. **Sorties** : `Peptide`, `Structure` (et, pour le mode « structure personnalisée », un fragment chimique à définir à l'étape 11 du plan).
 - **Erreurs** : `SequenceParseError` (dont les crochets mal formés), `UnknownResidueError`, `UnknownTerminusError`, `StructureError`.
 - **Notation des non standards** (étape 1) : code de la bibliothèque entre crochets, dans les deux notations (`Ac-RG[Aib]S-NH2`, `Ac-Arg-Gly-[Aib]-Ser-NH2`), convention reprise de HELM (Zhang *et al.*, *J. Chem. Inf. Model.* 2012, 52, 2796–2806). La règle de lecture complète est dans la docstring de [`io/sequence.py`](../src/pepforge/io/sequence.py).
+- **Lecture ambiguë signalée** (revue du module 1) : un bloc unique de trois lettres hors casse « titre » qui est aussi un code de la bibliothèque (`ALA`, `Ac-ALA-NHMe`) est lu en codes à une lettre, et ce choix est inscrit dans `Peptide.metadata` puis signalé en avertissement par `peptide.unambiguous_reading`. 17 des 20 codes standards en majuscules se liraient sinon en silence comme des tripeptides.
 - **Ne fait jamais** : corriger silencieusement une structure lue. Toute correction est un `StructureModifier` de `build`, journalisé.
 
 ### 5.8 `build` — construction et correction 3D

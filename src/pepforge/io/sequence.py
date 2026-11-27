@@ -17,7 +17,12 @@ Règle de lecture, appliquée dans cet ordre :
    extrémité C s'ils en sont un alias connu.
 3. Un unique bloc central est lu en codes à une lettre, sauf s'il est écrit en
    casse « titre » (`Ala`) et qu'il est un code de la bibliothèque, auquel cas il
-   est lu comme un code à trois lettres. `ALA` est donc lu A-L-A.
+   est lu comme un code à trois lettres. `ALA` est donc lu A-L-A. Comme `ALA` est
+   aussi le code de l'alanine, ce cas est **signalé** : la lecture retenue et la
+   façon d'écrire l'autre sont inscrites dans `Peptide.metadata`
+   (`AMBIGUOUS_READING`), et le contrôle `peptide.unambiguous_reading` produit un
+   avertissement. Si la lecture en une lettre échoue (`GLU`, où `U` n'est pas un
+   code standard), l'erreur dit comment écrire le résidu seul (`Glu`).
 4. Plusieurs blocs centraux sont toujours lus en codes à trois lettres.
 5. Un code entre crochets est un code de la bibliothèque, standard ou non
    (`[Aib]`, `[Asp]`), sans distinction de casse. Dans un bloc à une lettre, il
@@ -38,8 +43,14 @@ aminés standards, et un code absent lève `UnknownResidueError`.
 
 from __future__ import annotations
 
-from pepforge.core.peptide import C_TERMINUS_DEFAULTED, N_TERMINUS_DEFAULTED, Peptide, Residue
-from pepforge.exceptions import SequenceParseError
+from pepforge.core.peptide import (
+    AMBIGUOUS_READING,
+    C_TERMINUS_DEFAULTED,
+    N_TERMINUS_DEFAULTED,
+    Peptide,
+    Residue,
+)
+from pepforge.exceptions import SequenceParseError, UnknownResidueError
 from pepforge.residues.library import ResidueLibrary, load_default_library
 
 _MAX_C_TOKENS = 3  # "CO-NH-CH3" est l'alias C-terminal le plus long
@@ -124,6 +135,16 @@ def _parse_body(tokens: list[str], library: ResidueLibrary) -> list[Residue]:
     return [_three_letter_token(token, library) for token in tokens]
 
 
+def _ambiguous_block(tokens: list[str], library: ResidueLibrary) -> str | None:
+    """Bloc unique hors casse « titre » qui est aussi un code à trois lettres connu."""
+    if len(tokens) != 1:
+        return None
+    token = tokens[0]
+    if "[" in token or len(token) != 3 or token.istitle() or not library.has_code(token):
+        return None
+    return token
+
+
 def parse_sequence(text: str, library: ResidueLibrary | None = None) -> Peptide:
     """Construit un `Peptide` à partir d'une séquence texte (règle de lecture ci-dessus)."""
     lib = library or load_default_library()
@@ -153,8 +174,24 @@ def parse_sequence(text: str, library: ResidueLibrary | None = None) -> Peptide:
     if c_alias is None:
         metadata[C_TERMINUS_DEFAULTED] = _DEFAULT_SOURCE
 
+    ambiguous = _ambiguous_block(tokens, lib)
+    try:
+        residues = tuple(_parse_body(tokens, lib))
+    except UnknownResidueError as error:
+        if ambiguous is None:
+            raise
+        raise UnknownResidueError(
+            f"{error}. « {ambiguous} » est lu en codes à une lettre ; pour le résidu "
+            f"{ambiguous.upper()} seul, écrire « {ambiguous.title()} »"
+        ) from None
+    if ambiguous is not None:
+        metadata[AMBIGUOUS_READING] = (
+            f"« {ambiguous} » lu en codes à une lettre ({'-'.join(r.code for r in residues)}) ; "
+            f"pour le résidu {ambiguous.upper()} seul, écrire « {ambiguous.title()} »"
+        )
+
     return Peptide(
-        residues=tuple(_parse_body(tokens, lib)),
+        residues=residues,
         n_terminus=lib.n_terminus(n_alias),
         c_terminus=lib.c_terminus(c_alias),
         metadata=metadata,

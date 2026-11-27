@@ -7,6 +7,7 @@ Liste à parcourir pour chaque système préparé. Un point non vérifié est un
 - [ ] Nombre de résidus conforme à la séquence voulue.
 - [ ] Extrémités N- et C-terminales conformes à la notation d'entrée. Pour une extrémité `-CO-NH2` en AMBER, le résidu terminal doit être `NHE` et non `NME`.
 - [ ] Aucun atome ni résidu manquant après reconstruction.
+- [ ] Liaisons hors squelette (ponts disulfure, cyclisation) et modifications de chaîne latérale : chimiquement possibles, vérifiables, et présentes dans la topologie produite.
 - [ ] Hydrogènes présents et cohérents avec le pH retenu.
 - [ ] Stéréochimie des centres chiraux préservée.
 - [ ] Pour une structure importée : conformations alternatives résolues, solvants et ligands traités de façon explicite.

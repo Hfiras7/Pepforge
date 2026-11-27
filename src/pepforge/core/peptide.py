@@ -45,6 +45,13 @@ Les contrôles la lisent pour signaler une extrémité supposée plutôt que cho
 C_TERMINUS_DEFAULTED = "c_terminus_source"
 """Même rôle que `N_TERMINUS_DEFAULTED`, pour l'extrémité C."""
 
+AMBIGUOUS_READING = "ambiguous_reading"
+"""Clé de `Peptide.metadata` présente quand la séquence saisie admettait deux lectures.
+
+Sa valeur dit quelle lecture a été retenue et comment écrire l'autre. Le
+contrôle `peptide.unambiguous_reading` la signale, comme une extrémité supposée.
+"""
+
 _INTERNAL_KEY = re.compile(r"[a-z][a-z0-9_]*")
 _RESIDUE_CODE = re.compile(r"[A-Z0-9_]+")
 

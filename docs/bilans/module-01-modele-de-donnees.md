@@ -116,7 +116,7 @@ Le plan prévoit « V : aucune » pour cette étape, faute de chimie quantitativ
 5. **Modifications** : sans bibliothèque, toute modification déclarée échoue au contrôle d'entrée comme « non vérifiable ».
 6. **Liste des résidus à thiol** : elle est fermée (cystéine seule) et écrite dans `checks`. Elle devra passer dans les données de la bibliothèque le jour où un thiol non standard (homocystéine, pénicillamine) y entrera.
 7. **Peptide cyclique** : il garde ses extrémités déclarées (amine libre, acide libre), qui désignent les groupes consommés. Leur représentation dans les fichiers produits sera fixée avec la prise en charge de la cyclisation.
-8. **Checklist 04** : elle n'a pas d'item pour les liaisons hors squelette. Les deux nouveaux contrôles n'ont donc pas de `checklist_item`.
+8. **Checklist 04** : elle n'avait pas d'item pour les liaisons hors squelette. *Résolu à la revue : item ajouté (section 9).*
 9. **Provenance** : après une mutation, `metadata["input"]` reste le texte saisi à l'origine. L'historique des opérations revient au journal de l'appelant, comme le prévoit le plan. Aucune étape du pipeline n'appelle encore ces opérations, si bien que cette journalisation n'est pas exercée dans ce module.
 10. **Affichage** : `one_letter_sequence` écrit `X` pour un résidu sans code à une lettre, comme avant. Il n'existe pas encore d'écriture d'une séquence en notation entre crochets.
 11. **Livraison** : le module est sur la PR #1, et pas sur une PR dédiée comme le veut le plan (« une étape = une PR »), parce que je ne crée pas d'autre branche sans ton accord.
@@ -134,3 +134,14 @@ Deux points à trancher, sans urgence :
 - confirmer que la règle de mutation (refus sur une position pontée ou modifiée, au lieu d'un retrait automatique de la déclaration) convient à ta façon de travailler.
 
 Le statut passera à **TERMINÉ ET VALIDÉ** quand ces deux relectures seront faites.
+
+## 9. Revue de Firas, 27 novembre 2026
+
+1. **Règle de lecture des séquences : approuvée.** Point soulevé à cette occasion : un bloc unique de trois lettres en majuscules qui est aussi un code (`ALA`) est lu en codes à une lettre. C'est le cas de **17 des 20 codes standards**, et `Ac-ALA-NHMe` (le dipeptide d'alanine, modèle classique en dynamique) se lisait **en silence** Ac-Ala-Leu-Ala-NHMe. La lecture ne change pas, mais elle est désormais **signalée** : `Peptide.metadata` (`AMBIGUOUS_READING`) dit ce qui a été lu et comment écrire l'autre lecture, et le contrôle `peptide.unambiguous_reading` produit un avertissement, affiché aussi par `pepforge parse`. Pour `GLU`, `LEU` et `PRO`, que la lecture en une lettre refuse, l'erreur indique d'écrire `Glu`, `Leu` ou `Pro`.
+2. **Clés de protonation en minuscules : approuvées.**
+3. **Item « liaisons hors squelette » dans la checklist 04 : ajouté**, sous l'identifiant `structure.links_and_modifications`, et relié à `peptide.links_chemistry`, `peptide.modifications_verifiable` et `inventory.disulfides`. Seule la copie du dépôt (`docs/04-checklist-qualite.md`) est modifiée ; le fichier d'origine du dossier d'instructions du projet ne l'est pas.
+4. **Refus de muter une position pontée ou modifiée : conservé.** Un retrait automatique ferait disparaître une déclaration sans que l'utilisateur le voie, ce qui est exactement une erreur silencieuse. Le retrait reste une opération explicite (`without_link`, `without_modification`), que l'appelant journalise. Un balayage de positions (étape 11E) devra donc décider ouvertement quoi faire d'une cystéine pontée.
+
+**Tests après la revue** : 224 réussis (15 ajoutés), et 3 défauts injectés sur 3 détectés (lecture ambiguë non signalée, erreur sans indication, avertissement transformé en succès).
+
+**Statut : toujours TERMINÉ MAIS NON VALIDÉ**, en attendant que Firas confirme les ajouts des points 1 et 3, faits sur ma recommandation.

@@ -86,6 +86,7 @@ CONTROLS: tuple[Control, ...] = (
         ValidationLevel.FILE_CONFORMITY,
         "ponts disulfure effectivement présents",
         available=True,
+        checklist_item="structure.links_and_modifications",
     ),
     Control(
         "inventory.net_charge",

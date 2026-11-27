@@ -4,7 +4,7 @@ import dataclasses
 
 import pytest
 
-from pepforge.core import Residue
+from pepforge.core import AMBIGUOUS_READING, Residue
 from pepforge.exceptions import SequenceParseError, UnknownResidueError, UnknownTerminusError
 from pepforge.io.sequence import parse_sequence
 from pepforge.residues import ResidueLibrary, load_default_library
@@ -155,3 +155,37 @@ def test_bracketed_code_absent_from_the_library() -> None:
 
 def test_residues_are_a_tuple() -> None:
     assert isinstance(parse_sequence("RGDS").residues, tuple)
+
+
+# --- Lecture ambiguë signalée (revue du module 1) --------------------------------
+
+
+@pytest.mark.parametrize(
+    ("text", "codes"),
+    [
+        ("ALA", ("ALA", "LEU", "ALA")),
+        ("Ac-ALA-NHMe", ("ALA", "LEU", "ALA")),
+        ("ala", ("ALA", "LEU", "ALA")),
+        ("H-CYS-OH", ("CYS", "TYR", "SER")),
+    ],
+)
+def test_ambiguous_block_is_read_in_one_letter_codes_and_flagged(
+    text: str, codes: tuple[str, ...]
+) -> None:
+    peptide = parse_sequence(text)
+    assert tuple(r.code for r in peptide.residues) == codes
+    note = peptide.metadata[AMBIGUOUS_READING]
+    assert "-".join(codes) in note
+    assert f"écrire « {codes[0].title()} »" in note
+
+
+@pytest.mark.parametrize(
+    "text", ["Ala", "Ac-Ala-NHMe", "RGDS", "Ac-RGDS-NH2", "Ac-ALA-GLY-NH2", "AL[Asp]"]
+)
+def test_unambiguous_sequences_are_not_flagged(text: str) -> None:
+    assert AMBIGUOUS_READING not in parse_sequence(text).metadata
+
+
+def test_unreadable_ambiguous_block_says_how_to_write_the_residue() -> None:
+    with pytest.raises(UnknownResidueError, match="écrire « Glu »"):
+        parse_sequence("GLU")

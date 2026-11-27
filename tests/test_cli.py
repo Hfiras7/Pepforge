@@ -25,3 +25,10 @@ def test_parse_error_returns_1(capsys: pytest.CaptureFixture[str]) -> None:
 def test_config_template(capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["config-template"]) == 0
     assert "champ de force" in capsys.readouterr().out
+
+
+def test_parse_warns_on_ambiguous_reading(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["parse", "Ac-ALA-NHMe"]) == 0
+    out = capsys.readouterr().out
+    assert "ALA-LEU-ALA" in out
+    assert "lecture à confirmer" in out

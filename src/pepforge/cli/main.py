@@ -10,7 +10,7 @@ import yaml
 
 from pepforge import __version__
 from pepforge.config import PrepConfig
-from pepforge.core import C_TERMINUS_DEFAULTED, N_TERMINUS_DEFAULTED
+from pepforge.core import AMBIGUOUS_READING, C_TERMINUS_DEFAULTED, N_TERMINUS_DEFAULTED
 from pepforge.exceptions import PepForgeError
 from pepforge.io.sequence import parse_sequence
 
@@ -27,6 +27,8 @@ def _cmd_parse(args: argparse.Namespace) -> int:
     for side, key in (("N", N_TERMINUS_DEFAULTED), ("C", C_TERMINUS_DEFAULTED)):
         if key in peptide.metadata:
             print(f"Attention : extrémité {side} non déclarée, valeur par défaut.")
+    if AMBIGUOUS_READING in peptide.metadata:
+        print(f"Attention : lecture à confirmer, {peptide.metadata[AMBIGUOUS_READING]}.")
     return 0
 
 

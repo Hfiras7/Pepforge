@@ -6,6 +6,7 @@ from typing import assert_never
 
 from pepforge.checks.base import Check, CheckResult, Status
 from pepforge.core.peptide import (
+    AMBIGUOUS_READING,
     C_TERMINUS_DEFAULTED,
     N_TERMINUS_DEFAULTED,
     Link,
@@ -54,6 +55,27 @@ def _termini_declared(peptide: Peptide) -> CheckResult:
         Status.PASS,
         f"N : {peptide.n_terminus.label} ; C : {peptide.c_terminus.label}",
         "structure.termini",
+    )
+
+
+_LINKS_ITEM = "structure.links_and_modifications"
+"""Item de la checklist 04 sur les liaisons hors squelette et les modifications."""
+
+
+def _unambiguous_reading(peptide: Peptide) -> CheckResult:
+    note = peptide.metadata.get(AMBIGUOUS_READING)
+    if note is not None:
+        return CheckResult(
+            "peptide.unambiguous_reading",
+            Status.WARN,
+            f"Lecture à confirmer : {note}",
+            "structure.residue_count",
+        )
+    return CheckResult(
+        "peptide.unambiguous_reading",
+        Status.PASS,
+        "La séquence saisie n'admet qu'une lecture",
+        "structure.residue_count",
     )
 
 
@@ -108,15 +130,19 @@ def _links_chemistry(peptide: Peptide) -> CheckResult:
         else:
             assert_never(kind)
     if problems:
-        return CheckResult("peptide.links_chemistry", Status.FAIL, "; ".join(problems))
+        return CheckResult("peptide.links_chemistry", Status.FAIL, "; ".join(problems), _LINKS_ITEM)
     if not peptide.links:
         return CheckResult(
-            "peptide.links_chemistry", Status.PASS, "Aucune liaison hors du squelette linéaire"
+            "peptide.links_chemistry",
+            Status.PASS,
+            "Aucune liaison hors du squelette linéaire",
+            _LINKS_ITEM,
         )
     return CheckResult(
         "peptide.links_chemistry",
         Status.PASS,
         "Liaisons cohérentes : " + ", ".join(link.describe() for link in peptide.links),
+        _LINKS_ITEM,
     )
 
 
@@ -126,12 +152,14 @@ def _modifications_verifiable(peptide: Peptide) -> CheckResult:
             "peptide.modifications_verifiable",
             Status.PASS,
             "Aucune modification de chaîne latérale déclarée",
+            _LINKS_ITEM,
         )
     declared = ", ".join(m.describe() for m in peptide.modifications)
     return CheckResult(
         "peptide.modifications_verifiable",
         Status.FAIL,
         f"Non vérifiable : aucune bibliothèque de modifications n'est encore chargée ({declared})",
+        _LINKS_ITEM,
     )
 
 
@@ -144,14 +172,22 @@ PEPTIDE_CHECKS: tuple[Check[Peptide], ...] = (
         "structure.termini",
     ),
     Check(
+        "peptide.unambiguous_reading",
+        "La séquence saisie n'admet qu'une lecture",
+        _unambiguous_reading,
+        "structure.residue_count",
+    ),
+    Check(
         "peptide.links_chemistry",
         "Les liaisons déclarées sont chimiquement possibles et vérifiables",
         _links_chemistry,
+        _LINKS_ITEM,
     ),
     Check(
         "peptide.modifications_verifiable",
         "Les modifications de chaîne latérale déclarées sont vérifiables",
         _modifications_verifiable,
+        _LINKS_ITEM,
     ),
 )
 """Contrôles exécutés après la lecture d'une séquence."""

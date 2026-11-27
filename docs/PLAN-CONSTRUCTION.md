@@ -133,7 +133,7 @@ flowchart LR
 
 **Tests** : U (mutations, notation entre crochets, erreurs) ; V : aucune (pas encore de chimie quantitative). *Réalisé : 97 tests ajoutés, 209 au total ; 9 défauts injectés volontairement sur 9 détectés.*
 
-**Revue** : relire la règle de lecture des séquences ; vérifier que les clés internes de protonation sont neutres. *En attente de Firas.*
+**Revue** : relire la règle de lecture des séquences ; vérifier que les clés internes de protonation sont neutres. *Faite par Firas le 27 novembre 2026 : règle de lecture et clés de protonation approuvées, refus de mutation conservé. Deux ajouts issus de la revue, à confirmer avant de passer en TERMINÉ ET VALIDÉ : avertissement de lecture ambiguë (`ALA`) et item « liaisons hors squelette » de la checklist 04 (bilan, section 9).*
 
 ---
 

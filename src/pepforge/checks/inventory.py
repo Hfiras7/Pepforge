@@ -75,6 +75,12 @@ class Inventory:
     metadata: dict[str, str] = field(default_factory=dict)
 
 
+_CHECKLIST_ITEMS: dict[str, str] = {
+    "inventory.disulfides": "structure.links_and_modifications",
+}
+"""Items de la checklist 04 des champs comparés sans traitement particulier."""
+
+
 def expected_from_peptide(peptide: Peptide) -> Inventory:
     """Construit la part de l'inventaire attendu déductible du seul `Peptide`.
 
@@ -248,7 +254,14 @@ def compare(expected: Inventory, produced: Inventory) -> list[CheckResult]:
                     "parametrisation.net_charge",
                 )
         elif exp == prod:
-            record(check_id, exp, prod, Status.PASS, f"{label} : conforme ({prod!r})")
+            record(
+                check_id,
+                exp,
+                prod,
+                Status.PASS,
+                f"{label} : conforme ({prod!r})",
+                _CHECKLIST_ITEMS.get(check_id),
+            )
         else:
             record(
                 check_id,
@@ -256,6 +269,7 @@ def compare(expected: Inventory, produced: Inventory) -> list[CheckResult]:
                 prod,
                 Status.FAIL,
                 f"{label} : {exp!r} attendu, {prod!r} dans le fichier",
+                _CHECKLIST_ITEMS.get(check_id),
             )
 
     return results
