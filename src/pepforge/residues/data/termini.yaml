@@ -1,5 +1,7 @@
 # Extrémités reconnues dans la notation des séquences.
-# Les alias sont comparés sans tenir compte de la casse.
+# Les alias sont comparés sans tenir compte de la casse. Le premier alias de
+# chaque extrémité est sa forme écrite par PepForge (conversion entre le code à
+# une lettre et le code à trois lettres, pepforge.io.sequence.format_sequence).
 # La correspondance avec les résidus terminaux d'un champ de force (ex. NHE en AMBER
 # pour -CO-NH2) relève des adaptateurs de pepforge.forcefields, pas de ce fichier.
 version: 1
