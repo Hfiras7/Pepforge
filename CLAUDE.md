@@ -130,3 +130,4 @@ Règles contraignantes :
 - [docs/04-checklist-qualite.md](docs/04-checklist-qualite.md) : contrôles avant toute simulation
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) : modules, contrats, dépendances, flux et stratégie de vérification
 - [docs/PLAN-CONSTRUCTION.md](docs/PLAN-CONSTRUCTION.md) : étapes de construction, critères d'acceptation et tests
+- [docs/bilans/](docs/bilans/) : bilan de fin de chaque module, avec son statut

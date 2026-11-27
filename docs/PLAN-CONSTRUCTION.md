@@ -50,6 +50,8 @@ Puis **s'arrêter et attendre l'instruction de Firas.** Aucun enchaînement auto
 - problèmes connus et limitations ;
 - **statut final** : `TERMINÉ ET VALIDÉ`, `TERMINÉ MAIS NON VALIDÉ` ou `INCOMPLET`.
 
+Chaque bilan est conservé dans [`docs/bilans/`](bilans/), un fichier par module, et lié depuis l'étape correspondante de ce plan.
+
 ### Règles générales
 
 - Ne pas anticiper le développement des modules futurs.
@@ -110,9 +112,11 @@ flowchart LR
 
 ## Étape 1 — Modèle de données enrichi
 
+**Statut : TERMINÉ MAIS NON VALIDÉ.** Code, tests et documentation livrés le 27 novembre 2026 (commit `1aa6b0a`), CI verte sur Linux et Windows. La validation attend la revue de Firas décrite en fin d'étape. Bilan complet : [bilans/module-01-modele-de-donnees.md](bilans/module-01-modele-de-donnees.md).
+
 **Objectif** : que `core` puisse représenter tout ce dont les étapes suivantes ont besoin, sans connaître de champ de force.
 
-**Modules** : `core`, `residues`, `io.sequence`.
+**Modules** : `core`, `residues`, `io.sequence`. *Réalisé : `core` et `io.sequence` ; `residues` n'a pas eu besoin de changer ; `checks`, `exceptions` et `cli` ajustés pour la compatibilité, sans quoi une déclaration aurait traversé les contrôles et l'inventaire sans être vue.*
 
 **Livrables**
 
@@ -123,13 +127,13 @@ flowchart LR
 
 **Critères d'acceptation**
 
-- [ ] Aucun nom de résidu de champ de force dans `core` (vérifié par un test qui cherche `NHE`, `NME`, `HIE`, `HID`, `HIP`, `CYX` dans `src/pepforge/core/`).
-- [ ] Une mutation renvoie un nouveau `Peptide` ; l'original est inchangé.
-- [ ] Les notations existantes (`Ac-RGDS-NH2`, `NH2-Arg-Gly-CO-NH2`...) donnent le même résultat qu'avant.
+- [x] Aucun nom de résidu de champ de force dans `core` (vérifié par un test qui cherche `NHE`, `NME`, `HIE`, `HID`, `HIP`, `CYX` dans `src/pepforge/core/`). *Le test cherche aussi seize autres noms AMBER et CHARMM, et il attrape bien ceux de l'ancienne version de `core`.*
+- [x] Une mutation renvoie un nouveau `Peptide` ; l'original est inchangé.
+- [x] Les notations existantes (`Ac-RGDS-NH2`, `NH2-Arg-Gly-CO-NH2`...) donnent le même résultat qu'avant. *Les 49 tests des fichiers existants, dans leur version d'avant l'étape, réussissent sur le nouveau code.*
 
-**Tests** : U (mutations, notation entre crochets, erreurs) ; V : aucune (pas encore de chimie quantitative).
+**Tests** : U (mutations, notation entre crochets, erreurs) ; V : aucune (pas encore de chimie quantitative). *Réalisé : 97 tests ajoutés, 209 au total ; 9 défauts injectés volontairement sur 9 détectés.*
 
-**Revue** : relire la règle de lecture des séquences ; vérifier que les clés internes de protonation sont neutres.
+**Revue** : relire la règle de lecture des séquences ; vérifier que les clés internes de protonation sont neutres. *En attente de Firas.*
 
 ---
 
@@ -266,6 +270,7 @@ flowchart LR
 - [ ] Charge nette **relue dans les fichiers produits** égale à la charge théorique de l'étape 2.
 - [ ] Toute ligne d'avertissement de l'outil fait échouer l'étape, sauf exception inscrite dans une liste versionnée, motivée avec la version de l'outil, et reportée dans le rapport ([section 17.3](ARCHITECTURE.md#173-les-avertissements-sont-des-erreurs)).
 - [ ] **Inventaire attendu contre fichier produit** : l'inventaire construit depuis le `Peptide` et le `ParameterSet` (atomes par résidu, ordre des résidus, liaisons du squelette, extrémités, ponts disulfure, charge nette, nombre de termes CMAP attendus) est comparé à celui relu dans le `.psf` réellement produit. Toute différence lève `QualityCheckError` ([section 17.1](ARCHITECTURE.md#171-le-principe--ne-jamais-croire-loutil-sur-parole)).
+- [ ] Un peptide portant une déclaration que l'écrivain ne sait pas traiter (cyclisation tête-queue, modification de chaîne latérale...) est **refusé explicitement** (`UnsupportedFeatureError`), jamais écrit sans elle. `expected_from_peptide` refuse déjà ces deux cas depuis l'étape 1 ; l'étape 7 garde ce refus tant qu'elle ne les prend pas en charge.
 - [ ] Les motifs d'échec de `ExternalTool` sont **construits et vérifiés contre l'outil réellement installé**, en provoquant délibérément chaque erreur pour observer ce qu'il affiche. Ils ne sont jamais écrits d'avance.
 - [ ] Les contrôles du catalogue de la [section 17.2](ARCHITECTURE.md#172-catalogue-des-défaillances-silencieuses) applicables à cette étape sont implémentés, chacun avec son test `PASS` et son test `FAIL`.
 - [ ] Contrôles de dernier recours : charge nette relue, **énergie en point unique** sur le système produit, et minimisation courte qui doit converger. Les trois valeurs sont consignées dans le rapport.

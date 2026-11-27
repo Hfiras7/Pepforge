@@ -168,8 +168,9 @@ Ce sont les seuls objets qui traversent les frontières entre modules. Chaque ty
 |---|---|---|---|---|
 | `PrepConfig` | `config` | utilisateur (YAML), `cli` | `pipeline`, `checks`, `report` | Aucun champ décisionnel n'a de valeur par défaut. `missing_decisions()` liste ce qui manque. Aller-retour YAML sans perte. |
 | `SolvationSpec` | `config` | `PrepConfig.solvation` | `engines` | Aucune valeur par défaut ; vérifié par l'étape de solvatation. |
-| `Peptide` | `core` | `io` (séquence, structure), `build` (mutation) | `build`, `forcefields`, `checks` | Extrémités N et C toujours explicites ; une extrémité par défaut est signalée dans `metadata`. Aucun nom propre à un champ de force. |
-| `Residue`, `Terminus` | `core` | `residues` | tous | Immuables ; identifiants internes stables (`amide`, `acetyl`...). |
+| `Peptide` | `core` | `io` (séquence, structure) ; ses propres opérations (mutation, extrémités, protonation, liaisons, modifications), appelées notamment par `build` | `build`, `forcefields`, `checks` | **Immuable** : chaque opération renvoie un nouveau peptide et l'appelant la journalise. Positions numérotées à partir de 1. Extrémités N et C toujours explicites ; une extrémité par défaut est signalée dans `metadata` (`N_TERMINUS_DEFAULTED`, `C_TERMINUS_DEFAULTED`). Liaisons et modifications rangées dans un ordre canonique, positions dans les bornes, aucun doublon. `metadata` en lecture seule et exclue de l'égalité. Aucun nom propre à un champ de force (vérifié par un test). |
+| `Residue`, `Terminus` | `core` | `residues` | tous | Immuables ; identifiants internes stables (`amide`, `acetyl`...) ; code de résidu en majuscules ; `Residue.protonation` facultatif, en clé interne neutre (`his_delta`...). |
+| `Link`, `LinkKind`, `Modification` | `core` | `Peptide.with_link`, `Peptide.with_modification` | `checks` | **Déclarés**, pas encore pris en charge en aval : une étape qui ne sait pas les traiter lève `UnsupportedFeatureError`. Positions d'une liaison rangées dans l'ordre croissant ; une cyclisation tête-queue relie la première et la dernière position ; une position n'appartient qu'à un seul pont disulfure. |
 | `Structure`, `Atom` | `core` | `io` (PDB, mmCIF), `build` | `build`, `engines`, `checks` | Immuables ; coordonnées en Å ; nomenclature PDB, jamais celle d'un champ de force. |
 | `ResidueLibrary` | `residues` | `residues.load_default_library()` | `io`, `build`, `forcefields` | Chaque fichier chargé déclare sa source (`sources`). |
 | `ParameterSet`, `ParameterSource` | `forcefields` | un `ForceFieldAdapter` | `engines`, `checks`, `report` | `missing` vide avant toute écriture moteur ; `sources` non vide. |
@@ -182,10 +183,21 @@ Ce sont les seuls objets qui traversent les frontières entre modules. Chaque ty
 ```mermaid
 classDiagram
     class Peptide {
-        residues: list~Residue~
+        residues: tuple~Residue~
         n_terminus: Terminus
         c_terminus: Terminus
-        metadata: dict
+        links: tuple~Link~
+        modifications: tuple~Modification~
+        metadata: Mapping en lecture seule
+    }
+    class Link {
+        kind: LinkKind
+        first: int
+        second: int
+    }
+    class Modification {
+        key: str
+        position: int
     }
     class Structure {
         atoms: tuple~Atom~
@@ -208,6 +220,8 @@ classDiagram
         atom_count: int optionnel
         tool_versions: dict
     }
+    Peptide --> Link : déclare
+    Peptide --> Modification : déclare
     Structure --> Peptide : décrit
     ParameterSet ..> Peptide : paramètre
     EngineFiles ..> Structure : sérialise
@@ -222,9 +236,11 @@ Pour chaque module : ce qu'il reçoit, ce qu'il rend, les erreurs qu'il lève, e
 
 ### 5.1 `core` — représentation interne
 
-- **Entrées / sorties** : aucune entrée externe ; fournit `Peptide`, `Residue`, `Terminus`, `Structure`, `Atom`.
-- **Ne fait jamais** : lire un fichier, connaître un champ de force ou un moteur, contenir une constante physique.
-- **Évolutions prévues** : états de protonation par résidu, modifications de chaînes latérales, liaisons non linéaires (ponts disulfure, cyclisation), plusieurs chaînes (complexe).
+- **Entrées / sorties** : aucune entrée externe ; fournit `Peptide`, `Residue`, `Terminus`, `Link`, `LinkKind`, `Modification`, `Structure`, `Atom`.
+- **Erreurs** : `PeptideModelError` (position hors bornes, liaison d'un résidu à lui-même, cyclisation tête-queue qui ne relie pas les deux extrémités, position engagée dans deux ponts disulfure, liaison ou modification déclarée deux fois, clé interne mal formée, mutation qui rendrait fausse une déclaration).
+- **Garanties** (étape 1) : `Peptide` immuable ; `mutate`, `with_n_terminus`, `with_c_terminus`, `with_protonation`, `with_link`, `without_link`, `with_modification` et `without_modification` renvoient un nouveau peptide et laissent l'original intact ; positions numérotées à partir de 1. La journalisation revient à l'appelant, puisque `core` ne dépend que d'`exceptions`. Une mutation est **refusée** à une position qui porte un pont disulfure ou une modification, parce qu'elle remplacerait la chaîne latérale dont dépend la déclaration ; la cyclisation tête-queue, qui passe par le squelette, ne l'empêche pas.
+- **Ne fait jamais** : lire un fichier, connaître un champ de force ou un moteur (un test cherche leurs noms de résidus et de patches dans `src/pepforge/core/`), contenir une constante physique, juger de la chimie d'une déclaration, qui relève de `checks`.
+- **Évolutions prévues** : plusieurs chaînes (complexe) ; prise en charge des liaisons et des modifications par les étapes aval.
 
 ### 5.2 `config` — configuration d'une préparation
 
@@ -249,6 +265,7 @@ Pour chaque module : ce qu'il reçoit, ce qu'il rend, les erreurs qu'il lève, e
 - **Entrées** : la sortie d'une étape (`Peptide`, `Structure`, `ParameterSet`, `EngineFiles`). **Sorties** : `CheckResult` (`PASS`, `WARN`, `FAIL`).
 - **Règles** : un contrôle est une fonction pure, sans effet de bord ni appel externe ; il référence l'item de [04-checklist-qualite.md](04-checklist-qualite.md) qu'il couvre (`checklist_item`).
 - **Ne fait jamais** : décider d'arrêter le pipeline (c'est `pipeline.run_stage` qui le fait) ni corriger ce qu'il constate.
+- **Erreurs** : `UnsupportedFeatureError`, levée par `expected_from_peptide` quand l'inventaire attendu ne sait pas représenter une déclaration du peptide (cyclisation tête-queue, modification de chaîne latérale). Ce n'est pas un contrôle qui arrête le pipeline : c'est un inventaire qui refuse d'être construit faux (section 17.1).
 
 ### 5.6 `report` — journal et rapport
 
@@ -258,7 +275,8 @@ Pour chaque module : ce qu'il reçoit, ce qu'il rend, les erreurs qu'il lève, e
 ### 5.7 `io` — lecture et écriture
 
 - **Entrées** : texte (séquence), fichiers PDB, mmCIF, SMILES, MOL/SDF. **Sorties** : `Peptide`, `Structure` (et, pour le mode « structure personnalisée », un fragment chimique à définir à l'étape 11 du plan).
-- **Erreurs** : `SequenceParseError`, `UnknownResidueError`, `UnknownTerminusError`, `StructureError`.
+- **Erreurs** : `SequenceParseError` (dont les crochets mal formés), `UnknownResidueError`, `UnknownTerminusError`, `StructureError`.
+- **Notation des non standards** (étape 1) : code de la bibliothèque entre crochets, dans les deux notations (`Ac-RG[Aib]S-NH2`, `Ac-Arg-Gly-[Aib]-Ser-NH2`), convention reprise de HELM (Zhang *et al.*, *J. Chem. Inf. Model.* 2012, 52, 2796–2806). La règle de lecture complète est dans la docstring de [`io/sequence.py`](../src/pepforge/io/sequence.py).
 - **Ne fait jamais** : corriger silencieusement une structure lue. Toute correction est un `StructureModifier` de `build`, journalisé.
 
 ### 5.8 `build` — construction et correction 3D
@@ -415,7 +433,7 @@ Jeu commun à toutes les étapes de validation, enrichi au fil du plan. Les vale
 | `H-RGDS-OH` | extrémités libres, charges terminales |
 | `Ac-RGDS-NHMe` | N-méthylamide : vérifie que `NME` n'est pas confondu avec `NHE` |
 | Peptide avec His | choix du tautomère et de l'état de protonation selon le pH |
-| Peptide avec Cys–Cys | pont disulfure (quand `core` le prendra en charge) |
+| Peptide avec Cys–Cys | pont disulfure : déclaré dans `core` et inventorié depuis l'étape 1 ; sa présence dans le `.psf` se vérifie à l'étape 7 |
 | `Ac-RGDS-NH2` avec une position substituée en aza-β³ | **cas d'usage central** : greffage, paramètres dérivés, torsion N–N (section 10) |
 | Le même peptide substitué en chaque position | mode lot, comparaison entre positions |
 | Peptide portant deux résidus aza-β³ **adjacents** | charges de jonction entre deux résidus dérivés (section 12.1) |
@@ -1035,6 +1053,8 @@ Cette méthode ne dépend ni de la version de `psfgen`, ni de la façon dont il 
 2. **La comparaison ne s'arrête pas au premier écart** : un résultat par champ, pour qu'un rapport montre tous les problèmes d'un coup.
 
 L'extraction de l'inventaire d'un fichier produit est propre à chaque moteur et vit dans `engines` ; la comparaison, elle, est pure, et se teste donc sans aucun outil externe installé.
+
+**Depuis l'étape 1**, les ponts disulfure de l'inventaire attendu viennent des liaisons déclarées sur le `Peptide`. Une déclaration qui n'a pas de champ dans l'inventaire (cyclisation tête-queue, modification de chaîne latérale) fait **refuser** la construction de l'inventaire attendu (`UnsupportedFeatureError`) : un inventaire qui l'omettrait laisserait écrire un fichier sans elle, et la comparaison ne pourrait pas s'en apercevoir. Le champ correspondant s'ajoutera avec la prise en charge de la déclaration, pas avant.
 
 ### 17.2 Catalogue des défaillances silencieuses
 
