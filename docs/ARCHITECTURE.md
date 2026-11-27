@@ -31,6 +31,7 @@
     - [18.8 Exemple complet de référence quantique](#188-exemple-complet-de-référence-quantique)
     - [18.9 Choisir le niveau de validation dans l'outil](#189-choisir-le-niveau-de-validation-dans-loutil)
 19. [Distribution : un seul code, deux exécutables](#19-distribution--un-seul-code-deux-exécutables)
+20. [Entrées, traitement par lots et sorties proposées](#20-entrées-traitement-par-lots-et-sorties-proposées)
 
 ---
 
@@ -1241,3 +1242,83 @@ Elle s'obtient par des règles simples, appliquées dès maintenant plutôt que 
 **La CI tourne sur les deux systèmes** (`.github/workflows/tests.yml`) : Linux sur les trois versions de Python prises en charge, Windows sur la plus ancienne et la plus récente, là où les écarts de portabilité se voient. La portabilité est ainsi **vérifiée à chaque poussée**, et non supposée. C'est la même logique que la matrice de dépendances : une règle qui n'est pas exécutée n'est pas une règle.
 
 L'empaquetage proprement dit est une étape tardive du plan (étape 15), après que la chaîne fonctionne de bout en bout : empaqueter un outil incomplet n'apporte rien, alors que tester sur les deux systèmes dès maintenant évite d'accumuler des dettes de portabilité.
+
+---
+
+## 20. Entrées, traitement par lots et sorties proposées
+
+Questions de Firas le 27 novembre 2026 : quelles entrées accepter, y compris pour traiter un lot de peptides d'un coup, et quelles sorties proposer au-delà de `.prm`, `.str`, `.psf` et `.pdb` ?
+
+### 20.1 Ce que chaque format d'entrée porte réellement
+
+Le point à retenir : ces formats ne sont pas des syntaxes interchangeables, ils portent des **informations différentes**. Choisir le mauvais format fait perdre de l'information en silence.
+
+| Format | Porte | Ne porte pas | Usage juste dans ce projet |
+|---|---|---|---|
+| **Séquence / notation** (`Ac-RGDS-NH2`) | enchaînement des résidus, extrémités, modifications déclarées | aucune coordonnée | la voie principale de conception, et **la seule qui passe à l'échelle d'un lot** |
+| **PDB** | coordonnées, noms de résidus, chaînes | ordres de liaison ; limité à un identifiant de chaîne d'un caractère et à 99 999 atomes | récepteur, poses de docking, modèles RMN |
+| **mmCIF** | tout ce que porte le PDB, sans ses limites de taille, plus les métadonnées et les modèles multiples | ordres de liaison | **à préférer au PDB** pour tout ce qui vient de la PDB ou dépasse une chaîne simple |
+| **SDF / MOL** | liaisons avec leurs ordres, hydrogènes explicites, plusieurs molécules par fichier | notion de résidu et de chaîne | fragments : chélateur, résidu nouveau, soumission à CGenFF. **Pas** un peptide de 100 résidus |
+| **MOL2** | liaisons, **types atomiques et charges partielles** | — | utile, mais ses types atomiques sont ceux du programme qui l'a écrit, **jamais des types CHARMM** : les adopter serait exactement l'erreur silencieuse de la section 17 |
+| **SMILES** | connectivité, stéréochimie si elle est écrite | aucune coordonnée, aucune conformation | définir compactement une chaîne latérale ou un chélateur |
+
+Deux pièges à traiter explicitement dans `io`. D'abord, un fichier **multi-modèles** (les structures RMN à venir en produiront) : le lecteur exige que le modèle soit choisi, et ne prend jamais le premier en silence. Ensuite, les **conformations alternatives** : une occupation partielle non résolue est au catalogue des pièges silencieux (section 17.2).
+
+### 20.2 Deux entrées supplémentaires que je propose
+
+**1. Un manifeste, pour le lot.** C'est la vraie réponse au traitement par lots. Un dossier de deux cents fichiers PDB n'est pas la description d'un lot, parce que les substitutions, les extrémités et le pH ne sont pas dans ces fichiers. Un manifeste CSV ou YAML porte une ligne par peptide :
+
+```
+id,sequence,substitutions,n_terminus,c_terminus,ph,goal
+P001,Ac-RGDS-NH2,,acetyl,amide,7.4,free_peptide
+P002,Ac-RGDS-NH2,3:aza,acetyl,amide,7.4,free_peptide
+P003,Ac-RGDS-NH2,"1:aza,3:aza",acetyl,amide,7.4,free_peptide
+```
+
+La colonne `substitutions` est ce qui fait de PepForge autre chose qu'un convertisseur de fichiers : elle décrit le balayage de positions de l'étape 11E.
+
+**2. La notation HELM**, en second format textuel. Elle a été conçue pour les biopolymères à **monomères non naturels**, c'est-à-dire exactement le cas de ce projet, et elle fait l'aller-retour sans perte. Elle vaut d'être lue en entrée, même si la notation interne reste celle de la séquence.
+
+Et la configuration YAML de PepForge est elle-même une entrée : le rapport la régénère (règle 8), donc rejouer une préparation à l'identique ne coûte rien.
+
+### 20.3 Comment un lot doit se comporter
+
+```
+pepforge prepare --manifest peptides.csv --outdir runs/
+```
+
+Quatre propriétés, et la première est la plus importante :
+
+1. **Isolement** : l'échec d'un peptide n'arrête jamais le lot. Sinon un lot de cinquante s'arrête au septième et la nuit de calcul est perdue.
+2. **Un dossier par peptide**, nommé par son `id`, contenant l'intégralité de ses sorties et de son rapport.
+3. **Un récapitulatif** `summary.csv` et `summary.md` : par peptide, l'état (réussi, échoué, **contrôles non vérifiés**), la charge nette, le nombre d'atomes, le nombre de substitutions, et les identifiants des contrôles en échec. Les trois états sont distincts : « non vérifié » n'est pas « réussi » (section 18.9).
+4. **Code de retour non nul si un seul peptide a échoué**, pour que le lot s'enchaîne dans un script sans qu'on ait à lire la sortie.
+
+### 20.4 Les sorties que je propose, au-delà de `.prm`, `.str`, `.psf` et `.pdb`
+
+**Ce qu'il faut pour lancer réellement le calcul.**
+
+1. **Les scripts NAMD, un par phase** : minimisation, chauffage, équilibration NVT puis NPT avec relâchement progressif des contraintes, production. Avec le **fichier de référence des contraintes** qu'ils utilisent, sans lequel ils ne tournent pas.
+2. **Le `.crd` CHARMM** à côté du `.pdb` : il porte plus de précision et certains chemins de `psfgen` et de VMD le préfèrent.
+3. **Le système sec et le système solvaté comme deux jeux distincts**, pour pouvoir revenir en arrière sans refaire la paramétrisation.
+
+**Ce qu'il faut pour pouvoir y faire confiance — la partie sur laquelle j'insisterais.**
+
+4. **Le rapport de vérification en deux formes** : lisible (Markdown) et exploitable (JSON), une entrée par contrôle avec son niveau, son état, son message et les deux inventaires comparés. Le JSON se **compare d'une exécution à l'autre**, et c'est ainsi qu'on voit une régression apparaître.
+5. **Le journal** des modifications : quoi, pourquoi, avec quels paramètres (`Journal`).
+6. **La configuration YAML régénérée**, suffisante à elle seule pour rejouer la préparation.
+7. **Les empreintes** de chaque fichier d'entrée et de sortie, et la **version de chaque outil externe**. Sans cela, « la même préparation » ne veut rien dire six mois plus tard.
+8. **La table de correspondance des numérotations** : numéro interne du résidu contre numéro dans les fichiers produits. `psfgen` et le format PDB renumérotent ; une correspondance fausse ruine **silencieusement** toutes les analyses ultérieures. Cette sortie coûte presque rien et évite une erreur particulièrement vicieuse.
+9. **L'inventaire des termes extrait du `.psf` réellement produit** : liaisons, angles, dièdres, impropres et termes CMAP traversant chaque jonction aza (section 13). C'est déjà une exigence de vérification ; ce doit être un fichier, pas seulement un contrôle, parce que c'est la pièce qui prouve l'intégration.
+
+**Ce qui sert directement la thèse.**
+
+10. **Le fichier des sources** (`.bib` ou liste) : champ de force et sa version, modèle d'eau, chaque entrée de paramètre avec sa source et son niveau de confiance, chaque version d'outil, le niveau de théorie quantique. Il alimente le chapitre méthodes sans recopie manuelle.
+11. **Un brouillon de paragraphe « méthodes »** en français, engendré depuis la configuration et le journal. À relire, jamais à publier tel quel, mais il évite les oublis.
+12. **Un script VMD** qui charge le système et met en évidence les résidus aza et leurs jonctions, pour l'inspection visuelle du niveau 2 (section 18.4).
+
+**Plus tard.** Le lot de conversion vers GROMACS puis AMBER, comme étape explicite et vérifiée (étapes 13A et 13B), jamais comme sortie implicite.
+
+### 20.5 Quand ces sorties arrivent
+
+Les sorties 1 à 3 viennent avec les étapes 7 à 9. La table de correspondance (8) et l'inventaire des termes (9) viennent avec l'étape 7, parce que c'est là que le `.psf` naît. Le rapport, le journal, la configuration et les empreintes (4 à 7) viennent avec l'étape 10, qui est précisément l'étape du rapport reproductible. Le fichier des sources et le brouillon de méthodes (10, 11) viennent avec l'étape 11E, quand la bibliothèque est complète. Le manifeste et le mode lot s'ajoutent à l'étape 11E également, puisque c'est le balayage de positions qui les rend nécessaires.

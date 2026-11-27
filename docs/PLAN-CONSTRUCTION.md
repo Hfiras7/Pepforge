@@ -461,6 +461,16 @@ Coût élevé, à engager en connaissance de cause : un nouvel adaptateur **et l
 
 **Tests** : U sur des trajectoires synthétiques ; V : comparaison avec un outil d'analyse publié sur une même trajectoire.
 
+## Étape 11E bis — Manifeste et traitement par lots
+
+**Objectif** : traiter un lot de peptides en une commande, décrit par un manifeste CSV ou YAML (architecture, section 20.2).
+
+**Architecture** : le manifeste est lu par `io` et produit une liste de `PrepConfig`. Le mode lot vit dans `cli` et appelle le pipeline une fois par peptide. Aucun module nouveau.
+
+**Critères** : l'échec d'un peptide n'arrête pas le lot ; un dossier par peptide nommé par son `id` ; `summary.csv` et `summary.md` distinguant réussi, échoué et **contrôles non vérifiés** ; code de retour non nul si un seul peptide a échoué.
+
+**Tests** : U sur un manifeste de trois peptides dont un invalide, en vérifiant que les deux autres aboutissent et que le récapitulatif nomme le fautif ; C : le lot ne doit produire aucun fichier dans le dossier d'un autre peptide.
+
 ## Étape 15 — Distribution et portabilité
 
 **Objectif** : publier PepForge de façon installable, sur Linux comme sur Windows, sans jamais maintenir deux versions du code (architecture, section 19).
