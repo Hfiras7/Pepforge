@@ -112,7 +112,7 @@ flowchart LR
 
 ## Étape 1 — Modèle de données enrichi
 
-**Statut : TERMINÉ MAIS NON VALIDÉ.** Code, tests et documentation livrés le 27 novembre 2026 (commit `1aa6b0a`), CI verte sur Linux et Windows. Revue de Firas faite le même jour, en deux temps (bilan, sections 9 et 10) ; la validation attend sa confirmation des ajouts. Bilan complet : [bilans/module-01-modele-de-donnees.md](bilans/module-01-modele-de-donnees.md).
+**Statut : TERMINÉ ET VALIDÉ.** Code, tests et documentation livrés le 27 novembre 2026 (commits `1aa6b0a` à `d8ef025`), CI verte sur Linux et Windows. Revue de Firas faite le même jour, en deux temps (bilan, sections 9 et 10), puis validation : il a demandé de passer au module 2 (bilan, section 10.7). Bilan complet : [bilans/module-01-modele-de-donnees.md](bilans/module-01-modele-de-donnees.md).
 
 **Objectif** : que `core` puisse représenter tout ce dont les étapes suivantes ont besoin, sans connaître de champ de force.
 
@@ -134,7 +134,7 @@ flowchart LR
 
 **Tests** : U (mutations, notation entre crochets, erreurs) ; V : aucune (pas encore de chimie quantitative). *Réalisé : 97 tests ajoutés, 209 au total ; 9 défauts injectés volontairement sur 9 détectés. Après la revue : 333 tests ; 16 défauts injectés sur 16 détectés pour le mode de lecture et la conversion.*
 
-**Revue** : relire la règle de lecture des séquences ; vérifier que les clés internes de protonation sont neutres. *Faite par Firas le 27 novembre 2026 : règle de lecture et clés de protonation approuvées, refus de mutation conservé. Deuxième retour le même jour : le mode de lecture se déclare au départ et une conversion entre les deux codes est ajoutée, ce qui remplace l'avertissement de lecture ambiguë (bilan, section 10). À confirmer avant de passer en TERMINÉ ET VALIDÉ : ces ajouts et l'item « liaisons hors squelette » de la checklist 04 (bilan, section 9).*
+**Revue** : relire la règle de lecture des séquences ; vérifier que les clés internes de protonation sont neutres. *Faite par Firas le 27 novembre 2026 : règle de lecture et clés de protonation approuvées, refus de mutation conservé. Deuxième retour le même jour : le mode de lecture se déclare au départ et une conversion entre les deux codes est ajoutée, ce qui remplace l'avertissement de lecture ambiguë (bilan, section 10). Ces ajouts et l'item « liaisons hors squelette » de la checklist 04 (bilan, section 9) sont validés avec le module.*
 
 ---
 
