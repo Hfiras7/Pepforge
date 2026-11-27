@@ -13,5 +13,11 @@ c_terminus:
   - {key: free_acid, label: "acide libre (-COOH)", aliases: ["OH", "COOH", "CO-OH"]}
   - {key: amide, label: "amidée (-CO-NH2)", aliases: ["NH2", "CO-NH2", "CONH2"]}
   - {key: n_methylamide, label: "N-méthylamide (-CO-NH-CH3)", aliases: ["NHMe", "NHCH3", "CO-NH-CH3"]}
+# Extrémité non chimique : bord d'un segment extrait d'une structure (résidus non
+# observés au-delà, ou rupture de chaîne), où la molécule réelle continue. Elle n'a
+# pas d'alias (une séquence ne l'écrit pas) et n'est pas classée dans
+# ionizable_groups.yaml : toute étape qui aurait besoin de son groupe chimique refuse.
+# Décision de Firas du 27 novembre 2026 (revue du module 3).
+non_chemical_terminus: {key: unobserved, label: "non observée (la chaîne continue au-delà)"}
 default_n_terminus: free_amine
 default_c_terminus: free_acid

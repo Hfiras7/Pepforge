@@ -75,6 +75,9 @@ STRUCTURE_CHAIN = "structure_chain"
 STRUCTURE_SEGMENT = "structure_segment"
 """Clé de `Peptide.metadata` : premier et dernier résidu du segment extrait (`A:ALA1-A:GLY9`)."""
 
+STRUCTURE_EDGES = "structure_edges"
+"""Clé de `Peptide.metadata` : nature des bords N et C du segment (`chemical/break`...)."""
+
 _FROM_STRUCTURE_DEFAULT = "absente de la structure : défaut de la bibliothèque"
 
 
@@ -774,14 +777,6 @@ def _segment_bounds(analysis: _Analysis) -> list[tuple[int, int]]:
     return bounds
 
 
-def _non_chemical_terminus(side: str, edge: str, where: str) -> None:
-    raise ExtractionRefusedError(
-        f"{where} : extrémité {side} « {edge} » : sa représentation dans le peptide "
-        "attend une décision (extrémité non chimique)",
-        None,
-    )
-
-
 def _peptide(
     structure: Structure,
     analysis: _Analysis,
@@ -802,10 +797,11 @@ def _peptide(
         c_key = components.c_terminal_caps[part.pop()[0].name.upper()]
     if not part:
         raise StructureError(f"{where} : aucun résidu entre les groupes terminaux")
-    if n_key is None and segment.n_edge != "chemical":
-        _non_chemical_terminus("N", segment.n_edge, where)
-    if c_key is None and segment.c_edge != "chemical":
-        _non_chemical_terminus("C", segment.c_edge, where)
+    # Bord d'un segment (rupture, résidus non observés au-delà) : extrémité non
+    # chimique, jamais une amine ou un acide supposés, même si un OXT ou un H1 y figure.
+    n_open = n_key is None and segment.n_edge != "chemical"
+    c_open = c_key is None and segment.c_edge != "chemical"
+    # Ailleurs, OXT prouve un acide libre et H1/H2/H3 une amine libre.
     if c_key is None and {a.name for a in part[-1][1]} & components.free_c_terminus_atoms:
         c_key = components.free_c_terminus
     if n_key is None and {a.name for a in part[0][1]} & components.free_n_terminus_hydrogens:
@@ -820,15 +816,30 @@ def _peptide(
         STRUCTURE_SOURCE: structure.source,
         STRUCTURE_CHAIN: chain_id,
         STRUCTURE_SEGMENT: f"{segment.first}-{segment.last}",
+        STRUCTURE_EDGES: f"{segment.n_edge}/{segment.c_edge}",
     }
-    if n_key is None:
+    if n_key is None and not n_open:
         metadata[N_TERMINUS_DEFAULTED] = _FROM_STRUCTURE_DEFAULT
-    if c_key is None:
+    if c_key is None and not c_open:
         metadata[C_TERMINUS_DEFAULTED] = _FROM_STRUCTURE_DEFAULT
+    n_terminus = (
+        library.unobserved_terminus
+        if n_open
+        else library.n_termini[n_key]
+        if n_key
+        else library.n_terminus()
+    )
+    c_terminus = (
+        library.unobserved_terminus
+        if c_open
+        else library.c_termini[c_key]
+        if c_key
+        else library.c_terminus()
+    )
     return Peptide(
         residues=tuple(library.by_code(rid.name) for rid, _ in part),
-        n_terminus=library.n_termini[n_key] if n_key else library.n_terminus(),
-        c_terminus=library.c_termini[c_key] if c_key else library.c_terminus(),
+        n_terminus=n_terminus,
+        c_terminus=c_terminus,
         links=tuple(links),
         metadata=metadata,
     )
@@ -908,9 +919,12 @@ def extract_peptides(
                 "segment": p.metadata[STRUCTURE_SEGMENT],
                 "length": len(p),
                 "n_terminus": p.n_terminus.key,
-                "n_terminus_from_structure": N_TERMINUS_DEFAULTED not in p.metadata,
+                "edges": p.metadata[STRUCTURE_EDGES],
+                "n_terminus_from_structure": N_TERMINUS_DEFAULTED not in p.metadata
+                and p.n_terminus.chemical,
                 "c_terminus": p.c_terminus.key,
-                "c_terminus_from_structure": C_TERMINUS_DEFAULTED not in p.metadata,
+                "c_terminus_from_structure": C_TERMINUS_DEFAULTED not in p.metadata
+                and p.c_terminus.chemical,
                 "disulfides": [link.positions for link in p.links],
             }
             for p in peptides

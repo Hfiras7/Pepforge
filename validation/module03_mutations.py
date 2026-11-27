@@ -235,6 +235,26 @@ M = [
         '            started = "RES CSSEQI" in body and "ATOMS" in body',
         "            started = True",
     ),
+    (
+        "src/pepforge/residues/protonation.py",
+        "        if not terminus.chemical:\n            raise UnsupportedFeatureError(",
+        "        if False:\n            raise UnsupportedFeatureError(",
+    ),
+    (
+        "src/pepforge/io/sequence.py",
+        "        if not terminus.chemical\n",
+        "        if False\n",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        '    n_open = n_key is None and segment.n_edge != "chemical"',
+        "    n_open = False",
+    ),
+    (
+        "src/pepforge/io/peptide_extraction.py",
+        '    c_open = c_key is None and segment.c_edge != "chemical"',
+        "    c_open = False",
+    ),
 ]
 env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
 caught = 0
@@ -258,6 +278,9 @@ for i, (path, old, new) in enumerate(M, 1):
                 "tests/test_structure_inventory.py",
                 "tests/test_peptide_extraction.py",
                 "tests/test_cli.py",
+                "tests/test_protonation.py",
+                "tests/test_sequence.py",
+                "tests/test_library.py",
             ],
             capture_output=True,
             text=True,

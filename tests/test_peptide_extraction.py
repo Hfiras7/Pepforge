@@ -36,6 +36,7 @@ from pepforge.io import (
 )
 from pepforge.io.peptide_extraction import (
     STRUCTURE_CHAIN,
+    STRUCTURE_EDGES,
     STRUCTURE_SEGMENT,
     ComponentCategory,
     JunctionCategory,
@@ -592,3 +593,91 @@ def test_covalent_link_to_another_chain_is_refused() -> None:
     link = Connection(ConnectionKind.COVALENT, _rid(1, "LYS"), "NZ", _rid(1, "GLY", chain="B"), "C")
     report = _refused(Structure(atoms=atoms, connections=(link,)))
     assert any("hors de la chaîne" in reason for reason in report.refusals)
+
+
+# --- Décisions split et observed_segment : extrémité non chimique ----------------------
+
+
+def test_observed_segment_gives_non_chemical_termini_where_residues_are_missing() -> None:
+    journal = Journal()
+    structure = Structure(
+        atoms=_build((2, "ALA"), (3, "GLY", {"extra": ("OXT",)})),
+        declared_missing_residues=(_rid(1, "MET"), _rid(4, "LYS")),
+    )
+    decisions = ExtractionDecisions(unobserved_termini=Decision.OBSERVED_SEGMENT)
+    result = extract_peptides(structure, "A", journal=journal, decisions=decisions)
+    (peptide,) = result.peptides
+    assert peptide.n_terminus.key == peptide.c_terminus.key == "unobserved"
+    assert not peptide.n_terminus.chemical and not peptide.c_terminus.chemical
+    # Un OXT au bord d'un segment ne fait pas un acide libre : la chaîne continue.
+    assert peptide.metadata[STRUCTURE_EDGES] == "unobserved/unobserved"
+    assert N_TERMINUS_DEFAULTED not in peptide.metadata
+    assert C_TERMINUS_DEFAULTED not in peptide.metadata
+    assert [t.decision for t in result.report.unobserved_termini] == [Decision.OBSERVED_SEGMENT] * 2
+    entry = journal.entries[-1]
+    assert entry.parameters["decisions"]["unobserved_termini"] == "observed_segment"
+    assert entry.parameters["peptides"][0]["edges"] == "unobserved/unobserved"
+    assert entry.parameters["peptides"][0]["c_terminus_from_structure"] is False
+
+
+def test_observed_segment_keeps_a_chemical_end_when_only_one_side_is_missing() -> None:
+    structure = Structure(
+        atoms=_build((2, "ALA"), (3, "GLY", {"extra": ("OXT",)})),
+        declared_missing_residues=(_rid(1, "MET"),),
+    )
+    decisions = ExtractionDecisions(unobserved_termini=Decision.OBSERVED_SEGMENT)
+    (peptide,) = extract_peptides(structure, "A", journal=Journal(), decisions=decisions).peptides
+    assert peptide.n_terminus.key == "unobserved"
+    assert peptide.c_terminus.key == "free_acid"  # OXT, vraie extrémité
+
+
+def test_split_gives_one_peptide_per_segment_with_non_chemical_inner_edges() -> None:
+    structure = Structure(
+        atoms=_build((1, "ALA"), (2, "GLY"), (5, "SER", {"gap": 12.0}), (6, "THR"))
+    )
+    result = extract_peptides(
+        structure, "A", journal=Journal(), decisions=ExtractionDecisions(breaks=Decision.SPLIT)
+    )
+    first, second = result.peptides
+    assert [r.code for r in first.residues] == ["ALA", "GLY"]
+    assert [r.code for r in second.residues] == ["SER", "THR"]
+    assert first.c_terminus.key == "unobserved" and second.n_terminus.key == "unobserved"
+    assert N_TERMINUS_DEFAULTED in first.metadata  # vraie extrémité, sans preuve : marquée
+    assert C_TERMINUS_DEFAULTED in second.metadata
+    assert first.metadata[STRUCTURE_SEGMENT] == "A:ALA1-A:GLY2"
+    assert second.metadata[STRUCTURE_EDGES] == "break/chemical"
+
+
+def test_split_refuses_a_disulfide_across_two_segments() -> None:
+    atoms = _build(
+        (1, "CYS", {"extra": ("SG",)}), (2, "GLY"), (3, "CYS", {"gap": 12.0, "extra": ("SG",)})
+    )
+    bridge = Connection(ConnectionKind.DISULFIDE, _rid(1, "CYS"), "SG", _rid(3, "CYS"), "SG")
+    report = _refused(
+        Structure(atoms=atoms, connections=(bridge,)),
+        decisions=ExtractionDecisions(breaks=Decision.SPLIT),
+    )
+    assert any("entre deux segments" in reason for reason in report.refusals)
+
+
+def test_6wqa_split_gives_two_peptides_at_the_undeclared_break() -> None:
+    result = extract_peptides(
+        _reference("6WQA.cif.gz"),
+        "A",
+        journal=Journal(),
+        decisions=ExtractionDecisions(breaks=Decision.SPLIT),
+    )
+    first, second = result.peptides
+    assert (len(first), len(second)) == (254, 137)
+    assert first.c_terminus.key == "unobserved" and second.n_terminus.key == "unobserved"
+    assert "ZMA" not in {r.code for p in result.peptides for r in p.residues}
+
+
+def test_7ddo_observed_segment_does_not_hide_the_glycan() -> None:
+    report = _refused(
+        _reference("7DDO.pdb.gz"),
+        "C",
+        decisions=ExtractionDecisions(unobserved_termini=Decision.OBSERVED_SEGMENT),
+    )
+    assert len(report.refusals) == 1
+    assert "C:NAG601" in report.refusals[0]

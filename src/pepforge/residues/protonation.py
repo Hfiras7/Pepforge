@@ -34,7 +34,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from pepforge.core.peptide import Peptide
+from pepforge.core.peptide import Peptide, Terminus
 from pepforge.core.protonation import (
     C_TERMINUS_SITE,
     N_TERMINUS_SITE,
@@ -355,7 +355,15 @@ def _sites(peptide: Peptide, table: IonizableGroupTable) -> list[_Site]:
     bridged = {p for pair in peptide.disulfides for p in pair}
     sites: list[_Site] = []
 
-    def add_terminus(side: str, key: str, state: str | None, where: str) -> None:
+    def add_terminus(side: str, terminus: Terminus, where: str) -> None:
+        key, state = terminus.key, terminus.protonation
+        if not terminus.chemical:
+            raise UnsupportedFeatureError(
+                f"{where} « {terminus.label} » : ce n'est pas une extrémité chimique (bord "
+                "d'un segment extrait, la chaîne réelle continue) ; aucune charge ne lui est "
+                "supposée. La coiffer ou reconstruire la chaîne explicitement avant la "
+                "protonation."
+            )
         group = table.group_for_terminus(key, where)
         if group is not None:
             sites.append(_Site(side, key, group, state))
@@ -366,7 +374,7 @@ def _sites(peptide: Peptide, table: IonizableGroupTable) -> list[_Site]:
             )
 
     n_terminus, c_terminus = peptide.n_terminus, peptide.c_terminus
-    add_terminus(N_TERMINUS_SITE, n_terminus.key, n_terminus.protonation, "extrémité N")
+    add_terminus(N_TERMINUS_SITE, n_terminus, "extrémité N")
     for position, residue in enumerate(peptide.residues, start=1):
         where = f"résidu {residue.code} {position}"
         if position in bridged:
@@ -383,7 +391,7 @@ def _sites(peptide: Peptide, table: IonizableGroupTable) -> list[_Site]:
             raise ChemistryError(
                 f"{where} : état {residue.protonation!r} fixé sur un résidu sans groupe ionisable"
             )
-    add_terminus(C_TERMINUS_SITE, c_terminus.key, c_terminus.protonation, "extrémité C")
+    add_terminus(C_TERMINUS_SITE, c_terminus, "extrémité C")
     return sites
 
 

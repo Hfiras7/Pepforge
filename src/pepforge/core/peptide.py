@@ -83,6 +83,12 @@ class Terminus:
     forme de la clé ; son sens relève de l'étape de protonation (étape 2).
     """
 
+    chemical: bool = True
+    """Faux pour une extrémité qui n'est pas celle de la molécule : bord d'un segment
+    extrait d'une structure (`unobserved`, décision de Firas du 27 novembre 2026),
+    où la chaîne réelle continue. Aucune étape ne lui suppose un groupe chimique :
+    la protonation et l'écriture d'une séquence la refusent explicitement."""
+
     def __post_init__(self) -> None:
         _check_internal_key(self.key, "Extrémité")
         if self.protonation is not None:

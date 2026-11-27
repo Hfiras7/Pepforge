@@ -37,6 +37,16 @@ def test_every_written_terminus_reads_back_as_itself() -> None:
         assert lib.c_terminus(lib.c_terminus_symbol(key)).key == key
 
 
+def test_non_chemical_terminus_is_apart_from_the_chemical_ones() -> None:
+    lib = load_default_library()
+    unobserved = lib.unobserved_terminus
+    assert unobserved.key == "unobserved"
+    assert unobserved.chemical is False
+    assert all(t.chemical for t in (*lib.n_termini.values(), *lib.c_termini.values()))
+    assert "unobserved" not in lib.n_termini and "unobserved" not in lib.c_termini
+    assert not lib.is_n_alias("unobserved") and not lib.is_c_alias("unobserved")
+
+
 def test_an_unknown_terminus_has_no_written_form() -> None:
     lib = load_default_library()
     with pytest.raises(UnknownTerminusError):

@@ -2,7 +2,7 @@
 
 > Étape 3 de [PLAN-CONSTRUCTION.md](../PLAN-CONSTRUCTION.md). Bilan établi le 27 novembre 2026, selon le modèle de la méthode de travail imposée. Livré sur une branche et une PR dédiées, partie de la branche par défaut (modules 1 et 2 fusionnés).
 
-**Statut final : TERMINÉ MAIS NON VALIDÉ.** Revue de Firas du 27 novembre 2026 : gemmi **validé**, structures de validation en **validation provisoire**, extraction d'un peptide **à corriger**. La correction est livrée (section 9) : rapport d'extraction par jonction, trois défauts corrigés, tests sur 4ZHL, 6WQA et 7DDO. Le module reste non validé : la représentation d'une extrémité non chimique (décisions `split` et `observed_segment`) attend la réponse de Firas, et sa validation finale est requise avant la fusion de la PR #3.
+**Statut final : TERMINÉ MAIS NON VALIDÉ.** Revue de Firas du 27 novembre 2026 : gemmi **validé**, structures de validation en **validation provisoire**, extraction d'un peptide **à corriger**. La correction est livrée (section 9) : rapport d'extraction par jonction, trois défauts corrigés, tests sur 4ZHL, 6WQA et 7DDO. L'extrémité non chimique décidée par Firas est livrée (section 9.6). Le module reste non validé tant que Firas n'a pas donné sa validation finale, requise avant la fusion de la PR #3.
 
 ---
 
@@ -205,7 +205,7 @@ Sur la même entrée, le PDB et le mmCIF ne portent pas tout à fait la même ch
 6. **Charge formelle non lue** (colonnes 79-80 du PDB, `pdbx_formal_charge`). Elle n'a pas encore d'usage, et la charge des ions sera traitée à la paramétrisation.
 7. **Enregistrements `CONECT` et `ANISOU` non importés.** Les liaisons déclarées viennent de `SSBOND`, `LINK` et `struct_conn` ; `CONECT` (utile pour les ligands) n'est pas lu ni signalé.
 8. ~~Le trou de numérotation est refusé par la correspondance.~~ *Corrigé (section 9) : la liaison C–N est mesurée à chaque jonction ; un saut avec liaison est accepté et signalé.*
-9. **Une chaîne dont des résidus ne sont pas observés est refusée par défaut**, à une extrémité comme dans une rupture (Aβ 1-16 dans 2BEG). Les décisions `observed_segment` et `split` sont classées et journalisées, mais la production des peptides correspondants attend la représentation d'une extrémité non chimique (section 9.5).
+9. **Une chaîne dont des résidus ne sont pas observés est refusée par défaut**, à une extrémité comme dans une rupture (Aβ 1-16 dans 2BEG). Avec `observed_segment` ou `split`, chaque segment devient un peptide dont les bords portent l'extrémité non chimique `unobserved` (section 9.6) : à coiffer ou reconstruire explicitement avant la protonation.
 10. **Un élément absent est déduit par gemmi du nom d'atome.** Le nombre d'atomes concernés est inscrit au journal, mais la déduction n'est pas refusée, parce que beaucoup de fichiers produits par des outils de modélisation n'ont pas de colonne d'élément.
 11. **Le contenu entier est gardé en mémoire** (plafond par défaut 100 Mio), ce qui suffit pour un récepteur ou un complexe, pas pour un ribosome sans relever le plafond.
 12. **Formats binaires non pris en charge** (BinaryCIF, MMTF) : refusés avec un message clair.
@@ -278,7 +278,18 @@ Aussi rapportés : extrémités non observées (`unobserved_termini`, refus ou `
 
 ### 9.5 Ce qui reste ouvert
 
-1. **Extrémité non chimique** (question C posée à Firas) : bord d'un segment `observed_segment` ou `split`. Le rapport classe et journalise ces décisions, mais `extract_peptides` refuse encore de produire un peptide à un tel bord, plutôt que de lui donner une amine ou un acide inventés.
+1. ~~Extrémité non chimique~~ : décidée par Firas (option « nouvelle extrémité non observée ») et livrée, voir 9.6.
 2. **Saut de numérotation avec liaison** (question A) et **granularité des décisions** (question B) : appliqués selon mes recommandations (accepté et signalé ; décision par catégorie et par chaîne), à confirmer.
 3. Une liaison covalente non déclarée (fichier de docking sans `LINK`) ne peut pas être vue : le ligand est alors classé non lié. Sa plus courte distance à la chaîne est rapportée pour que l'utilisateur en juge ; aucun seuil n'est appliqué.
 4. La liste complète des atomes absents par résidu, comparée au dictionnaire de la PDB, reste à l'étape 4.
+
+### 9.6 Extrémité non chimique (décision de Firas, 27 novembre 2026, 19 h 33 UTC)
+
+Option retenue : une **nouvelle extrémité « non observée »**, plutôt qu'une amine et un acide supposés.
+
+- `core.peptide.Terminus` reçoit `chemical: bool = True` ; `termini.yaml` déclare `non_chemical_terminus` (`unobserved`, « non observée (la chaîne continue au-delà) »), sans alias et hors de `n_termini` / `c_termini` : une séquence ne peut pas la déclarer, et `ResidueLibrary.unobserved_terminus` la porte.
+- `extract_peptides` la donne à tout bord de segment qui n'est pas une vraie extrémité (rupture coupée par `split`, résidus non observés au-delà avec `observed_segment`), même si le fichier y place un `OXT` ou un `H1`. Une vraie extrémité garde ses preuves (groupe terminal, `OXT`, `H1`), ou le défaut marqué. La nature des bords est gardée dans `Peptide.metadata["structure_edges"]` et au journal.
+- **Module 2, modifié a minima** : `assign_protonation` et `theoretical_net_charge` refusent une extrémité non chimique (`UnsupportedFeatureError`, message qui dit de coiffer ou de reconstruire la chaîne d'abord). `format_sequence` refuse aussi de l'écrire. Tous les tests des modules 1 et 2 passent toujours.
+- Tests ajoutés : 11 (extraction `observed_segment` et `split`, pont disulfure entre segments refusé, 6WQA découpé en 254 et 137 résidus, 7DDO C dont le glycane bloque toujours, refus de la protonation aux deux extrémités, refus d'écriture, chargement de la bibliothèque). **610 tests réussis, 0 échec.**
+- Défauts injectés : 4 de plus sur les nouvelles gardes (refus de la protonation, refus d'écriture, bords N et C). **54 sur 54 détectés.** Une garde redondante a été retirée après qu'un défaut injecté a montré qu'elle ne changeait rien.
+- Validation sur les 14 fichiers relancée : 137 contrôles, 0 échec (elle n'utilise que le mode strict).
