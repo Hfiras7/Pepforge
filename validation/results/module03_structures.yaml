@@ -38,7 +38,8 @@ files:
     detail: 644 atomes
   - check: 'chaîne A : motifs de refus attendus par l''analyse'
     ok: true
-    detail: obtenus ['modified_residue'], attendus ['modified_residue']
+    detail: obtenus ['conect_unresolved', 'modified_residue'], attendus ['conect_unresolved',
+      'modified_residue']
   inventory:
     atoms: 644
     hydrogens: 0
@@ -81,6 +82,7 @@ files:
       declared_missing_atoms: 0
       absent_backbone_atoms: []
       refusal_causes:
+      - conect_unresolved
       - modified_residue
 - file: 1A8O.cif
   url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/1A8O.cif
@@ -1111,7 +1113,8 @@ files:
     detail: 3003 atomes
   - check: 'chaîne A : motifs de refus attendus par l''analyse'
     ok: true
-    detail: obtenus ['break_undeclared'], attendus ['break_undeclared']
+    detail: obtenus ['break_undeclared', 'possible_bond_undeclared'], attendus ['break_undeclared',
+      'possible_bond_undeclared']
   inventory:
     atoms: 3003
     hydrogens: 0
@@ -1163,6 +1166,7 @@ files:
       absent_backbone_atoms: []
       refusal_causes:
       - break_undeclared
+      - possible_bond_undeclared
 - file: 4ZHL.cif
   url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/4ZHL.cif
   exercises: codes d'insertion (numérotation chymotrypsine) ; chaîne peptidique P
@@ -1200,13 +1204,9 @@ files:
   - check: écriture mmcif puis relecture sans perte
     ok: true
     detail: 2080 atomes
-  - check: séquence de la chaîne U = séquence déclarée (_entity_poly)
-    ok: true
-    detail: lue IIGGEFTTIENQPWFAAIYRRHRGGSVTYVCGGSLISPCWVISATHCFIDYPKKEDYIVYLGRSRLNSNTQGEMKFEVENLILHKDYSADTLAYHNDIALLKIRSKEGRCAQPSRTIQTIALPSMYNDPQFGTSCEITGFGKEQSTDYLYPEQLKMTVVKLISHRECQQPHYYGSEVTTKMLCAADPQWKTDSCQGDSGGPLVCSLQGRMTLTGIVSWGRGCALKDKPGVYTRVSHFLPWIRSHTKE,
-      déclarée IIGGEFTTIENQPWFAAIYRRHRGGSVTYVCGGSLISPCWVISATHCFIDYPKKEDYIVYLGRSRLNSNTQGEMKFEVENLILHKDYSADTLAYHNDIALLKIRSKEGRCAQPSRTIQTIALPSMYNDPQFGTSCEITGFGKEQSTDYLYPEQLKMTVVKLISHRECQQPHYYGSEVTTKMLCAADPQWKTDSCQGDSGGPLVCSLQGRMTLTGIVSWGRGCALKDKPGVYTRVSHFLPWIRSHTKE
   - check: 'chaîne U : motifs de refus attendus par l''analyse'
     ok: true
-    detail: obtenus aucun (acceptée), attendus []
+    detail: obtenus ['possible_bond_undeclared'], attendus ['possible_bond_undeclared']
   - check: séquence de la chaîne P = séquence déclarée (_entity_poly)
     ok: true
     detail: lue CPAYSRYIGC, déclarée CPAYSRYIGC
@@ -1247,7 +1247,7 @@ files:
     - 'Liaisons déclarées par le fichier (disulfide ×4) : à confirmer.'
   peptides:
     U:
-      accepted: true
+      accepted: false
       junctions_by_category:
         continuous: 218
         numbering_discontinuity: 28
@@ -1259,19 +1259,8 @@ files:
       unobserved_termini: {}
       declared_missing_atoms: 0
       absent_backbone_atoms: []
-      refusal_causes: []
-      residues: ILE-ILE-GLY-GLY-GLU-PHE-THR-THR-ILE-GLU-ASN-GLN-PRO-TRP-PHE-ALA-ALA-ILE-TYR-ARG-ARG-HIS-ARG-GLY-GLY-SER-VAL-THR-TYR-VAL-CYS-GLY-GLY-SER-LEU-ILE-SER-PRO-CYS-TRP-VAL-ILE-SER-ALA-THR-HIS-CYS-PHE-ILE-ASP-TYR-PRO-LYS-LYS-GLU-ASP-TYR-ILE-VAL-TYR-LEU-GLY-ARG-SER-ARG-LEU-ASN-SER-ASN-THR-GLN-GLY-GLU-MET-LYS-PHE-GLU-VAL-GLU-ASN-LEU-ILE-LEU-HIS-LYS-ASP-TYR-SER-ALA-ASP-THR-LEU-ALA-TYR-HIS-ASN-ASP-ILE-ALA-LEU-LEU-LYS-ILE-ARG-SER-LYS-GLU-GLY-ARG-CYS-ALA-GLN-PRO-SER-ARG-THR-ILE-GLN-THR-ILE-ALA-LEU-PRO-SER-MET-TYR-ASN-ASP-PRO-GLN-PHE-GLY-THR-SER-CYS-GLU-ILE-THR-GLY-PHE-GLY-LYS-GLU-GLN-SER-THR-ASP-TYR-LEU-TYR-PRO-GLU-GLN-LEU-LYS-MET-THR-VAL-VAL-LYS-LEU-ILE-SER-HIS-ARG-GLU-CYS-GLN-GLN-PRO-HIS-TYR-TYR-GLY-SER-GLU-VAL-THR-THR-LYS-MET-LEU-CYS-ALA-ALA-ASP-PRO-GLN-TRP-LYS-THR-ASP-SER-CYS-GLN-GLY-ASP-SER-GLY-GLY-PRO-LEU-VAL-CYS-SER-LEU-GLN-GLY-ARG-MET-THR-LEU-THR-GLY-ILE-VAL-SER-TRP-GLY-ARG-GLY-CYS-ALA-LEU-LYS-ASP-LYS-PRO-GLY-VAL-TYR-THR-ARG-VAL-SER-HIS-PHE-LEU-PRO-TRP-ILE-ARG-SER-HIS-THR-LYS-GLU
-      n_terminus_from_structure: false
-      c_terminus_from_structure: false
-      n_terminus: free_amine
-      c_terminus: free_acid
-      disulfides:
-      - - 31
-        - 47
-      - - 167
-        - 183
-      - - 194
-        - 222
+      refusal_causes:
+      - possible_bond_undeclared
     P:
       accepted: true
       junctions_by_category:
@@ -1410,5 +1399,5 @@ cross_format:
   - 148
   - 148
 summary:
-  checks: 137
+  checks: 136
   failed: []

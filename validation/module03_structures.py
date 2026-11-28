@@ -86,7 +86,8 @@ FILES: dict[str, str] = {
 # liste vide = extraction acceptée. Les chaînes d'ADN de 1LCD (B, C) sont refusées comme
 # non peptidiques. 2BEG.pdb et 2n0n_M1.pdb ne sont pas lus (NUMMDL incohérent), donc absents.
 EXPECTED_REFUSALS: dict[tuple[str, str], list[str]] = {
-    **{(f, "A"): ["modified_residue"] for f in ("1A8O.pdb", "1A8O.cif", "1AS5.cif")},
+    **{(f, "A"): ["modified_residue"] for f in ("1A8O.cif", "1AS5.cif")},
+    ("1A8O.pdb", "A"): ["conect_unresolved", "modified_residue"],
     **{(f, "A"): ["break_declared", "unobserved_C"] for f in ("2XHE.pdb", "2XHE.cif")},
     **{
         (f, "B"): ["break_declared", "unobserved_C", "unobserved_N"]
@@ -96,8 +97,12 @@ EXPECTED_REFUSALS: dict[tuple[str, str], list[str]] = {
     **{("2BEG.cif", c): ["unobserved_N"] for c in "ABCDE"},
     ("7DDO.pdb", "A"): ["side_chain_modification"],
     ("7DDO.pdb", "C"): ["side_chain_modification", "unobserved_C", "unobserved_N"],
-    ("6WQA.cif", "A"): ["break_undeclared"],
-    ("4ZHL.cif", "U"): [],
+    # Étape C (28/11/2026) : contacts SG–SG non déclarés trouvés par la détection de
+    # proximité (6WQA A : 4 à 2,02–2,03 Å ; 4ZHL U : 2 à 1,64 et 1,51 Å), soumis à
+    # décision explicite ; et CONECT de 1A8O.pdb non attribuables (numéros de série
+    # renumérotés par la copie de Biopython). Voir validation/etape_c_connectivity.py.
+    ("6WQA.cif", "A"): ["break_undeclared", "possible_bond_undeclared"],
+    ("4ZHL.cif", "U"): ["possible_bond_undeclared"],
     ("4ZHL.cif", "P"): [],
     ("4CUP.cif", "A"): ["unobserved_C"],
 }
@@ -112,13 +117,17 @@ def _refusal_causes(report: ExtractionReport) -> list[str]:
     causes |= {c.category.value for c in report.components if c.decision.value == "reject"}
     for word, cause in (
         ("sans place", "unplaced_missing"),
-        ("liaison déclarée", "declared_link"),
         ("disulfure", "disulfide"),
         ("microhétérogénéité", "microheterogeneity"),
         ("groupe terminal", "terminal_cap"),
+        ("contact covalent possible", "possible_bond_undeclared"),
+        ("connectivité du fichier incertaine", "conect_unresolved"),
     ):
         if any(word in reason for reason in report.refusals):
             causes.add(cause)
+    # En tête de motif seulement : un refus de contact possible dit « sans liaison déclarée ».
+    if any(reason.startswith("liaison déclarée") for reason in report.refusals):
+        causes.add("declared_link")
     return sorted(causes)
 
 

@@ -37,7 +37,7 @@ import math
 import re
 from collections import Counter
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 from pathlib import PurePath
 
@@ -171,6 +171,10 @@ class ParsedFile:
 
     atoms_without_occupancy: int
     """Atomes dont le fichier ne donne pas l'occupation (laissée à `None`)."""
+
+    conect: tuple[tuple[int, int], ...] = ()
+    """Paires de numéros de série déclarées par CONECT (PDB), à rattacher aux atomes du
+    modèle lu (`resolve_conect`) : un numéro de série vaut pour un modèle."""
 
 
 def _strict_float(text: str, what: str, where: str) -> float:
@@ -350,17 +354,137 @@ def _address_id(address: gemmi.AtomAddress) -> ResidueId:
     )
 
 
-def _connections(structure: gemmi.Structure) -> tuple[Connection, ...]:
-    return tuple(
-        Connection(
-            kind=_CONNECTION_KINDS.get(conn.type, ConnectionKind.UNKNOWN),
-            first=_address_id(conn.partner1),
-            first_atom=conn.partner1.atom_name,
-            second=_address_id(conn.partner2),
-            second_atom=conn.partner2.atom_name,
+def _alt(code: str) -> str:
+    """Indicateur de conformation de gemmi (`\\0` quand il est absent) en chaîne vide."""
+    return code.strip("\0 ")
+
+
+def _reported(distance: float) -> float | None:
+    """Distance écrite dans le fichier : gemmi rend 0 (ou NaN) quand elle est absente."""
+    return distance if math.isfinite(distance) and distance > 0 else None
+
+
+def _connections(structure: gemmi.Structure, record: str | None) -> list[Connection]:
+    """Liaisons déclarées par LINK / SSBOND (`record` = None : selon le type) ou `struct_conn`."""
+    found: list[Connection] = []
+    for conn in structure.connections:
+        kind = _CONNECTION_KINDS.get(conn.type, ConnectionKind.UNKNOWN)
+        name = record or ("SSBOND" if kind == ConnectionKind.DISULFIDE else "LINK")
+        found.append(
+            Connection(
+                kind=kind,
+                first=_address_id(conn.partner1),
+                first_atom=conn.partner1.atom_name,
+                second=_address_id(conn.partner2),
+                second_atom=conn.partner2.atom_name,
+                first_alt_loc=_alt(conn.partner1.altloc),
+                second_alt_loc=_alt(conn.partner2.altloc),
+                records=(name,),
+                reported_distance=_reported(conn.reported_distance),
+                symmetry_mate=conn.asu == gemmi.Asu.Different,
+            )
         )
-        for conn in structure.connections
-    )
+    return found
+
+
+CONECT_UNRESOLVED = "conect_unresolved"
+"""Clé de `Structure.metadata` : enregistrements CONECT non attribuables à un atome du
+modèle lu (numéro de série absent, ou porté par plusieurs atomes), décrits en clair.
+Absente quand tous les CONECT sont attribués. Leur présence fait refuser l'extraction
+d'une chaîne : une liaison inconnue pourrait la toucher."""
+
+
+@dataclass(frozen=True)
+class ConectResolution:
+    """CONECT rattachés aux atomes d'un modèle."""
+
+    connections: tuple[Connection, ...]
+    """Liaisons déclarées (LINK, SSBOND) fusionnées avec les CONECT entre résidus."""
+
+    internal: int
+    """Liaisons CONECT entre deux atomes d'un même résidu : comptées, non gardées."""
+
+    unresolved: tuple[str, ...]
+    """Liaisons CONECT non attribuables, décrites en clair."""
+
+
+def _conect_pairs(structure: gemmi.Structure) -> tuple[tuple[int, int], ...]:
+    """Paires de numéros de série déclarées par CONECT, chacune une fois."""
+    pairs: set[tuple[int, int]] = set()
+    for serial, partners in structure.conect_map.items():
+        for partner in partners:
+            if partner != serial:
+                pairs.add((min(serial, partner), max(serial, partner)))
+    return tuple(sorted(pairs))
+
+
+def resolve_conect(
+    atoms: tuple[Atom, ...],
+    pairs: tuple[tuple[int, int], ...],
+    declared: tuple[Connection, ...],
+) -> ConectResolution:
+    """Rattache les CONECT aux atomes du modèle lu, par numéro de série.
+
+    Un numéro absent du modèle, ou porté par plusieurs atomes, n'est jamais
+    deviné : la liaison est rapportée comme non attribuable. Une liaison CONECT
+    qui double un LINK ou un SSBOND est gardée une fois, avec ses deux sources ;
+    une liaison CONECT seule garde le type `unknown` (CONECT ne dit pas la nature
+    de la liaison). Les numéros de série sont ceux de chaque modèle : dans un
+    ensemble RMN, un même numéro peut désigner un autre atome dans un autre modèle.
+    """
+    by_serial: dict[int, list[Atom]] = {}
+    for atom in atoms:
+        by_serial.setdefault(atom.serial, []).append(atom)
+    found: list[Connection] = []
+    internal = 0
+    unresolved: list[str] = []
+    for a, b in pairs:
+        ends = (by_serial.get(a, []), by_serial.get(b, []))
+        if any(len(end) != 1 for end in ends):
+            problems = [
+                f"{serial} {'absent du modèle' if not end else f'porté par {len(end)} atomes'}"
+                for serial, end in zip((a, b), ends, strict=True)
+                if len(end) != 1
+            ]
+            unresolved.append(f"CONECT {a}–{b} : numéro {', '.join(problems)}")
+            continue
+        ((first,), (second,)) = ends
+        if first.residue_id == second.residue_id:
+            internal += 1
+            continue
+        found.append(
+            Connection(
+                kind=ConnectionKind.UNKNOWN,
+                first=first.residue_id,
+                first_atom=first.name,
+                second=second.residue_id,
+                second_atom=second.name,
+                first_alt_loc=first.alt_loc or "",
+                second_alt_loc=second.alt_loc or "",
+                records=("CONECT",),
+            )
+        )
+    return ConectResolution(_merge(list(declared), found), internal, tuple(unresolved))
+
+
+def _same_bond(a: Connection, b: Connection) -> bool:
+    """Même paire d'atomes (résidu et nom), dans un sens ou dans l'autre."""
+    ends_a = {(a.first, a.first_atom), (a.second, a.second_atom)}
+    ends_b = {(b.first, b.first_atom), (b.second, b.second_atom)}
+    return ends_a == ends_b
+
+
+def _merge(declared: list[Connection], conect: list[Connection]) -> tuple[Connection, ...]:
+    """Une liaison déclarée par LINK (ou SSBOND) et par CONECT est gardée une fois, avec ses
+    deux sources ; une liaison CONECT seule garde le type `unknown`."""
+    merged = list(declared)
+    for extra in conect:
+        index = next((i for i, c in enumerate(merged) if _same_bond(c, extra)), None)
+        if index is None:
+            merged.append(extra)
+        elif "CONECT" not in merged[index].records:
+            merged[index] = replace(merged[index], records=(*merged[index].records, "CONECT"))
+    return tuple(merged)
 
 
 def _key_of(model: int, chain: str, residue: gemmi.Residue, atom: gemmi.Atom) -> AtomKey:
@@ -591,7 +715,8 @@ def read_pdb(text: str, origin: str) -> ParsedFile:
     return ParsedFile(
         format=StructureFormat.PDB,
         models=models,
-        connections=_connections(structure),
+        connections=tuple(_connections(structure, None)),
+        conect=_conect_pairs(structure),
         declared_missing=_remark_465(structure, origin),
         declared_missing_atoms=_remark_470(structure, origin),
         declared_model_count=declared,
@@ -620,7 +745,7 @@ def read_mmcif(text: str, origin: str) -> ParsedFile:
     return ParsedFile(
         format=StructureFormat.MMCIF,
         models=models,
-        connections=_connections(structure),
+        connections=tuple(_connections(structure, "struct_conn")),
         declared_missing=_unobserved_mmcif(block, origin),
         declared_missing_atoms=_unobserved_atoms_mmcif(block, origin),
         declared_model_count=None,
@@ -629,8 +754,18 @@ def read_mmcif(text: str, origin: str) -> ParsedFile:
     )
 
 
-def _to_gemmi(atoms: tuple[Atom, ...], connections: tuple[Connection, ...]) -> gemmi.Structure:
-    """Une seule structure gemmi, un modèle, chaînes et résidus dans l'ordre d'apparition."""
+def _to_gemmi(
+    atoms: tuple[Atom, ...],
+    connections: tuple[Connection, ...],
+    *,
+    conect_as_records: bool,
+) -> gemmi.Structure:
+    """Une seule structure gemmi, un modèle, chaînes et résidus dans l'ordre d'apparition.
+
+    ``conect_as_records`` : vrai pour le PDB, où une liaison connue par CONECT seul
+    est réécrite en CONECT. Le mmCIF n'a pas d'enregistrement CONECT : la liaison y
+    part en ``struct_conn`` de type inconnu, sans lui prêter de nature.
+    """
     structure = gemmi.Structure()
     model = gemmi.Model(1)
     chains: dict[str, dict[ResidueId, list[Atom]]] = {}
@@ -656,7 +791,25 @@ def _to_gemmi(atoms: tuple[Atom, ...], connections: tuple[Connection, ...]) -> g
             chain.add_residue(residue)
         model.add_chain(chain)
     structure.add_model(model)
+    serials = {(a.residue_id, a.name, a.alt_loc or ""): a.serial for a in atoms}
     for index, link in enumerate(connections, start=1):
+        if conect_as_records and _conect_only(link):
+            # Une liaison connue par CONECT seul est réécrite en CONECT (PDB) : la
+            # réécrire en LINK lui donnerait une nature que le fichier ne déclarait pas.
+            ends = [
+                serials.get((rid, name, alt))
+                for rid, name, alt in (
+                    (link.first, link.first_atom, link.first_alt_loc),
+                    (link.second, link.second_atom, link.second_alt_loc),
+                )
+            ]
+            if ends[0] is None or ends[1] is None:
+                raise StructureFormatError(
+                    f"Liaison CONECT {link.first.label()}:{link.first_atom}–"
+                    f"{link.second.label()}:{link.second_atom} vers un atome absent"
+                )
+            structure.add_conect(ends[0], ends[1], 1)
+            continue
         conn = gemmi.Connection()
         conn.name = f"conn{index}"
         conn.type = next(
@@ -668,24 +821,35 @@ def _to_gemmi(atoms: tuple[Atom, ...], connections: tuple[Connection, ...]) -> g
             gemmi.SeqId(link.first.number, link.first.insertion_code or " "),
             link.first.name,
             link.first_atom,
+            link.first_alt_loc or "\0",
         )
         conn.partner2 = gemmi.AtomAddress(
             link.second.chain_id,
             gemmi.SeqId(link.second.number, link.second.insertion_code or " "),
             link.second.name,
             link.second_atom,
+            link.second_alt_loc or "\0",
         )
         structure.connections.append(conn)
     structure.setup_cell_images()
     return structure
 
 
+def _conect_only(link: Connection) -> bool:
+    return link.kind == ConnectionKind.UNKNOWN and link.records == ("CONECT",)
+
+
 def write_pdb_text(atoms: tuple[Atom, ...], connections: tuple[Connection, ...]) -> str:
-    return _to_gemmi(atoms, connections).make_pdb_string(gemmi.PdbWriteOptions())
+    options = gemmi.PdbWriteOptions()
+    if any(_conect_only(c) for c in connections):
+        # Les CONECT désignent des numéros de série : ils doivent rester ceux des atomes.
+        options.conect_records = True
+        options.preserve_serial = True
+    return _to_gemmi(atoms, connections, conect_as_records=True).make_pdb_string(options)
 
 
 def write_mmcif_text(atoms: tuple[Atom, ...], connections: tuple[Connection, ...]) -> str:
-    structure = _to_gemmi(atoms, connections)
+    structure = _to_gemmi(atoms, connections, conect_as_records=False)
     structure.name = "pepforge"
     return structure.make_mmcif_document().as_string()
 

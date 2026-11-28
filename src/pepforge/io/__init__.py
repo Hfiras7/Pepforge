@@ -1,6 +1,14 @@
 """Entrées et sorties : séquences, structures PDB et mmCIF, puis SMILES, MOL/SDF (à venir)."""
 
+from pepforge.io.connectivity import (
+    AtomRef,
+    BondAssessment,
+    BondEvidence,
+    BondStatus,
+    Certainty,
+)
 from pepforge.io.peptide_extraction import (
+    AttachmentSite,
     ChainDecisions,
     Decision,
     ExtractionDecisions,
@@ -30,6 +38,12 @@ from pepforge.io.structure_inventory import StructureInventory, inventory
 
 __all__ = [
     "SEQUENCE_NOTATION",
+    "AtomRef",
+    "AttachmentSite",
+    "BondAssessment",
+    "BondEvidence",
+    "BondStatus",
+    "Certainty",
     "ChainDecisions",
     "Decision",
     "DownloadLimits",

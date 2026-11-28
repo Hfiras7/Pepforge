@@ -196,6 +196,26 @@ flowchart LR
 
 ---
 
+## Étape C — Liaisons covalentes entre résidus d'une structure importée
+
+**Statut : TERMINÉ MAIS NON VALIDÉ** (28 novembre 2026), en attente de la revue de Firas. Complément du module 3, approuvé par Firas le 28 novembre 2026 (ordre C, puis A, puis B ; A et B non commencés). Branche `claude/etape-c-liaisons-covalentes`, PR distincte empilée sur celle du module 3. Bilan : [docs/bilans/etape-c-liaisons-covalentes.md](bilans/etape-c-liaisons-covalentes.md).
+
+**Objectif** : ne perdre aucun composant lié de façon covalente à un peptide importé, sans jamais prendre une proximité pour une preuve de liaison.
+
+**Modules** : `io` (`connectivity.py` nouveau, `structure_formats.py`, `structure.py`, `peptide_extraction.py`), `residues` (`covalent_geometry.yaml`, `CovalentCriteria`), `core.structure` (champs de provenance de `Connection` seulement), `cli` (`--component`, `--contact`). Non modifiés : `Peptide`, `PrepConfig` (`input_structure` conservé), protonation, `checks`.
+
+**Critères d'acceptation**
+
+- [x] `CONECT` lus et résolus par modèle ; `LINK`, `SSBOND` et `struct_conn` gardent leur source.
+- [x] Composants non standards examinés dans toutes les chaînes ; contacts détectés sans déclaration.
+- [x] Chaque liaison rapportée avec composants, atomes, chaînes, distance, source et certitude.
+- [x] Aucun composant écarté sans décision explicite et nommée.
+- [x] Pas de faux positif systématique sur les 14 fichiers réels ; ligands non liés et ions inchangés.
+- [x] Tolérance de 0,45 Å validée provisoirement par Firas (28/11/2026) ; bornes et sensibilité testées.
+- [x] Entrées originales 6WQA et 4ZHL (fournies par Firas) comparées atome par atome : copies identiques ; 6WQA déclare ses quatre ponts, 4ZHL U reste refusée.
+
+---
+
 ## Étape 4 — Contrôles de structure
 
 **Objectif** : disposer de tous les contrôles de la section « Structure » de la checklist 04, applicables à n'importe quelle `Structure`.

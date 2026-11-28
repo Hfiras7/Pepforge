@@ -1,0 +1,1054 @@
+source: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/
+reference: module03_structures.yaml
+files:
+- file: 1A8O.pdb
+  checks:
+  - check: 'A : résultat du module 3 conservé'
+    ok: true
+    detail: 'motifs du module 3 [''conect_unresolved'', ''modified_residue''] ; catégories changées : aucune'
+  - check: 'A : nouveaux refus expliqués'
+    ok: true
+    detail: trouvés ['conect_unresolved'] ; attendus ['conect_unresolved']
+  - check: 'A : liaisons covalentes déclarées confirmées par les coordonnées'
+    ok: true
+    detail: 7/7 confirmées
+  - check: 'A : ligands non liés et ions inchangés'
+    ok: true
+    detail: '0 composant(s) : aucun'
+  - check: 'liaisons possibles (géométrie seule) : toutes attendues'
+    ok: true
+    detail: trouvées [] ; attendues []
+  chains:
+    A:
+      accepted: false
+      new_refusal_causes:
+      - conect_unresolved
+      components:
+        A:MSE151: modified_residue
+        A:MSE185: modified_residue
+        A:MSE214: modified_residue
+        A:MSE215: modified_residue
+      bonds:
+      - A:CYS198:SG–A:CYS218:SG | 2.037 Å | declared SSBOND+CONECT | confirmed
+      - A:MSE151:C–A:ASP152:N | 1.326 Å | declared LINK | confirmed
+      - A:MSE185:N–A:TRP184:C | 1.330 Å | declared LINK+CONECT | confirmed
+      - A:MSE185:C–A:THR186:N | 1.333 Å | declared LINK+CONECT | confirmed
+      - A:MSE214:N–A:GLU213:C | 1.334 Å | declared LINK+CONECT | confirmed
+      - A:MSE214:C–A:MSE215:N | 1.332 Å | declared LINK+CONECT | confirmed
+      - A:MSE215:C–A:THR216:N | 1.330 Å | declared LINK+CONECT | confirmed
+- file: 1A8O.cif
+  checks:
+  - check: 'A : résultat du module 3 conservé'
+    ok: true
+    detail: 'motifs du module 3 [''modified_residue''] ; catégories changées : aucune'
+  - check: 'A : nouveaux refus expliqués'
+    ok: true
+    detail: trouvés [] ; attendus []
+  - check: 'A : liaisons covalentes déclarées confirmées par les coordonnées'
+    ok: true
+    detail: 7/7 confirmées
+  - check: 'A : ligands non liés et ions inchangés'
+    ok: true
+    detail: '0 composant(s) : aucun'
+  - check: 'liaisons possibles (géométrie seule) : toutes attendues'
+    ok: true
+    detail: trouvées [] ; attendues []
+  chains:
+    A:
+      accepted: false
+      new_refusal_causes: []
+      components:
+        A:MSE151: modified_residue
+        A:MSE185: modified_residue
+        A:MSE214: modified_residue
+        A:MSE215: modified_residue
+      bonds:
+      - A:CYS198:SG–A:CYS218:SG | 2.037 Å | declared struct_conn | confirmed
+      - A:MSE151:C–A:ASP152:N | 1.326 Å | declared struct_conn | confirmed
+      - A:MSE185:N–A:TRP184:C | 1.330 Å | declared struct_conn | confirmed
+      - A:MSE185:C–A:THR186:N | 1.333 Å | declared struct_conn | confirmed
+      - A:MSE214:N–A:GLU213:C | 1.334 Å | declared struct_conn | confirmed
+      - A:MSE214:C–A:MSE215:N | 1.332 Å | declared struct_conn | confirmed
+      - A:MSE215:C–A:THR216:N | 1.330 Å | declared struct_conn | confirmed
+- file: 2XHE.pdb
+  checks:
+  - check: 'A : résultat du module 3 conservé'
+    ok: true
+    detail: 'motifs du module 3 [''break_declared'', ''unobserved_C''] ; catégories changées : aucune'
+  - check: 'A : nouveaux refus expliqués'
+    ok: true
+    detail: trouvés [] ; attendus []
+  - check: 'A : liaisons covalentes déclarées confirmées par les coordonnées'
+    ok: true
+    detail: 0/0 confirmées
+  - check: 'A : ligands non liés et ions inchangés'
+    ok: true
+    detail: '0 composant(s) : aucun'
+  - check: 'B : résultat du module 3 conservé'
+    ok: true
+    detail: 'motifs du module 3 [''break_declared'', ''unobserved_C'', ''unobserved_N''] ; catégories changées : aucune'
+  - check: 'B : nouveaux refus expliqués'
+    ok: true
+    detail: trouvés [] ; attendus []
+  - check: 'B : liaisons covalentes déclarées confirmées par les coordonnées'
+    ok: true
+    detail: 0/0 confirmées
+  - check: 'B : ligands non liés et ions inchangés'
+    ok: true
+    detail: '0 composant(s) : aucun'
+  - check: 'liaisons possibles (géométrie seule) : toutes attendues'
+    ok: true
+    detail: trouvées [] ; attendues []
+  chains:
+    A:
+      accepted: false
+      new_refusal_causes: []
+      components: {}
+      bonds: []
+    B:
+      accepted: false
+      new_refusal_causes: []
+      components: {}
+      bonds: []
+- file: 2XHE.cif
+  checks:
+  - check: 'A : résultat du module 3 conservé'
+    ok: true
+    detail: 'motifs du module 3 [''break_declared'', ''unobserved_C''] ; catégories changées : aucune'
+  - check: 'A : nouveaux refus expliqués'
+    ok: true
+    detail: trouvés [] ; attendus []
+  - check: 'A : liaisons covalentes déclarées confirmées par les coordonnées'
+    ok: true
+    detail: 0/0 confirmées
+  - check: 'A : ligands non liés et ions inchangés'
+    ok: true
+    detail: '0 composant(s) : aucun'
+  - check: 'B : résultat du module 3 conservé'
+    ok: true
+    detail: 'motifs du module 3 [''break_declared'', ''unobserved_C'', ''unobserved_N''] ; catégories changées : aucune'
+  - check: 'B : nouveaux refus expliqués'
+    ok: true
+    detail: trouvés [] ; attendus []
+  - check: 'B : liaisons covalentes déclarées confirmées par les coordonnées'
+    ok: true
+    detail: 0/0 confirmées
+  - check: 'B : ligands non liés et ions inchangés'
+    ok: true
+    detail: '0 composant(s) : aucun'
+  - check: 'liaisons possibles (géométrie seule) : toutes attendues'
+    ok: true
+    detail: trouvées [] ; attendues []
+  chains:
+    A:
+      accepted: false
+      new_refusal_causes: []
+      components: {}
+      bonds: []
+    B:
+      accepted: false
+      new_refusal_causes: []
+      components: {}
+      bonds: []
+- file: 1LCD.pdb
+  checks:
+  - check: 'B : refus du module 3 conservé'
+    ok: true
+    detail: 'refusé (StructureError) : Chaîne B : aucun acide aminé (ni N, CA, C, ni groupe terminal) ; chaîne non peptidique, compos'
+  - check: 'C : refus du module 3 conservé'
+    ok: true
+    detail: 'refusé (StructureError) : Chaîne C : aucun acide aminé (ni N, CA, C, ni groupe terminal) ; chaîne non peptidique, compos'
+  - check: 'A : résultat du module 3 conservé'
+    ok: true
+    detail: 'motifs du module 3 [] ; catégories changées : aucune'
+  - check: 'A : nouveaux refus expliqués'
+    ok: true
+    detail: trouvés [] ; attendus []
+  - check: 'A : liaisons covalentes déclarées confirmées par les coordonnées'
+    ok: true
+    detail: 0/0 confirmées
+  - check: 'A : ligands non liés et ions inchangés'
+    ok: true
+    detail: '0 composant(s) : aucun'
+  - check: 'liaisons possibles (géométrie seule) : toutes attendues'
+    ok: true
+    detail: trouvées [] ; attendues []
+  chains:
+    A:
+      accepted: true
+      new_refusal_causes: []
+      components: {}
+      bonds:
+      - A:VAL24:CG1–C:NA12:NA | 3.235 Å | undetermined  | undetermined
+- file: 1LCD.cif
+  checks:
+  - check: 'B : refus du module 3 conservé'
+    ok: true
+    detail: 'refusé (StructureError) : Chaîne B : aucun acide aminé (ni N, CA, C, ni groupe terminal) ; chaîne non peptidique, compos'
+  - check: 'C : refus du module 3 conservé'
+    ok: true
+    detail: 'refusé (StructureError) : Chaîne C : aucun acide aminé (ni N, CA, C, ni groupe terminal) ; chaîne non peptidique, compos'
+  - check: 'A : résultat du module 3 conservé'
+    ok: true
+    detail: 'motifs du module 3 [] ; catégories changées : aucune'
+  - check: 'A : nouveaux refus expliqués'
+    ok: true
+    detail: trouvés [] ; attendus []
+  - check: 'A : liaisons covalentes déclarées confirmées par les coordonnées'
+    ok: true
+    detail: 0/0 confirmées
+  - check: 'A : ligands non liés et ions inchangés'
+    ok: true
+    detail: '0 composant(s) : aucun'
+  - check: 'liaisons possibles (géométrie seule) : toutes attendues'
+    ok: true
+    detail: trouvées [] ; attendues []
+  chains:
+    A:
+      accepted: true
+      new_refusal_causes: []
+      components: {}
+      bonds:
+      - A:VAL24:CG1–C:NA12:NA | 3.235 Å | undetermined  | undetermined
+- file: 2BEG.cif
+  checks:
+  - check: 'A : résultat du module 3 conservé'
+    ok: true
+    detail: 'motifs du module 3 [''unobserved_N''] ; catégories changées : aucune'
+  - check: 'A : nouveaux refus expliqués'
+    ok: true
+    detail: trouvés [] ; attendus []
+  - check: 'A : liaisons covalentes déclarées confirmées par les coordonnées'
+    ok: true
+    detail: 0/0 confirmées
+  - check: 'A : ligands non liés et ions inchangés'
+    ok: true
+    detail: '0 composant(s) : aucun'
+  - check: 'B : résultat du module 3 conservé'
+    ok: true
+    detail: 'motifs du module 3 [''unobserved_N''] ; catégories changées : aucune'
+  - check: 'B : nouveaux refus expliqués'
+    ok: true
+    detail: trouvés [] ; attendus []
+  - check: 'B : liaisons covalentes déclarées confirmées par les coordonnées'
+    ok: true
+    detail: 0/0 confirmées
+  - check: 'B : ligands non liés et ions inchangés'
+    ok: true
+    detail: '0 composant(s) : aucun'
+  - check: 'C : résultat du module 3 conservé'
+    ok: true
+    detail: 'motifs du module 3 [''unobserved_N''] ; catégories changées : aucune'
+  - check: 'C : nouveaux refus expliqués'
+    ok: true
+    detail: trouvés [] ; attendus []
+  - check: 'C : liaisons covalentes déclarées confirmées par les coordonnées'
+    ok: true
+    detail: 0/0 confirmées
+  - check: 'C : ligands non liés et ions inchangés'
+    ok: true
+    detail: '0 composant(s) : aucun'
+  - check: 'D : résultat du module 3 conservé'
+    ok: true
+    detail: 'motifs du module 3 [''unobserved_N''] ; catégories changées : aucune'
+  - check: 'D : nouveaux refus expliqués'
+    ok: true
+    detail: trouvés [] ; attendus []
+  - check: 'D : liaisons covalentes déclarées confirmées par les coordonnées'
+    ok: true
+    detail: 0/0 confirmées
+  - check: 'D : ligands non liés et ions inchangés'
+    ok: true
+    detail: '0 composant(s) : aucun'
+  - check: 'E : résultat du module 3 conservé'
+    ok: true
+    detail: 'motifs du module 3 [''unobserved_N''] ; catégories changées : aucune'
+  - check: 'E : nouveaux refus expliqués'
+    ok: true
+    detail: trouvés [] ; attendus []
+  - check: 'E : liaisons covalentes déclarées confirmées par les coordonnées'
+    ok: true
+    detail: 0/0 confirmées
+  - check: 'E : ligands non liés et ions inchangés'
+    ok: true
+    detail: '0 composant(s) : aucun'
+  - check: 'liaisons possibles (géométrie seule) : toutes attendues'
+    ok: true
+    detail: trouvées [] ; attendues []
+  chains:
+    A:
+      accepted: false
+      new_refusal_causes: []
+      components: {}
+      bonds: []
+    B:
+      accepted: false
+      new_refusal_causes: []
+      components: {}
+      bonds: []
+    C:
+      accepted: false
+      new_refusal_causes: []
+      components: {}
+      bonds: []
+    D:
+      accepted: false
+      new_refusal_causes: []
+      components: {}
+      bonds: []
+    E:
+      accepted: false
+      new_refusal_causes: []
+      components: {}
+      bonds: []
+- file: 2BEG.pdb
+  checks:
+  - check: lecture
+    ok: true
+    detail: 'lecture refusée (/tmp/tmpogap9mos/2BEG.pdb : l''en-tête NUMMDL annonce 10 modèle(s), le fichier en contient 1 (fichier tronqué ou en-tête incohérent)) ; module 3 : refusée aussi'
+  chains: {}
+- file: 1AS5.cif
+  checks:
+  - check: 'A : résultat du module 3 conservé'
+    ok: true
+    detail: 'motifs du module 3 [''modified_residue''] ; catégories changées : aucune'
+  - check: 'A : nouveaux refus expliqués'
+    ok: true
+    detail: trouvés [] ; attendus []
+  - check: 'A : liaisons covalentes déclarées confirmées par les coordonnées'
+    ok: true
+    detail: 9/9 confirmées
+  - check: 'A : ligands non liés et ions inchangés'
+    ok: true
+    detail: '0 composant(s) : aucun'
+  - check: 'liaisons possibles (géométrie seule) : toutes attendues'
+    ok: true
+    detail: trouvées [] ; attendues []
+  chains:
+    A:
+      accepted: false
+      new_refusal_causes: []
+      components:
+        A:HYP2: modified_residue
+        A:HYP3: modified_residue
+        A:HYP14: modified_residue
+        A:NH225: terminal_cap
+      bonds:
+      - A:CYS4:SG–A:CYS16:SG | 1.999 Å | declared struct_conn | confirmed
+      - A:CYS5:SG–A:CYS21:SG | 2.001 Å | declared struct_conn | confirmed
+      - A:CYS10:SG–A:CYS22:SG | 1.992 Å | declared struct_conn | confirmed
+      - A:HYP2:N–A:HIS1:C | 1.398 Å | declared struct_conn | confirmed
+      - A:HYP2:C–A:HYP3:N | 1.395 Å | declared struct_conn | confirmed
+      - A:HYP3:C–A:CYS4:N | 1.367 Å | declared struct_conn | confirmed
+      - A:HYP14:N–A:TYR13:C | 1.416 Å | declared struct_conn | confirmed
+      - A:HYP14:C–A:GLY15:N | 1.329 Å | declared struct_conn | confirmed
+      - A:NH225:N–A:ARG24:C | 1.325 Å | declared struct_conn | confirmed
+- file: 2n0n_M1.pdb
+  checks:
+  - check: lecture
+    ok: true
+    detail: 'lecture refusée (/tmp/tmpogap9mos/2n0n_M1.pdb : l''en-tête NUMMDL annonce 20 modèle(s), le fichier en contient 1 (fichier tronqué ou en-tête incohérent)) ; module 3 : refusée aussi'
+  chains: {}
+- file: 7DDO.pdb
+  checks:
+  - check: 'A : résultat du module 3 conservé'
+    ok: true
+    detail: 'motifs du module 3 [''side_chain_modification''] ; catégories changées : aucune'
+  - check: 'A : nouveaux refus expliqués'
+    ok: true
+    detail: trouvés [] ; attendus []
+  - check: 'A : liaisons covalentes déclarées confirmées par les coordonnées'
+    ok: true
+    detail: 6/6 confirmées
+  - check: 'A : ligands non liés et ions inchangés'
+    ok: true
+    detail: '1 composant(s) : [''A:ZN901'']'
+  - check: 'C : résultat du module 3 conservé'
+    ok: true
+    detail: 'motifs du module 3 [''side_chain_modification'', ''unobserved_C'', ''unobserved_N''] ; catégories changées : aucune'
+  - check: 'C : nouveaux refus expliqués'
+    ok: true
+    detail: trouvés [] ; attendus []
+  - check: 'C : liaisons covalentes déclarées confirmées par les coordonnées'
+    ok: true
+    detail: 5/5 confirmées
+  - check: 'C : ligands non liés et ions inchangés'
+    ok: true
+    detail: '0 composant(s) : aucun'
+  - check: 'liaisons possibles (géométrie seule) : toutes attendues'
+    ok: true
+    detail: trouvées [] ; attendues []
+  chains:
+    A:
+      accepted: false
+      new_refusal_causes: []
+      components:
+        A:ZN901: ion
+        A:NAG902: side_chain_modification
+        A:NAG903: side_chain_modification
+        A:NAG904: side_chain_modification
+      bonds:
+      - A:CYS133:SG–A:CYS141:SG | 2.030 Å | declared SSBOND+CONECT | confirmed
+      - A:CYS344:SG–A:CYS361:SG | 2.029 Å | declared SSBOND+CONECT | confirmed
+      - A:CYS530:SG–A:CYS542:SG | 2.028 Å | declared SSBOND+CONECT | confirmed
+      - A:ASN53:ND2–A:NAG904:C1 | 1.439 Å | declared LINK+CONECT | confirmed
+      - A:ASN90:ND2–A:NAG903:C1 | 1.442 Å | declared LINK+CONECT | confirmed
+      - A:ASN546:ND2–A:NAG902:C1 | 1.438 Å | declared LINK+CONECT | confirmed
+      - A:HIS374:NE2–A:ZN901:ZN | non mesurée | declared LINK+CONECT | declared_unverified
+      - A:HIS378:NE2–A:ZN901:ZN | non mesurée | declared LINK+CONECT | declared_unverified
+      - A:GLU402:OE1–A:ZN901:ZN | non mesurée | declared LINK+CONECT | declared_unverified
+    C:
+      accepted: false
+      new_refusal_causes: []
+      components:
+        C:NAG601: side_chain_modification
+      bonds:
+      - C:CYS336:SG–C:CYS361:SG | 2.032 Å | declared SSBOND+CONECT | confirmed
+      - C:CYS379:SG–C:CYS432:SG | 2.030 Å | declared SSBOND+CONECT | confirmed
+      - C:CYS391:SG–C:CYS525:SG | 2.031 Å | declared SSBOND+CONECT | confirmed
+      - C:CYS480:SG–C:CYS488:SG | 2.032 Å | declared SSBOND+CONECT | confirmed
+      - C:ASN343:ND2–C:NAG601:C1 | 1.440 Å | declared LINK+CONECT | confirmed
+- file: 6WQA.cif
+  checks:
+  - check: 'A : résultat du module 3 conservé'
+    ok: true
+    detail: 'motifs du module 3 [''break_undeclared'', ''possible_bond_undeclared''] ; catégories changées : aucune'
+  - check: 'A : nouveaux refus expliqués'
+    ok: true
+    detail: trouvés ['contact_in_chain', 'contact_in_chain', 'contact_in_chain', 'contact_in_chain'] ; attendus ['contact_in_chain', 'contact_in_chain', 'contact_in_chain', 'contact_in_chain']
+  - check: 'A : liaisons covalentes déclarées confirmées par les coordonnées'
+    ok: true
+    detail: 0/0 confirmées
+  - check: 'A : ligands non liés et ions inchangés'
+    ok: true
+    detail: '1 composant(s) : [''A:ZMA1202'']'
+  - check: 'liaisons possibles (géométrie seule) : toutes attendues'
+    ok: true
+    detail: trouvées ['A:CYS259:SG–A:CYS262:SG', 'A:CYS71:SG–A:CYS159:SG', 'A:CYS74:SG–A:CYS146:SG', 'A:CYS77:SG–A:CYS166:SG'] ; attendues ['A:CYS259:SG–A:CYS262:SG', 'A:CYS71:SG–A:CYS159:SG', 'A:CYS74:SG–A:CYS146:SG', 'A:CYS77:SG–A:CYS166:SG']
+  chains:
+    A:
+      accepted: false
+      new_refusal_causes:
+      - contact_in_chain
+      - contact_in_chain
+      - contact_in_chain
+      - contact_in_chain
+      components:
+        A:ZMA1202: unbound_ligand
+      bonds:
+      - A:CYS71:SG–A:CYS159:SG | 2.028 Å | geometric  | possible
+      - A:CYS74:SG–A:CYS146:SG | 2.016 Å | geometric  | possible
+      - A:CYS77:SG–A:CYS166:SG | 2.022 Å | geometric  | possible
+      - A:CYS259:SG–A:CYS262:SG | 2.019 Å | geometric  | possible
+- file: 4ZHL.cif
+  checks:
+  - check: 'U : résultat du module 3 conservé'
+    ok: true
+    detail: 'motifs du module 3 [''possible_bond_undeclared''] ; catégories changées : aucune'
+  - check: 'U : nouveaux refus expliqués'
+    ok: true
+    detail: trouvés ['contact_in_chain', 'contact_in_chain'] ; attendus ['contact_in_chain', 'contact_in_chain']
+  - check: 'U : liaisons covalentes déclarées confirmées par les coordonnées'
+    ok: true
+    detail: 3/3 confirmées
+  - check: 'U : ligands non liés et ions inchangés'
+    ok: true
+    detail: '0 composant(s) : aucun'
+  - check: 'P : résultat du module 3 conservé'
+    ok: true
+    detail: 'motifs du module 3 [] ; catégories changées : aucune'
+  - check: 'P : nouveaux refus expliqués'
+    ok: true
+    detail: trouvés [] ; attendus []
+  - check: 'P : liaisons covalentes déclarées confirmées par les coordonnées'
+    ok: true
+    detail: 1/1 confirmées
+  - check: 'P : ligands non liés et ions inchangés'
+    ok: true
+    detail: '0 composant(s) : aucun'
+  - check: 'liaisons possibles (géométrie seule) : toutes attendues'
+    ok: true
+    detail: trouvées ['U:CYS136:SG–U:CYS201:SG', 'U:CYS50:SG–U:CYS111:SG'] ; attendues ['U:CYS136:SG–U:CYS201:SG', 'U:CYS50:SG–U:CYS111:SG']
+  chains:
+    U:
+      accepted: false
+      new_refusal_causes:
+      - contact_in_chain
+      - contact_in_chain
+      components: {}
+      bonds:
+      - U:CYS42:SG–U:CYS58:SG | 2.027 Å | declared struct_conn | confirmed
+      - U:CYS168:SG–U:CYS182:SG | 1.911 Å | declared struct_conn | confirmed
+      - U:CYS191:SG–U:CYS220:SG | 1.876 Å | declared struct_conn | confirmed
+      - U:CYS50:SG–U:CYS111:SG | 1.637 Å | geometric  | possible
+      - U:CYS136:SG–U:CYS201:SG | 1.515 Å | geometric  | possible
+    P:
+      accepted: true
+      new_refusal_causes: []
+      components: {}
+      bonds:
+      - P:CYS1:SG–P:CYS10:SG | 2.053 Å | declared struct_conn | confirmed
+- file: 4CUP.cif
+  checks:
+  - check: 'A : résultat du module 3 conservé'
+    ok: true
+    detail: 'motifs du module 3 [''unobserved_C''] ; catégories changées : aucune'
+  - check: 'A : nouveaux refus expliqués'
+    ok: true
+    detail: trouvés [] ; attendus []
+  - check: 'A : liaisons covalentes déclarées confirmées par les coordonnées'
+    ok: true
+    detail: 0/0 confirmées
+  - check: 'A : ligands non liés et ions inchangés'
+    ok: true
+    detail: '4 composant(s) : [''A:MOH2972'', ''A:MOH2973'', ''A:MOH2974'', ''A:ZYB2971'']'
+  - check: 'liaisons possibles (géométrie seule) : toutes attendues'
+    ok: true
+    detail: trouvées [] ; attendues []
+  chains:
+    A:
+      accepted: false
+      new_refusal_causes: []
+      components:
+        A:ZYB2971: unbound_ligand
+        A:MOH2972: unbound_ligand
+        A:MOH2973: unbound_ligand
+        A:MOH2974: unbound_ligand
+      bonds: []
+- file: contrôles positifs
+  checks:
+  - check: '7DDO sans LINK : glycanes rattachés par CONECT'
+    ok: true
+    detail: 'catégories {''A:NAG902'': ''side_chain_modification'', ''A:NAG903'': ''side_chain_modification'', ''A:NAG904'': ''side_chain_modification''} ; sources {''A:ASN53:ND2–A:NAG904:C1'': ''CONECT'', ''A:ASN90:ND2–A:NAG903:C1'': ''CONECT'', ''A:ASN546:ND2–A:NAG902:C1'': ''CONECT''}'
+  - check: '7DDO sans LINK ni CONECT : glycanes possibly_bound, extraction refusée'
+    ok: true
+    detail: 'catégories {''A:NAG902'': ''possibly_bound'', ''A:NAG903'': ''possibly_bound'', ''A:NAG904'': ''possibly_bound''} ; contacts [''A:ASN53:ND2–A:NAG904:C1 1.44 Å'', ''A:ASN90:ND2–A:NAG903:C1 1.44 Å'', ''A:ASN546:ND2–A:NAG902:C1 1.44 Å'']'
+  - check: '7DDO sans LINK ni CONECT : le zinc reste un ion'
+    ok: true
+    detail: '[(''A:ZN901'', ''ion'')]'
+  - check: '7DDO sans LINK ni CONECT : exclude_as_unbound appliqué et rapporté'
+    ok: true
+    detail: 'décisions {''A:NAG902'': ''exclude_as_unbound'', ''A:NAG903'': ''exclude_as_unbound'', ''A:NAG904'': ''exclude_as_unbound''} ; refus restants []'
+  - check: '7DDO : composants écartés inscrits dans le peptide'
+    ok: true
+    detail: A:NAG902=exclude_as_unbound,A:NAG903=exclude_as_unbound,A:NAG904=exclude_as_unbound
+  - check: '6WQA sans décision : refusée'
+    ok: true
+    detail: contacts SG–SG non déclarés
+  - check: '6WQA : quatre contacts SG–SG, géométrie seule, certitude « possible »'
+    ok: true
+    detail: '[(''A:CYS259:SG–A:CYS262:SG'', 2.019, ''possible''), (''A:CYS71:SG–A:CYS159:SG'', 2.028, ''possible''), (''A:CYS74:SG–A:CYS146:SG'', 2.016, ''possible''), (''A:CYS77:SG–A:CYS166:SG'', 2.022, ''possible'')]'
+  - check: '6WQA : aucune conformation alternative ni occupation partielle sur les huit SG'
+    ok: true
+    detail: '[(''A:CYS259:SG'', '''', 1.0), (''A:CYS262:SG'', '''', 1.0), (''A:CYS71:SG'', '''', 1.0), (''A:CYS159:SG'', '''', 1.0), (''A:CYS74:SG'', '''', 1.0), (''A:CYS146:SG'', '''', 1.0), (''A:CYS77:SG'', '''', 1.0), (''A:CYS166:SG'', '''', 1.0)]'
+  - check: '6WQA : la copie de Biopython ne porte que _atom_site (aucune déclaration à lire)'
+    ok: true
+    detail: 'catégories : [''_atom_site'']'
+  - check: '4ZHL U sans décision : refusée'
+    ok: true
+    detail: contacts SG–SG non déclarés
+  - check: '4ZHL U : les deux contacts figurent dans _pdbx_validate_close_contact du fichier'
+    ok: true
+    detail: 'mesuré / déclaré close contact : [(''U:CYS136:SG–U:CYS201:SG'', 1.515, 1.51), (''U:CYS50:SG–U:CYS111:SG'', 1.637, 1.64)]'
+  sg_pairs_6WQA:
+  - pair: A:CYS259:SG–A:CYS262:SG
+    distance: 2.019
+    max_distance: 2.55
+    evidence: geometric
+    certainty: possible
+    ends:
+    - atom: A:CYS259:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 38.23
+      xyz:
+      - 4.135
+      - 166.219
+      - 19.401
+    - atom: A:CYS262:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 38.32
+      xyz:
+      - 4.561
+      - 166.317
+      - 17.43
+  - pair: A:CYS71:SG–A:CYS159:SG
+    distance: 2.028
+    max_distance: 2.55
+    evidence: geometric
+    certainty: possible
+    ends:
+    - atom: A:CYS71:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 45.23
+      xyz:
+      - 34.79
+      - 160.004
+      - 20.108
+    - atom: A:CYS159:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 45.99
+      xyz:
+      - 33.358
+      - 159.5
+      - 21.452
+  - pair: A:CYS74:SG–A:CYS146:SG
+    distance: 2.016
+    max_distance: 2.55
+    evidence: geometric
+    certainty: possible
+    ends:
+    - atom: A:CYS74:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 39.96
+      xyz:
+      - 29.241
+      - 166.24
+      - 28.57
+    - atom: A:CYS146:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 39.9
+      xyz:
+      - 28.701
+      - 167.302
+      - 30.196
+  - pair: A:CYS77:SG–A:CYS166:SG
+    distance: 2.022
+    max_distance: 2.55
+    evidence: geometric
+    certainty: possible
+    ends:
+    - atom: A:CYS77:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 32.12
+      xyz:
+      - 29.838
+      - 168.372
+      - 23.278
+    - atom: A:CYS166:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 31.88
+      xyz:
+      - 30.535
+      - 168.608
+      - 21.395
+  sg_pairs_4ZHL:
+  - pair: U:CYS136:SG–U:CYS201:SG
+    distance: 1.515
+    max_distance: 2.55
+    evidence: geometric
+    certainty: possible
+    ends:
+    - atom: U:CYS136:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 45.64
+      xyz:
+      - -2.11
+      - -47.225
+      - -14.492
+    - atom: U:CYS201:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 49.59
+      xyz:
+      - -1.498
+      - -46.727
+      - -13.199
+  - pair: U:CYS50:SG–U:CYS111:SG
+    distance: 1.637
+    max_distance: 2.55
+    evidence: geometric
+    certainty: possible
+    ends:
+    - atom: U:CYS50:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 48.95
+      xyz:
+      - -0.374
+      - -27.057
+      - 3.754
+    - atom: U:CYS111:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 49.12
+      xyz:
+      - -1.46
+      - -25.845
+      - 3.581
+  close_contacts_4ZHL:
+    U:CYS136:SG–U:CYS201:SG: 1.51
+    U:CYS111:SG–U:CYS50:SG: 1.64
+    U:ARG36:NH2–U:GLU62:O: 2.17
+- file: sensibilité à la tolérance
+  checks:
+  - check: '1A8O.pdb A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '1A8O.cif A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '2XHE.pdb A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 1}'
+  - check: '2XHE.pdb B : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '2XHE.cif A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 1}'
+  - check: '2XHE.cif B : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '1LCD.pdb A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '1LCD.cif A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '2BEG.cif A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '2BEG.cif B : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '2BEG.cif C : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '2BEG.cif D : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '2BEG.cif E : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '1AS5.cif A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '7DDO.pdb A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '7DDO.pdb C : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '6WQA.cif A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 4, ''0.35'': 4, ''0.40'': 4, ''0.45'': 4, ''0.50'': 4, ''0.55'': 4, ''0.60'': 4, ''0.70'': 4, ''0.80'': 4}'
+  - check: '4ZHL.cif U : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 2, ''0.35'': 2, ''0.40'': 2, ''0.45'': 2, ''0.50'': 2, ''0.55'': 2, ''0.60'': 2, ''0.70'': 2, ''0.80'': 4}'
+  - check: '4ZHL.cif P : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '4CUP.cif A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  table:
+    1A8O.pdb A:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    1A8O.cif A:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    2XHE.pdb A:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 1
+    2XHE.pdb B:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    2XHE.cif A:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 1
+    2XHE.cif B:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    1LCD.pdb A:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    1LCD.cif A:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    2BEG.cif A:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    2BEG.cif B:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    2BEG.cif C:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    2BEG.cif D:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    2BEG.cif E:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    1AS5.cif A:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    7DDO.pdb A:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    7DDO.pdb C:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    6WQA.cif A:
+      '0.30': 4
+      '0.35': 4
+      '0.40': 4
+      '0.45': 4
+      '0.50': 4
+      '0.55': 4
+      '0.60': 4
+      '0.70': 4
+      '0.80': 4
+    4ZHL.cif U:
+      '0.30': 2
+      '0.35': 2
+      '0.40': 2
+      '0.45': 2
+      '0.50': 2
+      '0.55': 2
+      '0.60': 2
+      '0.70': 2
+      '0.80': 4
+    4ZHL.cif P:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    4CUP.cif A:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+- file: entrées originales de la PDB
+  checks:
+  - check: '4ZHL.cif.gz : empreinte SHA-256 du fichier reçu'
+    ok: true
+    detail: 3cf8b7c41da9de41ffff32fd9415e1f907d0af00e8c7651590e27cc8cb1e432e
+  - check: '4ZHL.cif.gz : atomes de la copie de Biopython identiques à l''original'
+    ok: true
+    detail: '2080 atomes dans l''original, 2080 dans la copie, 2080 communs ; écart maximal 0.0000 Å ; occupations différentes : 0 ; résidus présents dans l''original seulement : aucun'
+  - check: '4ZHL original : chaîne U refusée, deux contacts SG–SG non déclarés, possibles'
+    ok: true
+    detail: '{''U:CYS50:SG–U:CYS111:SG'': (''geometric'', ''possible'', 1.637), ''U:CYS136:SG–U:CYS201:SG'': (''geometric'', ''possible'', 1.515)}'
+  - check: '4ZHL original : les deux paires figurent dans _pdbx_validate_close_contact'
+    ok: true
+    detail: '{''U:CYS136:SG–U:CYS201:SG'': 1.51, ''U:CYS111:SG–U:CYS50:SG'': 1.64, ''U:ARG36:NH2–U:GLU62:O'': 2.17}'
+  - check: '6WQA.cif.gz : empreinte SHA-256 du fichier reçu'
+    ok: true
+    detail: 4ec404805b0d961630ab9db57686c5007c64924c404f8f23582842e542b6f80a
+  - check: '6WQA.cif.gz : atomes de la copie de Biopython identiques à l''original'
+    ok: true
+    detail: '3500 atomes dans l''original, 3003 dans la copie, 3003 communs ; écart maximal 0.0000 Å ; occupations différentes : 0 ; résidus présents dans l''original seulement : [''CLR'', ''GOL'', ''HOH'', ''NA'', ''OLA'', ''OLB'', ''OLC'']'
+  - check: '6WQA original : les quatre ponts sont déclarés (struct_conn) et confirmés'
+    ok: true
+    detail: '{''A:CYS71:SG–A:CYS159:SG'': (''declared'', ''confirmed''), ''A:CYS74:SG–A:CYS146:SG'': (''declared'', ''confirmed''), ''A:CYS77:SG–A:CYS166:SG'': (''declared'', ''confirmed''), ''A:CYS259:SG–A:CYS262:SG'': (''declared'', ''confirmed'')}'
+  - check: '6WQA original : aucune liaison possible parmi 26 ligands et lipides non liés'
+    ok: true
+    detail: 'liaisons possibles [] ; ligands non liés : 26'
+  - check: '6WQA original : refus du module 3 seulement (rupture déclarée, extrémités)'
+    ok: true
+    detail: '[''jonction A:ALA1043 → A:ASP1060 : break_declared (géométrie : C–N 14.081 Å > 1.8 Å ; en-têt'', "22 résidu(s) non observé(s) à l''extrémité N (A:MET-24, A:LYS-23, A:THR-22, A:ILE-21, A:ILE", "34 résidu(s) non observé(s) à l''extrémité C (A:THR1044, A:PRO1045, A:PRO1046, A:LYS1047, A"]'
+  chains:
+    4ZHL.cif.gz:
+      declared:
+      - P:CYS1:SG–P:CYS10:SG (disulfide)
+      - U:CYS168:SG–U:CYS182:SG (disulfide)
+      - U:CYS191:SG–U:CYS220:SG (disulfide)
+      - U:CYS42:SG–U:CYS58:SG (disulfide)
+      contacts_U:
+        U:CYS50:SG–U:CYS111:SG:
+        - geometric
+        - possible
+        - 1.637
+        U:CYS136:SG–U:CYS201:SG:
+        - geometric
+        - possible
+        - 1.515
+    6WQA.cif.gz:
+      declared:
+      - A:ASP52:OD1–A:NA1201:NA (metal_coordination)
+      - A:CYS259:SG–A:CYS262:SG (disulfide)
+      - A:CYS71:SG–A:CYS159:SG (disulfide)
+      - A:CYS74:SG–A:CYS146:SG (disulfide)
+      - A:CYS77:SG–A:CYS166:SG (disulfide)
+      - A:NA1201:NA–A:HOH1334:O (metal_coordination)
+      - A:NA1201:NA–A:HOH1359:O (metal_coordination)
+      - A:NA1201:NA–A:HOH1365:O (metal_coordination)
+      - A:SER91:OG–A:NA1201:NA (metal_coordination)
+      disulfides:
+        A:CYS71:SG–A:CYS159:SG:
+        - declared
+        - confirmed
+        A:CYS74:SG–A:CYS146:SG:
+        - declared
+        - confirmed
+        A:CYS77:SG–A:CYS166:SG:
+        - declared
+        - confirmed
+        A:CYS259:SG–A:CYS262:SG:
+        - declared
+        - confirmed
+      geometric: []
+      unbound_ligands:
+      - A:ZMA1202
+      - A:CLR1203
+      - A:OLA1204
+      - A:OLA1205
+      - A:OLA1206
+      - A:OLA1207
+      - A:OLA1208
+      - A:OLA1209
+      - A:OLA1210
+      - A:OLC1211
+      - A:OLA1212
+      - A:GOL1213
+      - A:OLA1214
+      - A:OLC1215
+      - A:CLR1216
+      - A:CLR1217
+      - A:OLC1218
+      - A:OLA1219
+      - A:OLA1220
+      - A:OLA1221
+      - A:OLA1222
+      - A:OLB1223
+      - A:OLA1224
+      - A:OLA1225
+      - A:OLC1226
+      - A:OLC1227
+summary:
+  checks: 138
+  failed: 0
+  failures: []

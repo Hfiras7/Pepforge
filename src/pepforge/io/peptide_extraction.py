@@ -50,13 +50,25 @@ from pepforge.core.peptide import (
     LinkKind,
     Peptide,
 )
-from pepforge.core.structure import Atom, ConnectionKind, ResidueId, Structure
+from pepforge.core.structure import Atom, Connection, ConnectionKind, ResidueId, Structure
 from pepforge.exceptions import ConfigurationError, ExtractionRefusedError, StructureError
+from pepforge.io.connectivity import (
+    BondAssessment,
+    BondEvidence,
+    BondStatus,
+    assess_declared,
+    find_contacts,
+    involves_metal,
+    residue_pair_label,
+)
+from pepforge.io.structure_formats import CONECT_UNRESOLVED
 from pepforge.report.journal import Journal
 from pepforge.residues.library import ResidueLibrary, load_default_library
 from pepforge.residues.structure_components import (
+    CovalentCriteria,
     PeptideBondCriterion,
     StructureComponents,
+    load_covalent_criteria,
     load_peptide_bond_criterion,
     load_structure_components,
 )
@@ -82,6 +94,10 @@ positions du peptide, séparés par des virgules (`U:ARG217,U:GLY219,U:GLY219A`)
 
 STRUCTURE_EDGES = "structure_edges"
 """Clé de `Peptide.metadata` : nature des bords N et C du segment (`chemical/break`...)."""
+
+STRUCTURE_SET_ASIDE = "structure_components_set_aside"
+"""Clé de `Peptide.metadata` : composants laissés hors du peptide par une décision explicite
+de l'utilisateur (`A:DOT201=remove_covalent,B:LIG5=exclude_as_unbound`). Absente sinon."""
 
 _FROM_STRUCTURE_DEFAULT = "absente de la structure : défaut de la bibliothèque"
 
@@ -117,6 +133,12 @@ class ComponentCategory(StrEnum):
 
     TERMINAL_CAP = "terminal_cap"
     SIDE_CHAIN_MODIFICATION = "side_chain_modification"
+    """Composant relié à la chaîne par une liaison covalente **déclarée** (directement ou
+    par d'autres composants) ; son site précis est dans `Component.attachment`."""
+
+    POSSIBLY_BOUND = "possibly_bound"
+    """Composant relié à la chaîne par la **seule géométrie** : liaison possible, non prouvée."""
+
     UNBOUND_LIGAND = "unbound_ligand"
     ION = "ion"
     WATER = "water"
@@ -132,9 +154,70 @@ class Decision(StrEnum):
     EXCLUDE = "exclude"
     """Composant gardé hors du peptide (ligand non lié, ion, eau), et listé."""
 
+    EXCLUDE_AS_UNBOUND = "exclude_as_unbound"
+    """Décision de l'utilisateur : un composant `possibly_bound` n'est pas lié ; il est
+    laissé hors du peptide, et la décision est rapportée."""
+
+    REMOVE_COVALENT = "remove_covalent"
+    """Décision de l'utilisateur : un composant lié par une liaison déclarée est retiré
+    sciemment (un glycane, par exemple) ; la liaison reste rapportée."""
+
+    NOT_BONDED = "not_bonded"
+    """Décision de l'utilisateur : deux résidus en contact covalent possible, sans
+    liaison déclarée, ne sont pas liés."""
+
+    DISULFIDE = "disulfide"
+    """Décision de l'utilisateur : deux cystéines de la chaîne dont les soufres SG sont
+    en contact covalent possible, sans SSBOND, forment un pont disulfure ; il est
+    ajouté au peptide comme une liaison déclarée, et la décision est rapportée."""
+
+
+class AttachmentSite(StrEnum):
+    """Où un composant lié ou possiblement lié se rattache au peptide."""
+
+    N_TERMINAL = "n_terminal"
+    """À l'azote N du premier résidu de la chaîne."""
+
+    C_TERMINAL = "c_terminal"
+    """Au carbone C (ou à l'oxygène OXT) du dernier résidu de la chaîne."""
+
+    BACKBONE_INTERNAL = "backbone_internal"
+    """À un atome N, CA, C ou O d'un résidu qui n'est pas une extrémité."""
+
+    SIDE_CHAIN = "side_chain"
+    """À un atome de chaîne latérale."""
+
+    BRIDGING = "bridging"
+    """À deux résidus ou plus de la chaîne (linker, agrafe)."""
+
+    COMPONENT_ONLY = "component_only"
+    """Seulement à un autre composant, lui-même rattaché au peptide."""
+
 
 BREAK_DECISIONS = (Decision.REJECT, Decision.SPLIT)
 UNOBSERVED_TERMINUS_DECISIONS = (Decision.REJECT, Decision.OBSERVED_SEGMENT)
+COMPONENT_DECISIONS = (Decision.EXCLUDE_AS_UNBOUND, Decision.REMOVE_COVALENT)
+CONTACT_DECISIONS = (Decision.NOT_BONDED, Decision.DISULFIDE)
+
+
+def _named_decisions(
+    value: Mapping[str, Any], allowed: tuple[Decision, ...], what: str
+) -> Mapping[str, Decision]:
+    if not isinstance(value, Mapping):
+        raise ValueError(f"Décisions {what} : tableau attendu, reçu {value!r}")
+    checked: dict[str, Decision] = {}
+    for label, raw in value.items():
+        try:
+            decision = Decision(raw)
+        except ValueError:
+            decision = None
+        if decision not in allowed:
+            raise ValueError(
+                f"Décision {what} {label!r} = {raw!r} : valeurs possibles "
+                f"{', '.join(d.value for d in allowed)}"
+            )
+        checked[str(label)] = decision
+    return MappingProxyType(checked)
 
 
 @dataclass(frozen=True)
@@ -146,6 +229,15 @@ class ExtractionDecisions:
 
     unobserved_termini: Decision = Decision.REJECT
     """`reject`, ou `observed_segment` : seul le segment observé est extrait."""
+
+    components: Mapping[str, Decision] = field(default_factory=dict)
+    """Par composant, désigné par son étiquette d'origine (`A:DOT201`) :
+    `exclude_as_unbound` (composant `possibly_bound`) ou `remove_covalent` (composant
+    lié par une liaison déclarée). Aucune décision globale : chaque composant est nommé."""
+
+    contacts: Mapping[str, Decision] = field(default_factory=dict)
+    """Par paire de résidus en contact covalent possible (`A:CYS3–A:CYS10`) : `not_bonded`,
+    ou `disulfide` pour deux cystéines de la chaîne en contact SG–SG."""
 
     def __post_init__(self) -> None:
         for name, value, allowed in (
@@ -162,21 +254,43 @@ class ExtractionDecisions:
                     f"{', '.join(d.value for d in allowed)}"
                 )
             object.__setattr__(self, name, decision)
+        object.__setattr__(
+            self, "components", _named_decisions(self.components, COMPONENT_DECISIONS, "composant")
+        )
+        object.__setattr__(
+            self, "contacts", _named_decisions(self.contacts, CONTACT_DECISIONS, "contact")
+        )
 
-    def to_dict(self) -> dict[str, str]:
-        return {"breaks": self.breaks.value, "unobserved_termini": self.unobserved_termini.value}
+    def to_dict(self) -> dict[str, Any]:
+        data: dict[str, Any] = {
+            "breaks": self.breaks.value,
+            "unobserved_termini": self.unobserved_termini.value,
+        }
+        if self.components:
+            data["components"] = {k: v.value for k, v in sorted(self.components.items())}
+        if self.contacts:
+            data["contacts"] = {k: v.value for k, v in sorted(self.contacts.items())}
+        return data
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any], where: str = "décisions") -> ExtractionDecisions:
         """Décisions lues d'une configuration ; une clé inconnue est refusée, jamais ignorée."""
-        unknown = set(data) - {"breaks", "unobserved_termini"}
+        unknown = set(data) - {"breaks", "unobserved_termini", "components", "contacts"}
         if unknown:
             raise ConfigurationError(
                 f"{where} : catégorie(s) inconnue(s) {sorted(unknown)} ; "
-                "catégories possibles : breaks, unobserved_termini"
+                "catégories possibles : breaks, unobserved_termini, components, contacts"
             )
         try:
-            return cls(**{key: Decision(str(value)) for key, value in data.items()})
+            values: dict[str, Any] = {
+                key: Decision(str(value))
+                for key, value in data.items()
+                if key in ("breaks", "unobserved_termini")
+            }
+            for key in ("components", "contacts"):
+                if key in data:
+                    values[key] = data[key]
+            return cls(**values)
         except ValueError as exc:
             raise ConfigurationError(f"{where} : {exc}") from None
 
@@ -266,6 +380,9 @@ class Component:
     min_distance_to_chain: float | None = None
     """Plus courte distance (Å) entre un atome du composant et un atome du squelette."""
 
+    attachment: AttachmentSite | None = None
+    """Site de rattachement au peptide, pour un composant lié ou possiblement lié."""
+
 
 @dataclass(frozen=True)
 class UnobservedTerminus:
@@ -313,6 +430,16 @@ class ExtractionReport:
 
     segments: tuple[Segment, ...] = ()
     refusals: tuple[str, ...] = field(default=())
+    bonds: tuple[BondAssessment, ...] = ()
+    """Liaisons déclarées touchant la chaîne ou ses composants, et liaisons possibles ou
+    contacts métalliques trouvés par la géométrie, chacun avec sa source et sa certitude."""
+
+    covalent_criteria: dict[str, Any] = field(default_factory=dict)
+    """Critères de connectivité appliqués, avec leurs sources (`covalent_geometry.yaml`)."""
+
+    def uncertain_bonds(self) -> tuple[BondAssessment, ...]:
+        """Liaisons qui ne sont pas confirmées : à examiner."""
+        return tuple(b for b in self.bonds if b.status is not BondStatus.ACCEPTED)
 
     @property
     def accepted(self) -> bool:
@@ -338,8 +465,10 @@ class ExtractionReport:
             raw["decision"] = component.decision.value
             if component.min_distance_to_chain is not None:
                 raw["min_distance_to_chain"] = round(component.min_distance_to_chain, 3)
+            raw["attachment"] = component.attachment.value if component.attachment else None
         for terminus, raw in zip(self.unobserved_termini, data["unobserved_termini"], strict=True):
             raw["decision"] = terminus.decision.value
+        data["bonds"] = [bond.to_dict() for bond in self.bonds]
         data["junctions_by_category"] = self.junctions_by_category()
         data["accepted"] = self.accepted
         return data
@@ -501,11 +630,245 @@ def _min_distance(atoms: Iterable[Atom], chain_atoms: list[Atom]) -> float | Non
 
 
 @dataclass
+class _Connectivity:
+    """Connectivité de la chaîne : liaisons déclarées, liaisons possibles, composants rattachés."""
+
+    atoms: dict[ResidueId, list[Atom]]
+    """Atomes de chaque résidu de la structure entière."""
+
+    covalent: list[Connection]
+    """Liaisons déclarées de nature covalente, disulfure ou inconnue (CONECT)."""
+
+    bonds: list[BondAssessment]
+    attached: set[ResidueId]
+    """Composants rattachés par des liaisons déclarées (directement ou de proche en proche)."""
+
+    reachable: set[ResidueId]
+    """Composants rattachés en comptant aussi les liaisons possibles (contient `attached`)."""
+
+    sites: dict[ResidueId, AttachmentSite]
+    refusals: list[str]
+    contact_labels: set[str]
+    """Paires de résidus de la chaîne (ou d'autres chaînes polymères) en contact covalent
+    possible : ce sont les seules qu'une décision `contacts` peut nommer."""
+
+    decided_disulfides: list[tuple[ResidueId, ResidueId]] = field(default_factory=list)
+    """Ponts disulfures non déclarés, admis par une décision `disulfide` de l'utilisateur."""
+
+    def geometric_of(self, rid: ResidueId) -> list[BondAssessment]:
+        return [b for b in self.bonds if b.evidence is BondEvidence.GEOMETRIC and rid in b.residues]
+
+
+def _site(
+    rid: ResidueId,
+    bonds: Iterable[BondAssessment],
+    backbone_order: Mapping[ResidueId, int],
+) -> AttachmentSite:
+    """Site de rattachement d'un composant, d'après ses liaisons vers le squelette."""
+    touched: set[tuple[ResidueId, str]] = set()
+    for bond in bonds:
+        if rid not in bond.residues:
+            continue
+        for end in (bond.first, bond.second):
+            if end.residue in backbone_order:
+                touched.add((end.residue, end.atom))
+    residues = {r for r, _ in touched}
+    if not residues:
+        return AttachmentSite.COMPONENT_ONLY
+    if len(residues) > 1:
+        return AttachmentSite.BRIDGING
+    ((residue, atom),) = sorted(touched)[:1]
+    position = backbone_order[residue]
+    if atom == "N" and position == 0:
+        return AttachmentSite.N_TERMINAL
+    if atom in ("C", "OXT") and position == len(backbone_order) - 1:
+        return AttachmentSite.C_TERMINAL
+    if atom in REPORTED_BACKBONE_ATOMS:
+        return AttachmentSite.BACKBONE_INTERNAL
+    return AttachmentSite.SIDE_CHAIN
+
+
+def _connectivity(
+    structure: Structure,
+    chain_id: str,
+    backbone: list[tuple[ResidueId, list[Atom]]],
+    others: list[tuple[ResidueId, list[Atom]]],
+    decisions: ExtractionDecisions,
+    library: ResidueLibrary,
+    components: StructureComponents,
+    covalent: CovalentCriteria,
+) -> _Connectivity:
+    """Liaisons déclarées (vérifiées sur les coordonnées) et liaisons possibles de la chaîne.
+
+    Les composants candidats sont pris dans **toute** la structure : ceux de la
+    chaîne qui ne sont pas du squelette, et les résidus non polymères des autres
+    chaînes. Les résidus d'acides aminés des autres chaînes (récepteur, autre
+    peptide) ne sont jamais rattachés comme composants : une liaison avec eux est
+    une liaison entre chaînes, refusée comme telle.
+    """
+    atoms: dict[ResidueId, list[Atom]] = {}
+    for atom in structure.atoms:
+        atoms.setdefault(atom.residue_id, []).append(atom)
+    backbone_ids = {rid for rid, _ in backbone}
+    backbone_order = {rid: i for i, (rid, _) in enumerate(backbone)}
+    water = {rid for rid in atoms if rid.name.upper() in components.water}
+    polymer_elsewhere = {
+        rid
+        for rid, members in atoms.items()
+        if rid.chain_id != chain_id and _is_backbone(rid, members, library, components)
+    }
+    candidates = {rid for rid, _ in others} | {
+        rid for rid in atoms if rid.chain_id != chain_id and rid not in polymer_elsewhere
+    }
+    candidates -= water
+    refusals: list[str] = []
+    unresolved = structure.metadata.get(CONECT_UNRESOLVED)
+    if unresolved:
+        refusals.append(
+            f"connectivité du fichier incertaine : {unresolved} ; une liaison non attribuée "
+            "pourrait toucher cette chaîne ou ses composants (fichier à corriger)"
+        )
+
+    # 1. Liaisons déclarées : rattachement de proche en proche, comme au module 3.
+    covalent_kinds = (ConnectionKind.COVALENT, ConnectionKind.DISULFIDE, ConnectionKind.UNKNOWN)
+    # Une liaison vers un métal (CONECT, ou LINK mal typé) n'est jamais covalente ici.
+    declared = [
+        c
+        for c in structure.connections
+        if c.kind in covalent_kinds and not involves_metal(c, atoms, covalent)
+    ]
+    attached: set[ResidueId] = set()
+    frontier = set(backbone_ids)
+    while frontier:
+        found: set[ResidueId] = set()
+        for conn in declared:
+            for here, there in ((conn.first, conn.second), (conn.second, conn.first)):
+                if here in frontier and there in candidates and there not in attached:
+                    found.add(there)
+        attached |= found
+        frontier = found
+    involved = backbone_ids | attached
+    bonds: list[BondAssessment] = []
+    for conn in structure.connections:
+        if conn.first not in involved and conn.second not in involved:
+            continue
+        assessment = assess_declared(conn, atoms, covalent)
+        bonds.append(assessment)
+        if assessment.status is BondStatus.INCOMPATIBLE:
+            refusals.append(
+                f"liaison déclarée {assessment.label()} contredite par les coordonnées "
+                f"({assessment.reason})"
+            )
+
+    # 2. Liaisons possibles : la géométrie seule, jamais une preuve.
+    skip: set[tuple[ResidueId, str, ResidueId, str]] = set()
+    for (before, _), (after, _) in pairwise(backbone):
+        skip.add((before, "C", after, "N"))
+        skip.add((after, "N", before, "C"))
+    for conn in structure.connections:
+        skip.add((conn.first, conn.first_atom, conn.second, conn.second_atom))
+        skip.add((conn.second, conn.second_atom, conn.first, conn.first_atom))
+    frozen_skip = frozenset(skip)
+    searchable = [a for rid, members in atoms.items() if rid not in water for a in members]
+    seen: set[tuple[str, str]] = set()
+    contact_labels: set[str] = set()
+    decided: list[tuple[ResidueId, ResidueId]] = []
+    metal_partners = {frozenset({c.first, c.second}) for c in structure.connections}
+    reachable = set(attached)
+    frontier = set(backbone_ids) | attached
+    examined: set[ResidueId] = set()
+    while frontier:
+        sources = [a for rid in sorted(frontier) for a in atoms.get(rid, [])]
+        examined |= frontier
+        found = set()
+        for contact in find_contacts(sources, searchable, covalent, skip=frozen_skip):
+            key = (contact.first.label(), contact.second.label())
+            if key in seen:
+                continue
+            seen.add(key)
+            if contact.evidence is not BondEvidence.GEOMETRIC:
+                # Contact métallique : rapporté, jamais rattaché. S'il double une
+                # coordination déclarée entre les deux mêmes résidus, il n'apprend rien.
+                if contact.residues not in metal_partners:
+                    bonds.append(contact)
+                continue
+            bonds.append(contact)
+            a, b = contact.first.residue, contact.second.residue
+            for there in (a, b):
+                if there in candidates and there not in reachable:
+                    found.add(there)
+            ends = {a, b}
+            if ends <= backbone_ids or ends & polymer_elsewhere:
+                pair = residue_pair_label(a, b)
+                contact_labels.add(pair)
+                chosen = decisions.contacts.get(pair)
+                if chosen is Decision.DISULFIDE:
+                    sulfurs = (contact.first.atom, contact.second.atom) == ("SG", "SG")
+                    cysteines = a.name.upper() == b.name.upper() == "CYS"
+                    if ends <= backbone_ids and sulfurs and cysteines:
+                        if (a, b) not in decided and (b, a) not in decided:
+                            decided.append((a, b))
+                        continue
+                    refusals.append(
+                        f"décision disulfide pour {pair} : le contact {contact.label()} "
+                        "n'est pas un contact SG–SG entre deux cystéines de la chaîne"
+                    )
+                    continue
+                if chosen is not Decision.NOT_BONDED:
+                    what = "dans la chaîne" if ends <= backbone_ids else "avec une autre chaîne"
+                    refusals.append(
+                        f"contact covalent possible {what}, sans liaison déclarée : "
+                        f"{contact.label()} à {contact.distance:.2f} Å ({contact.reason}) ; "
+                        "décision explicite requise (contacts: {" + pair + ": not_bonded}), "
+                        "ou liaison à déclarer dans le fichier"
+                    )
+        reachable |= found
+        frontier = found - examined
+    sites = {rid: _site(rid, bonds, backbone_order) for rid in reachable}
+    return _Connectivity(
+        atoms, declared, bonds, attached, reachable, sites, refusals, contact_labels, decided
+    )
+
+
+def _check_component_decisions(
+    decisions: ExtractionDecisions,
+    listed: list[Component],
+    connectivity: _Connectivity,
+    chain_id: str,
+) -> None:
+    """Une décision nommée doit viser un composant ou un contact qui l'appelle : sinon,
+    faute de frappe ou décision périmée, elle est refusée au lieu d'être ignorée."""
+    by_label = {c.residue: c for c in listed}
+    problems: list[str] = []
+    for label, decision in sorted(decisions.components.items()):
+        component = by_label.get(label)
+        expected = {
+            Decision.EXCLUDE_AS_UNBOUND: ComponentCategory.POSSIBLY_BOUND,
+            Decision.REMOVE_COVALENT: ComponentCategory.SIDE_CHAIN_MODIFICATION,
+        }[decision]
+        if component is None:
+            problems.append(f"{label} n'est pas un composant rapporté pour la chaîne {chain_id}")
+        elif component.category is not expected:
+            problems.append(
+                f"{label} est {component.category.value} : la décision {decision.value} "
+                f"ne s'applique qu'à un composant {expected.value}"
+            )
+    for pair in sorted(decisions.contacts):
+        if pair not in connectivity.contact_labels:
+            problems.append(
+                f"{pair} n'est pas un contact covalent possible de la chaîne {chain_id}"
+            )
+    if problems:
+        raise ConfigurationError("Décisions sans objet : " + " ; ".join(problems))
+
+
+@dataclass
 class _Analysis:
     """État intermédiaire de l'analyse d'une chaîne."""
 
     backbone: list[tuple[ResidueId, list[Atom]]]
     report: ExtractionReport
+    decided_disulfides: list[tuple[ResidueId, ResidueId]] = field(default_factory=list)
 
 
 def _analyze(
@@ -515,6 +878,7 @@ def _analyze(
     library: ResidueLibrary,
     components: StructureComponents,
     criterion: PeptideBondCriterion,
+    covalent: CovalentCriteria,
 ) -> _Analysis:
     residues = _residues_of_chain(structure, chain_id)
     if not residues:
@@ -550,7 +914,6 @@ def _analyze(
             f"Chaîne {chain_id} : aucun acide aminé (ni N, CA, C, ni groupe terminal) ; "
             f"chaîne non peptidique, composants : {', '.join(names[:8])}"
         )
-    backbone_ids = {rid for rid, _ in backbone}
 
     # Groupes terminaux : seulement à leur extrémité.
     for position, (rid, _) in enumerate(backbone):
@@ -594,34 +957,27 @@ def _analyze(
                 "se contredisent"
             )
 
-    # Composants.
-    covalent = [
-        c
-        for c in structure.connections
-        if c.kind in (ConnectionKind.COVALENT, ConnectionKind.DISULFIDE, ConnectionKind.UNKNOWN)
-    ]
-    other_ids = {rid for rid, _ in others}
-    attached: set[ResidueId] = set()
-    frontier = set(backbone_ids)
-    while frontier:
-        found: set[ResidueId] = set()
-        for conn in covalent:
-            for here, there in ((conn.first, conn.second), (conn.second, conn.first)):
-                if here in frontier and there in other_ids and there not in attached:
-                    found.add(there)
-        attached |= found
-        frontier = found
+    # Composants et connectivité (étape C) : liaisons déclarées, puis liaisons possibles.
+    connectivity = _connectivity(
+        structure, chain_id, backbone, others, decisions, library, components, covalent
+    )
+    attached, reachable = connectivity.attached, connectivity.reachable
     backbone_atoms = [a for _, atoms in backbone for a in atoms if _is_heavy(a)]
     component_list: list[Component] = []
-    for rid, atoms in others:
+    listed = list(others) + [
+        (rid, connectivity.atoms[rid]) for rid in sorted(reachable) if rid.chain_id != chain_id
+    ]
+    for rid, atoms in listed:
         name = rid.name.upper()
         bonds = tuple(
             _connection_label(c) for c in structure.connections if rid in (c.first, c.second)
         )
+        label = rid.label()
+        chosen = decisions.components.get(label)
         if name in components.water:
             component_list.append(
                 Component(
-                    rid.label(),
+                    label,
                     rid.name,
                     ComponentCategory.WATER,
                     Decision.EXCLUDE,
@@ -630,30 +986,88 @@ def _analyze(
                 )
             )
         elif rid in attached:
+            site = connectivity.sites.get(rid)
+            if chosen is Decision.REMOVE_COVALENT:
+                component_list.append(
+                    Component(
+                        label,
+                        rid.name,
+                        ComponentCategory.SIDE_CHAIN_MODIFICATION,
+                        Decision.REMOVE_COVALENT,
+                        "lié à la chaîne par une liaison covalente déclarée ; retiré du peptide "
+                        "par décision explicite de l'utilisateur (remove_covalent)",
+                        bonds,
+                        attachment=site,
+                    )
+                )
+                continue
             component_list.append(
                 Component(
-                    rid.label(),
+                    label,
                     rid.name,
                     ComponentCategory.SIDE_CHAIN_MODIFICATION,
                     Decision.REJECT,
                     "lié à la chaîne par une liaison covalente déclarée : modification "
                     "non représentable dans le peptide",
                     bonds,
+                    attachment=site,
                 )
             )
             refusals.append(
-                f"modification covalente {rid.label()} liée à la chaîne ({'; '.join(bonds)}) : "
+                f"modification covalente {label} liée à la chaîne ({'; '.join(bonds)}) : "
                 "non représentable dans le peptide, jamais retirée en silence"
+            )
+        elif rid in reachable:
+            site = connectivity.sites.get(rid)
+            contacts = "; ".join(
+                f"{b.label()} {b.distance:.2f} Å"
+                for b in connectivity.geometric_of(rid)
+                if b.distance is not None
+            )
+            if chosen is Decision.EXCLUDE_AS_UNBOUND:
+                component_list.append(
+                    Component(
+                        label,
+                        rid.name,
+                        ComponentCategory.POSSIBLY_BOUND,
+                        Decision.EXCLUDE_AS_UNBOUND,
+                        f"aucune liaison déclarée, mais contact covalent possible ({contacts}) ; "
+                        "déclaré non lié par décision explicite de l'utilisateur "
+                        "(exclude_as_unbound)",
+                        bonds,
+                        _min_distance((a for a in atoms if _is_heavy(a)), backbone_atoms),
+                        site,
+                    )
+                )
+                continue
+            component_list.append(
+                Component(
+                    label,
+                    rid.name,
+                    ComponentCategory.POSSIBLY_BOUND,
+                    Decision.REJECT,
+                    f"aucune liaison déclarée, mais contact covalent possible ({contacts}) : "
+                    "liaison non prouvée, à trancher",
+                    bonds,
+                    _min_distance((a for a in atoms if _is_heavy(a)), backbone_atoms),
+                    site,
+                )
+            )
+            refusals.append(
+                f"composant {label} au contact covalent de la chaîne sans liaison déclarée "
+                f"({contacts}) : lié ou non, la géométrie ne le prouve pas ; décision "
+                "explicite requise (components: {" + label + ": exclude_as_unbound}), "
+                "jamais exclu en silence"
             )
         else:
             single = len({a.name for a in atoms}) == 1
             category = ComponentCategory.ION if single else ComponentCategory.UNBOUND_LIGAND
             evidence = (
                 "un seul atome" if single else "plusieurs atomes"
-            ) + " ; aucune liaison covalente déclarée avec la chaîne"
+            ) + " ; aucune liaison covalente déclarée ni contact covalent possible avec la chaîne"
             component_list.append(
                 Component(
-                    rid.label(),
+                    label,
                     rid.name,
                     category,
                     Decision.EXCLUDE,
@@ -687,10 +1101,11 @@ def _analyze(
             refusals.append(
                 f"résidu modifié {rid.label()} dans la chaîne : absent de la bibliothèque"
             )
+    _check_component_decisions(decisions, component_list, connectivity, chain_id)
 
     # Liaisons déclarées entre résidus du squelette : peptidiques, disulfures, ou refus.
     order = {rid: i for i, (rid, _) in enumerate(backbone)}
-    for conn in covalent:
+    for conn in connectivity.covalent:
         ends_here = [r for r in (conn.first, conn.second) if r.chain_id == chain_id]
         if not ends_here:
             continue
@@ -732,6 +1147,10 @@ def _analyze(
                 f"{' ...' if len(terminus.residues) > 5 else ''}) : l'extrémité observée "
                 "n'est pas celle de la molécule"
             )
+
+    # Contacts covalents possibles et liaisons déclarées contredites : après les motifs du
+    # module 3, pour que l'ordre de ces derniers ne change pas.
+    refusals.extend(connectivity.refusals)
 
     declared_atoms = tuple(
         m.label() for m in structure.declared_missing_atoms if m.residue.chain_id == chain_id
@@ -793,8 +1212,10 @@ def _analyze(
         absent_backbone_atoms=absent,
         segments=tuple(segments),
         refusals=tuple(dict.fromkeys(refusals)),
+        bonds=tuple(connectivity.bonds),
+        covalent_criteria=covalent.describe(),
     )
-    return _Analysis(backbone, report)
+    return _Analysis(backbone, report, connectivity.decided_disulfides)
 
 
 def analyze_chain(
@@ -805,6 +1226,7 @@ def analyze_chain(
     library: ResidueLibrary | None = None,
     components: StructureComponents | None = None,
     criterion: PeptideBondCriterion | None = None,
+    covalent: CovalentCriteria | None = None,
 ) -> ExtractionReport:
     """Rapport d'extraction de la chaîne, sans extraire ni refuser (sauf chaîne absente)."""
     library = library or load_default_library()
@@ -815,6 +1237,7 @@ def analyze_chain(
         library,
         components or load_structure_components(library),
         criterion or load_peptide_bond_criterion(),
+        covalent or load_covalent_criteria(),
     ).report
 
 
@@ -864,9 +1287,9 @@ def _peptide(
         n_key = components.free_n_terminus
     index = {rid: position for position, (rid, _) in enumerate(part, start=1)}
     links = [
-        Link(LinkKind.DISULFIDE, index[conn.first], index[conn.second])
-        for conn in structure.connections
-        if conn.kind == ConnectionKind.DISULFIDE and conn.first in index and conn.second in index
+        Link(LinkKind.DISULFIDE, index[first], index[second])
+        for first, second in _disulfide_pairs(structure, analysis)
+        if first in index and second in index
     ]
     metadata = {
         STRUCTURE_SOURCE: structure.source,
@@ -875,6 +1298,13 @@ def _peptide(
         STRUCTURE_EDGES: f"{segment.n_edge}/{segment.c_edge}",
         STRUCTURE_RESIDUES: ",".join(rid.label() for rid, _ in part),
     }
+    set_aside = [
+        f"{c.residue}={c.decision.value}"
+        for c in analysis.report.components
+        if c.decision in (Decision.REMOVE_COVALENT, Decision.EXCLUDE_AS_UNBOUND)
+    ]
+    if set_aside:
+        metadata[STRUCTURE_SET_ASIDE] = ",".join(set_aside)
     if n_key is None and not n_open:
         metadata[N_TERMINUS_DEFAULTED] = _FROM_STRUCTURE_DEFAULT
     if c_key is None and not c_open:
@@ -902,6 +1332,18 @@ def _peptide(
     )
 
 
+def _disulfide_pairs(
+    structure: Structure, analysis: _Analysis
+) -> list[tuple[ResidueId, ResidueId]]:
+    """Ponts disulfures déclarés par le fichier, puis ceux admis par une décision `disulfide`."""
+    pairs = [
+        (conn.first, conn.second)
+        for conn in structure.connections
+        if conn.kind == ConnectionKind.DISULFIDE
+    ]
+    return pairs + list(analysis.decided_disulfides)
+
+
 def _crossing_disulfides(structure: Structure, analysis: _Analysis) -> list[str]:
     """Ponts disulfures de la chaîne dont un bout sort de son segment (autre segment ou chaîne)."""
     segment_of: dict[ResidueId, int] = {}
@@ -909,15 +1351,13 @@ def _crossing_disulfides(structure: Structure, analysis: _Analysis) -> list[str]
         for rid, _ in analysis.backbone[lo:hi]:
             segment_of[rid] = number
     crossing: list[str] = []
-    for conn in structure.connections:
-        if conn.kind != ConnectionKind.DISULFIDE:
-            continue
-        ends = (segment_of.get(conn.first), segment_of.get(conn.second))
+    for first, second in _disulfide_pairs(structure, analysis):
+        ends = (segment_of.get(first), segment_of.get(second))
         if ends == (None, None) or ends[0] == ends[1]:
             continue
-        if analysis.report.chain_id in (conn.first.chain_id, conn.second.chain_id):
+        if analysis.report.chain_id in (first.chain_id, second.chain_id):
             crossing.append(
-                f"pont disulfure {conn.first.label()}–{conn.second.label()} entre deux "
+                f"pont disulfure {first.label()}–{second.label()} entre deux "
                 "segments ou vers une autre chaîne : non représentable dans un peptide"
             )
     return crossing
@@ -932,6 +1372,7 @@ def extract_peptides(
     library: ResidueLibrary | None = None,
     components: StructureComponents | None = None,
     criterion: PeptideBondCriterion | None = None,
+    covalent: CovalentCriteria | None = None,
 ) -> ExtractionResult:
     """Peptide(s) de la chaîne `chain_id` selon `decisions`, ou `ExtractionRefusedError`.
 
@@ -942,7 +1383,8 @@ def extract_peptides(
     library = library or load_default_library()
     components = components or load_structure_components(library)
     criterion = criterion or load_peptide_bond_criterion()
-    analysis = _analyze(structure, chain_id, decisions, library, components, criterion)
+    covalent = covalent or load_covalent_criteria()
+    analysis = _analyze(structure, chain_id, decisions, library, components, criterion, covalent)
     crossing = _crossing_disulfides(structure, analysis)
     if crossing:
         report = analysis.report
@@ -1006,6 +1448,8 @@ def _journal_fields(report: ExtractionReport) -> dict[str, Any]:
         "declared_missing_atoms": list(report.declared_missing_atoms),
         "absent_backbone_atoms": list(report.absent_backbone_atoms),
         "segments": data["segments"],
+        "bonds": data["bonds"],
+        "covalent_criteria": data["covalent_criteria"],
         "refusals": list(report.refusals),
     }
 
@@ -1018,6 +1462,7 @@ def structure_to_peptide(
     library: ResidueLibrary | None = None,
     components: StructureComponents | None = None,
     criterion: PeptideBondCriterion | None = None,
+    covalent: CovalentCriteria | None = None,
 ) -> Peptide:
     """Peptide unique de la chaîne, en mode strict (aucune décision) : `extract_peptides`."""
     result = extract_peptides(
@@ -1027,6 +1472,7 @@ def structure_to_peptide(
         library=library,
         components=components,
         criterion=criterion,
+        covalent=covalent,
     )
     (peptide,) = result.peptides
     return peptide
@@ -1041,6 +1487,7 @@ def extract_chains(
     library: ResidueLibrary | None = None,
     components: StructureComponents | None = None,
     criterion: PeptideBondCriterion | None = None,
+    covalent: CovalentCriteria | None = None,
 ) -> dict[str, ExtractionResult]:
     """Extraction de plusieurs chaînes, chacune avec ses propres décisions.
 
@@ -1064,6 +1511,7 @@ def extract_chains(
     library = library or load_default_library()
     components = components or load_structure_components(library)
     criterion = criterion or load_peptide_bond_criterion()
+    covalent = covalent or load_covalent_criteria()
     return {
         chain: extract_peptides(
             structure,
@@ -1073,6 +1521,7 @@ def extract_chains(
             library=library,
             components=components,
             criterion=criterion,
+            covalent=covalent,
         )
         for chain in chains
     }

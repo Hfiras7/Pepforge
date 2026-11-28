@@ -66,7 +66,7 @@ Malgré ces choix, le code garde moteur, champ de force et objectif **configurab
 | `src/pepforge/config.py` | `PrepConfig`, `SolvationSpec` : choix de l'utilisateur, sans valeur par défaut |
 | `src/pepforge/tools/` | `ExternalTool` (exécutables externes) et `QuantumTool` (ORCA, Psi4) : module feuille |
 | `src/pepforge/checks/` | Contrôles qualité appliqués à la sortie de chaque étape |
-| `src/pepforge/io/` | Séquences ; structures PDB et mmCIF par fichier local ou URL (gemmi, confiné à `io/structure_formats.py`), inventaire ; SMILES, MOL/SDF à venir |
+| `src/pepforge/io/` | Séquences ; structures PDB et mmCIF par fichier local ou URL (gemmi, confiné à `io/structure_formats.py`), inventaire ; liaisons déclarées et possibles (`io/connectivity.py`, étape C) ; SMILES, MOL/SDF à venir |
 | `src/pepforge/residues/` | Bibliothèque de résidus versionnée, avec la provenance de chaque donnée (`residues/data/`) |
 | `src/pepforge/build/` | Construction et correction 3D, conformes à `StructureBuilder` / `StructureModifier` |
 | `src/pepforge/forcefields/` | Adaptateurs de champ de force, tous conformes à `ForceFieldAdapter` |
@@ -103,6 +103,8 @@ pepforge convert --notation 1 "Ac-RGDS-NH2"   # → Ac-Arg-Gly-Asp-Ser-NH2 (3 = 
 pepforge inspect fichier.cif --model 1        # inventaire d'une structure (ou --url https://...)
 pepforge inspect fichier.cif --chain A        # rapport d'extraction (--breaks split, --unobserved-termini observed_segment)
 python validation/module03_structures.py      # validation du module 3 (réseau, pip install -e ".[validation]")
+pepforge inspect fichier.cif --chain A --component A:DOT101=exclude_as_unbound --contact "A:CYS2–A:CYS5=not_bonded"   # décisions de l'étape C
+python validation/etape_c_connectivity.py     # validation de l'étape C (liaisons covalentes, réseau)
 ```
 
 ## Méthode de travail imposée (Firas, 27 novembre 2026)
