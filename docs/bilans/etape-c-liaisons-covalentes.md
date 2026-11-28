@@ -2,7 +2,9 @@
 
 > Complément du module 3 ([PLAN-CONSTRUCTION.md](../PLAN-CONSTRUCTION.md), « Étape C »). Bilan établi le 28 novembre 2026. Implémentation approuvée par Firas le 28 novembre 2026 à 9 h 24 UTC, d'après la proposition architecturale remise le 27 novembre. Branche `claude/etape-c-liaisons-covalentes`, PR distincte empilée sur la PR #3 (module 3), qui n'est pas modifiée. Rien n'est fusionné.
 
-**Statut final : TERMINÉ MAIS NON VALIDÉ.** Le code, les tests et la validation sur structures réelles sont faits. Revue de Firas du 28 novembre 2026 : architecture satisfaisante, tolérance de 0,45 Å validée **provisoirement**, vérifications demandées sur la tolérance, 6WQA et 4ZHL. Elles sont faites et rapportées en section 9, y compris sur les entrées originales de la PDB fournies par Firas (section 9.4).
+**Statut final : TERMINÉ ET VALIDÉ** (28 novembre 2026). Firas a validé l'implémentation à la revue finale (10 h 59 UTC) et autorisé la fusion ; PR #4 fusionnée le même jour après la PR #3 (commit `b1690b8` de la branche par défaut, 709 tests). Historique, conservé :
+
+> Statut précédent : TERMINÉ MAIS NON VALIDÉ. Le code, les tests et la validation sur structures réelles sont faits. Revue de Firas du 28 novembre 2026 : architecture satisfaisante, tolérance de 0,45 Å validée **provisoirement**, vérifications demandées sur la tolérance, 6WQA et 4ZHL. Elles sont faites et rapportées en section 9, y compris sur les entrées originales de la PDB fournies par Firas (section 9.4).
 
 ---
 
@@ -201,16 +203,14 @@ Références :
 
 ## 8. Statut final
 
-**TERMINÉ MAIS NON VALIDÉ.**
+**TERMINÉ ET VALIDÉ** (28 novembre 2026, revue finale de Firas). Les points qui étaient attendus ont été tranchés :
 
-Points attendus de Firas :
+- la tolérance de 0,45 Å : validée provisoirement comme convention de détection, bornes et sensibilité testées (section 9.1) ;
+- les contacts de 6WQA et 4ZHL : vérifiés sur les entrées originales (sections 9.2 à 9.4) ;
+- les changements de comportement du module 3 : acceptés avec la validation ;
+- la fusion : PR #4 fusionnée après la PR #3, commit `b1690b8` de la branche par défaut.
 
-- la tolérance de 0,45 Å ;
-- l'interprétation des contacts de 4ZHL et 6WQA ;
-- les changements de comportement du module 3 ;
-- la fusion de la PR, qui attend sa validation explicite.
-
-Les étapes A et B ne commencent pas sans son instruction.
+L'étape B n'est pas commencée ; l'étape A attend la validation de sa proposition d'architecture.
 
 ## 9. Revue de Firas du 28 novembre 2026 : vérifications demandées
 
