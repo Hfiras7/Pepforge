@@ -169,24 +169,30 @@ flowchart LR
 
 ## Étape 3 — Lecture et écriture PDB / mmCIF, inventaire
 
+**Statut : TERMINÉ MAIS NON VALIDÉ** (27 novembre 2026). Revue de Firas du 27 novembre : gemmi **validé** (encapsulé dans `io`) ; structures de validation : **validation provisoire** ; extraction d'un peptide : **à corriger**, orientations validées (seuil C–N de 1,8 Å, classement des jonctions et des composants, mode strict, décisions `reject`, `split`, `observed_segment`). Correction livrée sur la PR #3 : `io/peptide_extraction.py`, rapport d'extraction par jonction, trois défauts corrigés (4ZHL, 6WQA, 7DDO). Extrémité non chimique `unobserved` décidée par Firas le même jour et livrée (petite modification du module 2 : refus explicite). Bilan complet : [bilans/module-03-structures.md](bilans/module-03-structures.md).
+
 **Objectif** : importer une structure (expérimentale ou issue de docking) et en dresser l'inventaire, sans la modifier.
 
-**Modules** : `io`, `core.structure`.
+**Modules** : `io`, `core.structure`. *Réalisé : aussi `residues` (eaux et groupes terminaux, données sourcées), `exceptions` (deux sous-classes de `StructureError`) et `cli` (commande `inspect`).*
 
-**Prérequis** : décider de lire les formats nous-mêmes ou via une bibliothèque (gemmi, Biopython...). Recommandation : une bibliothèque éprouvée pour mmCIF, encapsulée dans `io` pour que le reste du code ne voie que `Structure`.
+**Prérequis** : décider de lire les formats nous-mêmes ou via une bibliothèque (gemmi, Biopython...). Recommandation : une bibliothèque éprouvée pour mmCIF, encapsulée dans `io` pour que le reste du code ne voie que `Structure`. *Retenu : gemmi 0.7.5, confiné à `io/structure_formats.py`, avec une relecture stricte du fichier brut par PepForge (gemmi laisse passer des coordonnées illisibles et remplit des valeurs absentes). Choix soumis à Firas le 27 novembre 2026, réponse attendue.*
 
-**Livrables** : `io.read_structure(path) -> Structure`, `io.write_pdb(structure, path)`, `inventory(structure) -> StructureInventory` (chaînes, résidus, hétéroatomes, eaux, ions, conformations alternatives, hydrogènes, trous de numérotation).
+**Livrables** : `io.read_structure(path) -> Structure`, `io.write_pdb(structure, path)`, `inventory(structure) -> StructureInventory` (chaînes, résidus, hétéroatomes, eaux, ions, conformations alternatives, hydrogènes, trous de numérotation). *Ajouté à la demande de Firas (27 novembre 2026) : `io.read_structure_url(url)`, importation par URL avec téléchargement contrôlé et vérification du fichier obtenu ; architecture générique (registre de formats). Livré : `read_structure`, `read_structure_url`, `write_structure(structure, path, fmt)` pour PDB et mmCIF, `inventory`, `structure_to_peptide`, commande `pepforge inspect`.*
 
 **Critères d'acceptation**
 
-- [ ] Lecture puis écriture puis relecture sans perte (coordonnées, noms, chaînes).
-- [ ] L'inventaire signale tout ce qui demandera une décision (conformations alternatives, résidus manquants, ligands).
-- [ ] Aucune correction silencieuse à la lecture.
-- [ ] Correspondance `Structure` → `Peptide` quand la structure est un peptide reconnu.
+- [x] Lecture puis écriture puis relecture sans perte (coordonnées, noms, chaînes). *Atome par atome, liaisons déclarées comprises, sur les fichiers d'essai et sur les 12 fichiers réels lisibles, en PDB et en mmCIF ; ce que le PDB ne peut pas porter est refusé, pas tronqué.*
+- [x] L'inventaire signale tout ce qui demandera une décision (conformations alternatives, résidus manquants, ligands).
+- [x] Aucune correction silencieuse à la lecture. *Vérifié par l'inventaire attendu (fichier brut relu par PepForge) contre la lecture de gemmi ; 33 défauts injectés sur 33 détectés.*
+- [x] Correspondance `Structure` → `Peptide` quand la structure est un peptide reconnu. *Corrigé après la revue : rapport d'extraction par jonction (distance C–N mesurée, seuil sourcé), un saut de numérotation n'est plus une rupture, ligands et glycanes ne sont plus comptés comme résidus ; 48 défauts injectés sur 48 détectés.*
+- [x] *Décisions `split` et `observed_segment` : un peptide par segment, bords marqués par l'extrémité non chimique `unobserved` (décision de Firas du 27 novembre 2026), refusée par la protonation.*
+- [x] *Importation par fichier local et par URL, une seule lecture, provenance et SHA-256 au journal.*
 
-**Tests** : U (petits fichiers PDB et mmCIF écrits à la main dans `tests/data/`) ; I (lecture d'une sortie de docking type) ; V : inventaire d'une structure publique d'un récepteur ciblé, comparé à la description de la PDB.
+**Tests** : U (petits fichiers PDB et mmCIF écrits à la main dans `tests/data/`) ; I (lecture d'une sortie de docking type) ; V : ~~inventaire d'une structure publique d'un récepteur ciblé, comparé à la description de la PDB~~. *Corrigé le 27 novembre 2026 : Firas a d'abord demandé qu'aucune structure ne soit choisie à sa place, puis, le même jour, que des structures de test soient choisies pour valider le module. Les serveurs de la PDB étant refusés par le réseau de développement, la validation porte sur 14 copies d'entrées de la PDB distribuées avec Biopython 1.88 (adresse figée), importées par URL et comparées à Biopython et aux en-têtes des fichiers ([validation/module03_structures.py](../validation/module03_structures.py)). Les récepteurs ciblés (DCC, TrkC, UNC5) restent à faire sur les fichiers ou liens que Firas fournira. Le test I (sortie de docking) n'est pas fait : aucune sortie de docking n'existe encore dans le projet.*
 
 **Revue** : vérifier la gestion des conformations alternatives et des numéros d'insertion.
+
+*Note d'architecture (27 novembre 2026) : la mesure C(i)–N(i+1) est avancée de l'étape 4 à l'étape 3, parce que l'extraction d'une séquence en dépend. L'étape 4 garde les autres contrôles et réutilise le seuil de `residues/data/structure_geometry.yaml`.*
 
 ---
 

@@ -1,5 +1,7 @@
 """Tests de l'interface en ligne de commande."""
 
+from pathlib import Path
+
 import pytest
 
 from pepforge.cli.main import main
@@ -96,3 +98,60 @@ def test_convert_error_returns_1(capsys: pytest.CaptureFixture[str]) -> None:
     err = capsys.readouterr().err
     assert "Erreur" in err
     assert "acide aminé D" in err
+
+
+# --- Importation d'une structure (étape 3) ----------------------------------------
+
+STRUCTURES = Path(__file__).parent / "data" / "structures"
+
+
+def test_inspect_prints_provenance_inventory_and_peptide(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import yaml
+
+    assert main(["inspect", str(STRUCTURES / "capped_peptide.pdb"), "--chain", "A"]) == 0
+    report = yaml.safe_load(capsys.readouterr().out)
+    assert report["provenance"]["format"] == "pdb"
+    assert len(report["provenance"]["sha256"]) == 64
+    assert report["inventaire"]["atoms"] == 32
+    (peptide,) = report["peptides"]
+    assert peptide["résidus"] == "ALA-CYS-GLY-GLY-CYS"
+    assert peptide["ponts_disulfure"] == [[2, 5]]
+    extraction = report["extraction"]
+    assert extraction["acceptée"] is True
+    assert extraction["critère"]["max_c_n_distance"] == 1.8
+    assert extraction["jonctions"][0].startswith("A:ACE0 → A:ALA1 | A:ACE0:C–A:ALA1:N ")
+    assert extraction["jonctions"][0].endswith("| continuous | accept")
+    assert extraction["eaux"] == 1
+
+
+def test_inspect_prints_the_report_of_a_refused_extraction(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import yaml
+
+    path = STRUCTURES / "reference" / "6WQA.cif.gz"
+    assert main(["inspect", str(path), "--chain", "A"]) == 1
+    captured = capsys.readouterr()
+    extraction = yaml.safe_load(captured.out)["extraction"]
+    assert extraction["acceptée"] is False
+    assert extraction["jonctions_par_catégorie"]["break_undeclared"] == 1
+    assert any(
+        line.startswith("A:ZMA1202 | unbound_ligand | exclude") for line in extraction["composants"]
+    )
+    assert "A:ALA1043 → A:ASP1060" in captured.err
+    assert "Traceback" not in captured.err
+
+
+def test_inspect_requires_the_model_of_an_ensemble(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["inspect", str(STRUCTURES / "nmr_two_models.pdb")]) == 1
+    err = capsys.readouterr().err
+    assert "--model" in err
+    assert "Traceback" not in err
+    assert main(["inspect", str(STRUCTURES / "nmr_two_models.pdb"), "--model", "2"]) == 0
+
+
+def test_inspect_refuses_plain_http_without_the_option(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["inspect", "--url", "http://127.0.0.1:9/x.pdb"]) == 1
+    assert "--allow-http" in capsys.readouterr().err

@@ -1,0 +1,39 @@
+# Composants chimiques reconnus à la lecture d'une structure (PDB, mmCIF).
+#
+# Nomenclature seulement, aucune donnée de champ de force. Ce fichier sert à
+# l'inventaire d'une structure importée (pepforge.io.structure_inventory) et à
+# la correspondance Structure → Peptide. Tout ce qui n'y figure pas, et qui
+# n'est pas un acide aminé standard de standard_amino_acids.yaml, est rapporté
+# comme composant non reconnu : il n'est jamais classé par supposition.
+#
+# Les identifiants sont ceux du dictionnaire des composants chimiques de la
+# wwPDB (Chemical Component Dictionary, CCD), qui fixe les noms de résidus des
+# fichiers PDB et mmCIF.
+version: 1
+source: >-
+  wwPDB Chemical Component Dictionary (CCD), https://www.wwpdb.org/data/ccd ;
+  Westbrook J. D. et al., « The chemical component dictionary: complete
+  descriptions of constituent molecular components in experimentally
+  determined 3D macromolecular structures », Bioinformatics 31(8), 1274-1278
+  (2015), DOI 10.1093/bioinformatics/btu789. Composants HOH (eau), DOD (eau
+  lourde), ACE (groupe acétyle), NH2 (groupe amino), NME (méthylamine).
+
+# Eau : un résidu de ce nom est compté comme eau, quel que soit son nombre d'atomes.
+water: [HOH, DOD]
+
+# Groupes terminaux portés par un résidu distinct dans les fichiers PDB et mmCIF.
+# La clé `terminus` renvoie aux extrémités de termini.yaml.
+n_terminal_caps:
+  - {component: ACE, terminus: acetyl}
+c_terminal_caps:
+  - {component: NH2, terminus: amide}
+  - {component: NME, terminus: n_methylamide}
+
+# Atomes dont la présence prouve l'état d'une extrémité libre (nomenclature PDB
+# des acides aminés, CCD : OXT est le second oxygène du carboxyle terminal ;
+# H1, H2, H3 sont les hydrogènes de l'amine N-terminale).
+# Les clés renvoient aux extrémités de termini.yaml.
+free_c_terminus: free_acid
+free_c_terminus_atoms: [OXT]
+free_n_terminus: free_amine
+free_n_terminus_hydrogens: [H1, H2, H3]

@@ -408,6 +408,22 @@ def test_modified_peptide_is_refused() -> None:
         assign_protonation(peptide, 7.4)
 
 
+@pytest.mark.parametrize("side", ["N", "C"])
+def test_non_chemical_terminus_is_refused_without_a_charge(side: str) -> None:
+    """Bord d'un segment extrait : aucune charge ne lui est supposée (décision de Firas)."""
+    unobserved = load_default_library().unobserved_terminus
+    peptide = parse_sequence("H-GKG-OH", notation="one_letter")
+    peptide = (
+        peptide.with_n_terminus(unobserved) if side == "N" else peptide.with_c_terminus(unobserved)
+    )
+    with pytest.raises(
+        UnsupportedFeatureError, match=f"extrémité {side} .*pas une extrémité chimique"
+    ):
+        assign_protonation(peptide, 7.4)
+    with pytest.raises(UnsupportedFeatureError, match="pas une extrémité chimique"):
+        theoretical_net_charge(peptide, 7.4)
+
+
 # --- Résultat -----------------------------------------------------------------
 
 

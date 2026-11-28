@@ -375,6 +375,12 @@ def test_notation_other_and_labels() -> None:
             parse_sequence("Ac-AHA-NH2", notation=ONE).with_protonation(2, "his_delta"),
             "his_delta en position 2",
         ),
+        (
+            parse_sequence("Ac-RGDS-NH2", notation=ONE).with_c_terminus(
+                load_default_library().unobserved_terminus
+            ),
+            "extrémité C non observée",
+        ),
     ],
 )
 @pytest.mark.parametrize("target", [ONE, THREE])

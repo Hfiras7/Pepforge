@@ -111,3 +111,28 @@ def test_matrix_has_no_cycle() -> None:
 
     for unit in ALLOWED:
         visit(unit, [])
+
+
+# Bibliothèques tierces confinées (étape 3) : gemmi n'est visible que du lecteur de formats,
+# pour que le reste de PepForge ne voie que `Structure` et qu'un changement de bibliothèque
+# ne touche qu'un fichier.
+CONFINED_THIRD_PARTY: dict[str, set[str]] = {
+    "gemmi": {"io/structure_formats.py"},
+}
+
+
+@pytest.mark.parametrize("library", sorted(CONFINED_THIRD_PARTY))
+def test_third_party_library_is_confined(library: str) -> None:
+    offenders = []
+    for path in sorted(SRC.rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            names = []
+            if isinstance(node, ast.ImportFrom) and node.module:
+                names = [node.module]
+            elif isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            if any(name.split(".")[0] == library for name in names):
+                offenders.append(path.relative_to(SRC).as_posix())
+    assert set(offenders) <= CONFINED_THIRD_PARTY[library], offenders
+    assert offenders, f"{library} n'est plus importé : mettre la liste à jour"

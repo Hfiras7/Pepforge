@@ -1,0 +1,1414 @@
+pepforge_reader: gemmi 0.7.5
+reference_reader: Biopython 1.88
+source: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/
+files:
+- file: 1A8O.pdb
+  url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/1A8O.pdb
+  exercises: rayons X ; sélénométhionine MSE en HETATM ; eaux ; pont disulfure ; LINK
+  sha256: 2928bb4a4680a104be0d7555cd7e7f36bd6731531f476cb7eb7209ccfa7ebadb
+  size_bytes: 83024
+  biopython_warnings: []
+  checks:
+  - check: provenance au journal
+    ok: true
+    detail: sha256 2928bb4a4680..., 83024 octets, gemmi 0.7.5
+  - check: nombre de modèles = Biopython
+    ok: true
+    detail: PepForge 1, Biopython 1
+  - check: atomes identiques à Biopython, pour chaque modèle
+    ok: true
+    detail: 644 atomes comparés sur 1 modèle(s)
+  - check: résidus non observés = en-tête
+    ok: true
+    detail: PepForge 0, en-tête 0
+  - check: liaisons déclarées = en-tête
+    ok: true
+    detail: PepForge 7, en-tête 7
+  - check: eaux = Biopython
+    ok: true
+    detail: PepForge 88, Biopython 88
+  - check: résidus à conformations alternatives = Biopython
+    ok: true
+    detail: PepForge 0, Biopython 0
+  - check: écriture pdb puis relecture sans perte
+    ok: true
+    detail: 644 atomes
+  - check: écriture mmcif puis relecture sans perte
+    ok: true
+    detail: 644 atomes
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['modified_residue'], attendus ['modified_residue']
+  inventory:
+    atoms: 644
+    hydrogens: 0
+    chains:
+      A:
+        standard: 66
+        amino_acid_like: 70
+        waters: 88
+        ions: []
+        unrecognized:
+          MSE: 4
+        numbering_gaps: []
+        insertion_codes: 0
+    alternate_location_residues: 0
+    declared_missing_residues: 0
+    connections:
+      covalent: 6
+      disulfide: 1
+    pending_decisions:
+    - 'Composants non reconnus par la bibliothèque : MSE×4 ; pour chacun, le garder
+      (et le paramétrer) ou le retirer.'
+    - '88 molécule(s) d''eau cristallographique : les garder ou les retirer.'
+    - 'Aucun hydrogène : ils devront être ajoutés selon les états de protonation.'
+    - 3 atome(s) d'occupation nulle (position non déterminée).
+    - 'Liaisons déclarées par le fichier (covalent ×6, disulfide ×1) : à confirmer.'
+  peptides:
+    A:
+      accepted: false
+      junctions_by_category:
+        continuous: 69
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components:
+        A:MSE151: modified_residue
+        A:MSE185: modified_residue
+        A:MSE214: modified_residue
+        A:MSE215: modified_residue
+      waters: 88
+      unobserved_termini: {}
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - modified_residue
+- file: 1A8O.cif
+  url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/1A8O.cif
+  exercises: 'même entrée en mmCIF : MSE y est en ATOM'
+  sha256: ad2c5538eaf92faf2ca88278ccb85de00a701ad39f6454ed10f99be025d8e83b
+  size_bytes: 98889
+  biopython_warnings: []
+  checks:
+  - check: provenance au journal
+    ok: true
+    detail: sha256 ad2c5538eaf9..., 98889 octets, gemmi 0.7.5
+  - check: nombre de modèles = Biopython
+    ok: true
+    detail: PepForge 1, Biopython 1
+  - check: atomes identiques à Biopython, pour chaque modèle
+    ok: true
+    detail: 644 atomes comparés sur 1 modèle(s)
+  - check: résidus non observés = en-tête
+    ok: true
+    detail: PepForge 0, en-tête 0
+  - check: liaisons déclarées = en-tête
+    ok: true
+    detail: PepForge 7, en-tête 7
+  - check: eaux = Biopython
+    ok: true
+    detail: PepForge 88, Biopython 88
+  - check: résidus à conformations alternatives = Biopython
+    ok: true
+    detail: PepForge 0, Biopython 0
+  - check: écriture pdb puis relecture sans perte
+    ok: true
+    detail: 644 atomes
+  - check: écriture mmcif puis relecture sans perte
+    ok: true
+    detail: 644 atomes
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['modified_residue'], attendus ['modified_residue']
+  inventory:
+    atoms: 644
+    hydrogens: 0
+    chains:
+      A:
+        standard: 66
+        amino_acid_like: 70
+        waters: 88
+        ions: []
+        unrecognized:
+          MSE: 4
+        numbering_gaps: []
+        insertion_codes: 0
+    alternate_location_residues: 0
+    declared_missing_residues: 0
+    connections:
+      covalent: 6
+      disulfide: 1
+    pending_decisions:
+    - 'Composants non reconnus par la bibliothèque : MSE×4 ; pour chacun, le garder
+      (et le paramétrer) ou le retirer.'
+    - '88 molécule(s) d''eau cristallographique : les garder ou les retirer.'
+    - 'Aucun hydrogène : ils devront être ajoutés selon les états de protonation.'
+    - 3 atome(s) d'occupation nulle (position non déterminée).
+    - 'Liaisons déclarées par le fichier (covalent ×6, disulfide ×1) : à confirmer.'
+  peptides:
+    A:
+      accepted: false
+      junctions_by_category:
+        continuous: 69
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components:
+        A:MSE151: modified_residue
+        A:MSE185: modified_residue
+        A:MSE214: modified_residue
+        A:MSE215: modified_residue
+      waters: 88
+      unobserved_termini: {}
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - modified_residue
+- file: 2XHE.pdb
+  url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/2XHE.pdb
+  exercises: complexe de deux protéines (6 315 atomes) ; 142 résidus non observés
+  sha256: 72553fcff53623fa1a545752383748af1dbebd42468170fd4a275df737ac23a6
+  size_bytes: 1081107
+  biopython_warnings:
+  - 'WARNING: Chain A is discontinuous at line 13298.'
+  - 'WARNING: Chain B is discontinuous at line 13344.'
+  checks:
+  - check: provenance au journal
+    ok: true
+    detail: sha256 72553fcff536..., 1081107 octets, gemmi 0.7.5
+  - check: nombre de modèles = Biopython
+    ok: true
+    detail: PepForge 1, Biopython 1
+  - check: atomes identiques à Biopython, pour chaque modèle
+    ok: true
+    detail: 6315 atomes comparés sur 1 modèle(s)
+  - check: résidus non observés = en-tête
+    ok: true
+    detail: PepForge 142, en-tête 142
+  - check: liaisons déclarées = en-tête
+    ok: true
+    detail: PepForge 0, en-tête 0
+  - check: eaux = Biopython
+    ok: true
+    detail: PepForge 48, Biopython 48
+  - check: résidus à conformations alternatives = Biopython
+    ok: true
+    detail: PepForge 0, Biopython 0
+  - check: écriture pdb puis relecture sans perte
+    ok: true
+    detail: 6315 atomes
+  - check: écriture mmcif puis relecture sans perte
+    ok: true
+    detail: 6315 atomes
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['break_declared', 'unobserved_C'], attendus ['break_declared',
+      'unobserved_C']
+  - check: 'chaîne B : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['break_declared', 'unobserved_C', 'unobserved_N'], attendus ['break_declared',
+      'unobserved_C', 'unobserved_N']
+  inventory:
+    atoms: 6315
+    hydrogens: 0
+    chains:
+      A:
+        standard: 567
+        amino_acid_like: 567
+        waters: 46
+        ions: []
+        unrecognized: {}
+        numbering_gaps:
+        - - A:LYS509
+          - A:GLU561
+        insertion_codes: 0
+      B:
+        standard: 220
+        amino_acid_like: 220
+        waters: 2
+        ions: []
+        unrecognized: {}
+        numbering_gaps:
+        - - B:GLN15
+          - B:PRO39
+        - - B:GLY192
+          - B:ASN210
+        insertion_codes: 0
+    alternate_location_residues: 0
+    declared_missing_residues: 142
+    connections: {}
+    pending_decisions:
+    - '142 résidu(s) déclaré(s) non observé(s) par le fichier : les reconstruire,
+      ou tronquer et coiffer les extrémités.'
+    - '3 saut(s) de numérotation, qui ne prouvent pas une rupture : le rapport d''extraction
+      (--chain) mesure la liaison C–N de chaque jonction (A:LYS509 → A:GLU561; B:GLN15
+      → B:PRO39; B:GLY192 → B:ASN210).'
+    - '48 molécule(s) d''eau cristallographique : les garder ou les retirer.'
+    - 'Aucun hydrogène : ils devront être ajoutés selon les états de protonation.'
+  peptides:
+    A:
+      accepted: false
+      junctions_by_category:
+        break_declared: 1
+        continuous: 565
+      notable_junctions:
+      - 'A:LYS509 → A:GLU561 : break_declared, 27.630 Å'
+      insertion_code_junctions: 0
+      components: {}
+      waters: 46
+      unobserved_termini:
+        C: 32
+      declared_missing_atoms: 4
+      absent_backbone_atoms:
+      - A:ALA617:CA
+      - A:ALA617:C
+      - A:ALA617:O
+      refusal_causes:
+      - break_declared
+      - unobserved_C
+    B:
+      accepted: false
+      junctions_by_category:
+        break_declared: 2
+        continuous: 217
+      notable_junctions:
+      - 'B:GLN15 → B:PRO39 : break_declared, 29.003 Å'
+      - 'B:GLY192 → B:ASN210 : break_declared, 15.130 Å'
+      insertion_code_junctions: 0
+      components: {}
+      waters: 2
+      unobserved_termini:
+        N: 1
+        C: 18
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - break_declared
+      - unobserved_C
+      - unobserved_N
+- file: 2XHE.cif
+  url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/2XHE.cif
+  exercises: même entrée en mmCIF
+  sha256: ec6ef1ac4edbc3fb38e9ce07abaedb4d9bc041c551126e0be28903a3eaa35d93
+  size_bytes: 1196215
+  biopython_warnings:
+  - 'WARNING: Chain A is discontinuous at line 6267.'
+  - 'WARNING: Chain B is discontinuous at line 6313.'
+  checks:
+  - check: provenance au journal
+    ok: true
+    detail: sha256 ec6ef1ac4edb..., 1196215 octets, gemmi 0.7.5
+  - check: nombre de modèles = Biopython
+    ok: true
+    detail: PepForge 1, Biopython 1
+  - check: atomes identiques à Biopython, pour chaque modèle
+    ok: true
+    detail: 6315 atomes comparés sur 1 modèle(s)
+  - check: résidus non observés = en-tête
+    ok: true
+    detail: PepForge 142, en-tête 142
+  - check: liaisons déclarées = en-tête
+    ok: true
+    detail: PepForge 0, en-tête 0
+  - check: eaux = Biopython
+    ok: true
+    detail: PepForge 48, Biopython 48
+  - check: résidus à conformations alternatives = Biopython
+    ok: true
+    detail: PepForge 0, Biopython 0
+  - check: écriture pdb puis relecture sans perte
+    ok: true
+    detail: 6315 atomes
+  - check: écriture mmcif puis relecture sans perte
+    ok: true
+    detail: 6315 atomes
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['break_declared', 'unobserved_C'], attendus ['break_declared',
+      'unobserved_C']
+  - check: 'chaîne B : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['break_declared', 'unobserved_C', 'unobserved_N'], attendus ['break_declared',
+      'unobserved_C', 'unobserved_N']
+  inventory:
+    atoms: 6315
+    hydrogens: 0
+    chains:
+      A:
+        standard: 567
+        amino_acid_like: 567
+        waters: 46
+        ions: []
+        unrecognized: {}
+        numbering_gaps:
+        - - A:LYS509
+          - A:GLU561
+        insertion_codes: 0
+      B:
+        standard: 220
+        amino_acid_like: 220
+        waters: 2
+        ions: []
+        unrecognized: {}
+        numbering_gaps:
+        - - B:GLN15
+          - B:PRO39
+        - - B:GLY192
+          - B:ASN210
+        insertion_codes: 0
+    alternate_location_residues: 0
+    declared_missing_residues: 142
+    connections: {}
+    pending_decisions:
+    - '142 résidu(s) déclaré(s) non observé(s) par le fichier : les reconstruire,
+      ou tronquer et coiffer les extrémités.'
+    - '3 saut(s) de numérotation, qui ne prouvent pas une rupture : le rapport d''extraction
+      (--chain) mesure la liaison C–N de chaque jonction (A:LYS509 → A:GLU561; B:GLN15
+      → B:PRO39; B:GLY192 → B:ASN210).'
+    - '48 molécule(s) d''eau cristallographique : les garder ou les retirer.'
+    - 'Aucun hydrogène : ils devront être ajoutés selon les états de protonation.'
+  peptides:
+    A:
+      accepted: false
+      junctions_by_category:
+        break_declared: 1
+        continuous: 565
+      notable_junctions:
+      - 'A:LYS509 → A:GLU561 : break_declared, 27.630 Å'
+      insertion_code_junctions: 0
+      components: {}
+      waters: 46
+      unobserved_termini:
+        C: 32
+      declared_missing_atoms: 4
+      absent_backbone_atoms:
+      - A:ALA617:CA
+      - A:ALA617:C
+      - A:ALA617:O
+      refusal_causes:
+      - break_declared
+      - unobserved_C
+    B:
+      accepted: false
+      junctions_by_category:
+        break_declared: 2
+        continuous: 217
+      notable_junctions:
+      - 'B:GLN15 → B:PRO39 : break_declared, 29.003 Å'
+      - 'B:GLY192 → B:ASN210 : break_declared, 15.130 Å'
+      insertion_code_junctions: 0
+      components: {}
+      waters: 2
+      unobserved_termini:
+        N: 1
+        C: 18
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - break_declared
+      - unobserved_C
+      - unobserved_N
+- file: 1LCD.pdb
+  url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/1LCD.pdb
+  exercises: RMN, 3 modèles ; complexe protéine–ADN ; ion Na
+  sha256: 6463692051d43ead69fdd72af80a4a98344bc9c9705ca280e57b958cdd9f630b
+  size_bytes: 291296
+  biopython_warnings:
+  - 'WARNING: Chain A is discontinuous at line 1542.'
+  - 'WARNING: Chain A is discontinuous at line 2693.'
+  - 'WARNING: Chain A is discontinuous at line 3799.'
+  - 'WARNING: Chain B is discontinuous at line 1473.'
+  - 'WARNING: Chain B is discontinuous at line 2615.'
+  - 'WARNING: Chain B is discontinuous at line 3745.'
+  - 'WARNING: Chain C is discontinuous at line 1472.'
+  - 'WARNING: Chain C is discontinuous at line 1509.'
+  - 'WARNING: Chain C is discontinuous at line 2614.'
+  - 'WARNING: Chain C is discontinuous at line 2645.'
+  - 'WARNING: Chain C is discontinuous at line 3744.'
+  - 'WARNING: Chain C is discontinuous at line 3775.'
+  checks:
+  - check: provenance au journal
+    ok: true
+    detail: sha256 6463692051d4..., 291296 octets, gemmi 0.7.5
+  - check: nombre de modèles = Biopython
+    ok: true
+    detail: PepForge 3, Biopython 3
+  - check: atomes identiques à Biopython, pour chaque modèle
+    ok: true
+    detail: 3384 atomes comparés sur 3 modèle(s)
+  - check: résidus non observés = en-tête
+    ok: true
+    detail: PepForge 0, en-tête 0
+  - check: liaisons déclarées = en-tête
+    ok: true
+    detail: PepForge 4, en-tête 4
+  - check: eaux = Biopython
+    ok: true
+    detail: PepForge 49, Biopython 49
+  - check: résidus à conformations alternatives = Biopython
+    ok: true
+    detail: PepForge 0, Biopython 0
+  - check: écriture pdb puis relecture sans perte
+    ok: true
+    detail: 1137 atomes
+  - check: écriture mmcif puis relecture sans perte
+    ok: true
+    detail: 1137 atomes
+  - check: chaîne B refusée comme non peptidique
+    ok: true
+    detail: 'Chaîne B : aucun acide aminé (ni N, CA, C, ni groupe terminal) ; chaîne
+      non peptidique, composants : DA, DC, DG, DT, HOH'
+  - check: chaîne C refusée comme non peptidique
+    ok: true
+    detail: 'Chaîne C : aucun acide aminé (ni N, CA, C, ni groupe terminal) ; chaîne
+      non peptidique, composants : DA, DC, DG, DT, HOH, NA'
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus aucun (acceptée), attendus []
+  inventory:
+    atoms: 1137
+    hydrogens: 243
+    chains:
+      B:
+        standard: 0
+        amino_acid_like: 0
+        waters: 12
+        ions: []
+        unrecognized:
+          DA: 3
+          DC: 1
+          DG: 4
+          DT: 3
+        numbering_gaps: []
+        insertion_codes: 0
+      C:
+        standard: 0
+        amino_acid_like: 0
+        waters: 11
+        ions:
+        - C:NA12
+        unrecognized:
+          DA: 3
+          DC: 4
+          DG: 1
+          DT: 3
+        numbering_gaps: []
+        insertion_codes: 0
+      A:
+        standard: 51
+        amino_acid_like: 51
+        waters: 26
+        ions: []
+        unrecognized: {}
+        numbering_gaps: []
+        insertion_codes: 0
+    alternate_location_residues: 0
+    declared_missing_residues: 0
+    connections:
+      metal_coordination: 4
+    pending_decisions:
+    - 'Fichier à 3 modèles : seul le modèle 1 est lu ; vérifier que c''est le modèle
+      voulu.'
+    - 'Composants non reconnus par la bibliothèque : DA×6, DC×5, DG×5, DT×6 ; pour
+      chacun, le garder (et le paramétrer) ou le retirer.'
+    - '1 ion(s) : les garder ou les retirer (C:NA12).'
+    - '49 molécule(s) d''eau cristallographique : les garder ou les retirer.'
+    - '243 hydrogène(s) présents : vérifier qu''ils correspondent aux états de protonation
+      choisis, ou les retirer pour les reconstruire.'
+    - 'Liaisons déclarées par le fichier (metal_coordination ×4) : à confirmer.'
+  peptides:
+    B: 'refusé (StructureError) : Chaîne B : aucun acide aminé (ni N, CA, C, ni groupe
+      terminal) ; chaîne non peptidique, composants : DA, DC, DG, DT, HOH'
+    C: 'refusé (StructureError) : Chaîne C : aucun acide aminé (ni N, CA, C, ni groupe
+      terminal) ; chaîne non peptidique, composants : DA, DC, DG, DT, HOH, NA'
+    A:
+      accepted: true
+      junctions_by_category:
+        continuous: 50
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components: {}
+      waters: 26
+      unobserved_termini: {}
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes: []
+      residues: MET-LYS-PRO-VAL-THR-LEU-TYR-ASP-VAL-ALA-GLU-TYR-ALA-GLY-VAL-SER-TYR-GLN-THR-VAL-SER-ARG-VAL-VAL-ASN-GLN-ALA-SER-HIS-VAL-SER-ALA-LYS-THR-ARG-GLU-LYS-VAL-GLU-ALA-ALA-MET-ALA-GLU-LEU-ASN-TYR-ILE-PRO-ASN-ARG
+      n_terminus_from_structure: true
+      c_terminus_from_structure: true
+      n_terminus: free_amine
+      c_terminus: free_acid
+      disulfides: []
+- file: 1LCD.cif
+  url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/1LCD.cif
+  exercises: même entrée en mmCIF ; liaisons hydrogène déclarées dans struct_conn
+  sha256: 63af4ed8e526487095576981cbd779860b98ed179ad4f6b40dc5bf38cac5623e
+  size_bytes: 473117
+  biopython_warnings:
+  - 'WARNING: Chain A is discontinuous at line 2127.'
+  - 'WARNING: Chain A is discontinuous at line 3252.'
+  - 'WARNING: Chain A is discontinuous at line 990.'
+  - 'WARNING: Chain B is discontinuous at line 1068.'
+  - 'WARNING: Chain B is discontinuous at line 2184.'
+  - 'WARNING: Chain B is discontinuous at line 3330.'
+  - 'WARNING: Chain C is discontinuous at line 1104.'
+  - 'WARNING: Chain C is discontinuous at line 2126.'
+  - 'WARNING: Chain C is discontinuous at line 2214.'
+  - 'WARNING: Chain C is discontinuous at line 3251.'
+  - 'WARNING: Chain C is discontinuous at line 3360.'
+  - 'WARNING: Chain C is discontinuous at line 989.'
+  checks:
+  - check: provenance au journal
+    ok: true
+    detail: sha256 63af4ed8e526..., 473117 octets, gemmi 0.7.5
+  - check: nombre de modèles = Biopython
+    ok: true
+    detail: PepForge 3, Biopython 3
+  - check: atomes identiques à Biopython, pour chaque modèle
+    ok: true
+    detail: 3384 atomes comparés sur 3 modèle(s)
+  - check: résidus non observés = en-tête
+    ok: true
+    detail: PepForge 0, en-tête 0
+  - check: liaisons déclarées = en-tête
+    ok: true
+    detail: PepForge 31, en-tête 31
+  - check: eaux = Biopython
+    ok: true
+    detail: PepForge 49, Biopython 49
+  - check: résidus à conformations alternatives = Biopython
+    ok: true
+    detail: PepForge 0, Biopython 0
+  - check: écriture pdb refusée plutôt qu'incomplète
+    ok: true
+    detail: 'Structure non représentable en PDB sans perte : liaisons déclarées sans
+      équivalent PDB : hydrogen_bond ×27 ; écrire en mmCIF'
+  - check: écriture mmcif puis relecture sans perte
+    ok: true
+    detail: 1137 atomes
+  - check: chaîne B refusée comme non peptidique
+    ok: true
+    detail: 'Chaîne B : aucun acide aminé (ni N, CA, C, ni groupe terminal) ; chaîne
+      non peptidique, composants : DA, DC, DG, DT, HOH'
+  - check: chaîne C refusée comme non peptidique
+    ok: true
+    detail: 'Chaîne C : aucun acide aminé (ni N, CA, C, ni groupe terminal) ; chaîne
+      non peptidique, composants : DA, DC, DG, DT, HOH, NA'
+  - check: séquence de la chaîne A = séquence déclarée (_entity_poly)
+    ok: true
+    detail: lue MKPVTLYDVAEYAGVSYQTVSRVVNQASHVSAKTREKVEAAMAELNYIPNR, déclarée MKPVTLYDVAEYAGVSYQTVSRVVNQASHVSAKTREKVEAAMAELNYIPNR
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus aucun (acceptée), attendus []
+  inventory:
+    atoms: 1137
+    hydrogens: 243
+    chains:
+      B:
+        standard: 0
+        amino_acid_like: 0
+        waters: 12
+        ions: []
+        unrecognized:
+          DA: 3
+          DC: 1
+          DG: 4
+          DT: 3
+        numbering_gaps: []
+        insertion_codes: 0
+      C:
+        standard: 0
+        amino_acid_like: 0
+        waters: 11
+        ions:
+        - C:NA12
+        unrecognized:
+          DA: 3
+          DC: 4
+          DG: 1
+          DT: 3
+        numbering_gaps: []
+        insertion_codes: 0
+      A:
+        standard: 51
+        amino_acid_like: 51
+        waters: 26
+        ions: []
+        unrecognized: {}
+        numbering_gaps: []
+        insertion_codes: 0
+    alternate_location_residues: 0
+    declared_missing_residues: 0
+    connections:
+      hydrogen_bond: 27
+      metal_coordination: 4
+    pending_decisions:
+    - 'Fichier à 3 modèles : seul le modèle 1 est lu ; vérifier que c''est le modèle
+      voulu.'
+    - 'Composants non reconnus par la bibliothèque : DA×6, DC×5, DG×5, DT×6 ; pour
+      chacun, le garder (et le paramétrer) ou le retirer.'
+    - '1 ion(s) : les garder ou les retirer (C:NA12).'
+    - '49 molécule(s) d''eau cristallographique : les garder ou les retirer.'
+    - '243 hydrogène(s) présents : vérifier qu''ils correspondent aux états de protonation
+      choisis, ou les retirer pour les reconstruire.'
+    - 'Liaisons déclarées par le fichier (hydrogen_bond ×27, metal_coordination ×4)
+      : à confirmer.'
+  peptides:
+    B: 'refusé (StructureError) : Chaîne B : aucun acide aminé (ni N, CA, C, ni groupe
+      terminal) ; chaîne non peptidique, composants : DA, DC, DG, DT, HOH'
+    C: 'refusé (StructureError) : Chaîne C : aucun acide aminé (ni N, CA, C, ni groupe
+      terminal) ; chaîne non peptidique, composants : DA, DC, DG, DT, HOH, NA'
+    A:
+      accepted: true
+      junctions_by_category:
+        continuous: 50
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components: {}
+      waters: 26
+      unobserved_termini: {}
+      declared_missing_atoms: 304
+      absent_backbone_atoms: []
+      refusal_causes: []
+      residues: MET-LYS-PRO-VAL-THR-LEU-TYR-ASP-VAL-ALA-GLU-TYR-ALA-GLY-VAL-SER-TYR-GLN-THR-VAL-SER-ARG-VAL-VAL-ASN-GLN-ALA-SER-HIS-VAL-SER-ALA-LYS-THR-ARG-GLU-LYS-VAL-GLU-ALA-ALA-MET-ALA-GLU-LEU-ASN-TYR-ILE-PRO-ASN-ARG
+      n_terminus_from_structure: true
+      c_terminus_from_structure: true
+      n_terminus: free_amine
+      c_terminus: free_acid
+      disulfides: []
+- file: 2BEG.cif
+  url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/2BEG.cif
+  exercises: RMN, 10 modèles ; fibrille Aβ(17-42), 5 chaînes peptidiques ; hydrogènes
+  sha256: f31188fb503b95c518d1881cdb400157f666f3765fa2baae5977d7a8e40fed3c
+  size_bytes: 1852966
+  biopython_warnings: []
+  checks:
+  - check: provenance au journal
+    ok: true
+    detail: sha256 f31188fb503b..., 1852966 octets, gemmi 0.7.5
+  - check: nombre de modèles = Biopython
+    ok: true
+    detail: PepForge 10, Biopython 10
+  - check: atomes identiques à Biopython, pour chaque modèle
+    ok: true
+    detail: 18550 atomes comparés sur 10 modèle(s)
+  - check: résidus non observés = en-tête
+    ok: true
+    detail: PepForge 80, en-tête 80
+  - check: liaisons déclarées = en-tête
+    ok: true
+    detail: PepForge 0, en-tête 0
+  - check: eaux = Biopython
+    ok: true
+    detail: PepForge 0, Biopython 0
+  - check: résidus à conformations alternatives = Biopython
+    ok: true
+    detail: PepForge 0, Biopython 0
+  - check: écriture pdb puis relecture sans perte
+    ok: true
+    detail: 1855 atomes
+  - check: écriture mmcif puis relecture sans perte
+    ok: true
+    detail: 1855 atomes
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['unobserved_N'], attendus ['unobserved_N']
+  - check: 'chaîne B : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['unobserved_N'], attendus ['unobserved_N']
+  - check: 'chaîne C : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['unobserved_N'], attendus ['unobserved_N']
+  - check: 'chaîne D : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['unobserved_N'], attendus ['unobserved_N']
+  - check: 'chaîne E : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['unobserved_N'], attendus ['unobserved_N']
+  inventory:
+    atoms: 1855
+    hydrogens: 955
+    chains:
+      A:
+        standard: 26
+        amino_acid_like: 26
+        waters: 0
+        ions: []
+        unrecognized: {}
+        numbering_gaps: []
+        insertion_codes: 0
+      B:
+        standard: 26
+        amino_acid_like: 26
+        waters: 0
+        ions: []
+        unrecognized: {}
+        numbering_gaps: []
+        insertion_codes: 0
+      C:
+        standard: 26
+        amino_acid_like: 26
+        waters: 0
+        ions: []
+        unrecognized: {}
+        numbering_gaps: []
+        insertion_codes: 0
+      D:
+        standard: 26
+        amino_acid_like: 26
+        waters: 0
+        ions: []
+        unrecognized: {}
+        numbering_gaps: []
+        insertion_codes: 0
+      E:
+        standard: 26
+        amino_acid_like: 26
+        waters: 0
+        ions: []
+        unrecognized: {}
+        numbering_gaps: []
+        insertion_codes: 0
+    alternate_location_residues: 0
+    declared_missing_residues: 80
+    connections: {}
+    pending_decisions:
+    - 'Fichier à 10 modèles : seul le modèle 1 est lu ; vérifier que c''est le modèle
+      voulu.'
+    - '80 résidu(s) déclaré(s) non observé(s) par le fichier : les reconstruire, ou
+      tronquer et coiffer les extrémités.'
+    - '955 hydrogène(s) présents : vérifier qu''ils correspondent aux états de protonation
+      choisis, ou les retirer pour les reconstruire.'
+  peptides:
+    A:
+      accepted: false
+      junctions_by_category:
+        continuous: 25
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components: {}
+      waters: 0
+      unobserved_termini:
+        N: 16
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - unobserved_N
+    B:
+      accepted: false
+      junctions_by_category:
+        continuous: 25
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components: {}
+      waters: 0
+      unobserved_termini:
+        N: 16
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - unobserved_N
+    C:
+      accepted: false
+      junctions_by_category:
+        continuous: 25
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components: {}
+      waters: 0
+      unobserved_termini:
+        N: 16
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - unobserved_N
+    D:
+      accepted: false
+      junctions_by_category:
+        continuous: 25
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components: {}
+      waters: 0
+      unobserved_termini:
+        N: 16
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - unobserved_N
+    E:
+      accepted: false
+      junctions_by_category:
+        continuous: 25
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components: {}
+      waters: 0
+      unobserved_termini:
+        N: 16
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - unobserved_N
+- file: 2BEG.pdb
+  url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/2BEG.pdb
+  exercises: 'copie raccourcie par Biopython : 1 modèle, mais NUMMDL 10'
+  sha256: d9eabd867c51f7024a96939fef92d50d0e9fe2985d92d38a04aea9881c9ba48b
+  size_bytes: 179091
+  biopython_warnings: []
+  pepforge_read: 'REFUSÉ : https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/2BEG.pdb
+    : l''en-tête NUMMDL annonce 10 modèle(s), le fichier en contient 1 (fichier tronqué
+    ou en-tête incohérent)'
+  checks:
+  - check: refus attendu d'un fichier tronqué
+    ok: true
+    detail: Biopython lit le fichier sans erreur (1 modèle(s)) ; PepForge refuse.
+- file: 1AS5.cif
+  url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/1AS5.cif
+  exercises: RMN, 14 modèles ; petit peptide à hydroxyprolines HYP et C-ter NH2
+  sha256: 7c8ac6e93244679a8651369269bdd587a73d1a4ffb7aa4bfa8b8be8795c40c04
+  size_bytes: 520713
+  biopython_warnings: []
+  checks:
+  - check: provenance au journal
+    ok: true
+    detail: sha256 7c8ac6e93244..., 520713 octets, gemmi 0.7.5
+  - check: nombre de modèles = Biopython
+    ok: true
+    detail: PepForge 14, Biopython 14
+  - check: atomes identiques à Biopython, pour chaque modèle
+    ok: true
+    detail: 4998 atomes comparés sur 14 modèle(s)
+  - check: résidus non observés = en-tête
+    ok: true
+    detail: PepForge 0, en-tête 0
+  - check: liaisons déclarées = en-tête
+    ok: true
+    detail: PepForge 9, en-tête 9
+  - check: eaux = Biopython
+    ok: true
+    detail: PepForge 0, Biopython 0
+  - check: résidus à conformations alternatives = Biopython
+    ok: true
+    detail: PepForge 0, Biopython 0
+  - check: écriture pdb puis relecture sans perte
+    ok: true
+    detail: 357 atomes
+  - check: écriture mmcif puis relecture sans perte
+    ok: true
+    detail: 357 atomes
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['modified_residue'], attendus ['modified_residue']
+  inventory:
+    atoms: 357
+    hydrogens: 172
+    chains:
+      A:
+        standard: 21
+        amino_acid_like: 24
+        waters: 0
+        ions: []
+        unrecognized:
+          HYP: 3
+          NH2: 1
+        numbering_gaps: []
+        insertion_codes: 0
+    alternate_location_residues: 0
+    declared_missing_residues: 0
+    connections:
+      covalent: 6
+      disulfide: 3
+    pending_decisions:
+    - 'Fichier à 14 modèles : seul le modèle 1 est lu ; vérifier que c''est le modèle
+      voulu.'
+    - 'Composants non reconnus par la bibliothèque : HYP×3, NH2×1 ; pour chacun, le
+      garder (et le paramétrer) ou le retirer.'
+    - '172 hydrogène(s) présents : vérifier qu''ils correspondent aux états de protonation
+      choisis, ou les retirer pour les reconstruire.'
+    - 'Liaisons déclarées par le fichier (covalent ×6, disulfide ×3) : à confirmer.'
+  peptides:
+    A:
+      accepted: false
+      junctions_by_category:
+        continuous: 24
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components:
+        A:HYP2: modified_residue
+        A:HYP3: modified_residue
+        A:HYP14: modified_residue
+        A:NH225: terminal_cap
+      waters: 0
+      unobserved_termini: {}
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - modified_residue
+- file: 2n0n_M1.pdb
+  url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/2n0n_M1.pdb
+  exercises: 'copie d''un modèle d''un ensemble RMN : NUMMDL 20 ; AIB, NH2'
+  sha256: e02187d928c59b9e5d0da941945b40b596459430c88b2baf64762effb955aabd
+  size_bytes: 32157
+  biopython_warnings: []
+  pepforge_read: 'REFUSÉ : https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/2n0n_M1.pdb
+    : l''en-tête NUMMDL annonce 20 modèle(s), le fichier en contient 1 (fichier tronqué
+    ou en-tête incohérent)'
+  checks:
+  - check: refus attendu d'un fichier tronqué
+    ok: true
+    detail: Biopython lit le fichier sans erreur (1 modèle(s)) ; PepForge refuse.
+- file: 7DDO.pdb
+  url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/7DDO.pdb
+  exercises: cryo-ME ; conformations alternatives ; ion Zn ; glycanes NAG
+  sha256: d6f4f7bacd3a8c8d21c4ec9d2543d74887a38fe469fd9840f8b9275f4039dd50
+  size_bytes: 559224
+  biopython_warnings:
+  - 'WARNING: Chain A is discontinuous at line 6768.'
+  - 'WARNING: Chain C is discontinuous at line 6811.'
+  checks:
+  - check: provenance au journal
+    ok: true
+    detail: sha256 d6f4f7bacd3a..., 559224 octets, gemmi 0.7.5
+  - check: nombre de modèles = Biopython
+    ok: true
+    detail: PepForge 1, Biopython 1
+  - check: atomes identiques à Biopython, pour chaque modèle
+    ok: true
+    detail: 6468 atomes comparés sur 1 modèle(s)
+  - check: résidus non observés = en-tête
+    ok: true
+    detail: PepForge 15, en-tête 15
+  - check: liaisons déclarées = en-tête
+    ok: true
+    detail: PepForge 14, en-tête 14
+  - check: eaux = Biopython
+    ok: true
+    detail: PepForge 0, Biopython 0
+  - check: résidus à conformations alternatives = Biopython
+    ok: true
+    detail: PepForge 1, Biopython 1
+  - check: écriture pdb puis relecture sans perte
+    ok: true
+    detail: 6468 atomes
+  - check: écriture mmcif puis relecture sans perte
+    ok: true
+    detail: 6468 atomes
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['side_chain_modification'], attendus ['side_chain_modification']
+  - check: 'chaîne C : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['side_chain_modification', 'unobserved_C', 'unobserved_N'], attendus
+      ['side_chain_modification', 'unobserved_C', 'unobserved_N']
+  inventory:
+    atoms: 6468
+    hydrogens: 0
+    chains:
+      A:
+        standard: 597
+        amino_acid_like: 597
+        waters: 0
+        ions:
+        - A:ZN901
+        unrecognized:
+          NAG: 3
+        numbering_gaps: []
+        insertion_codes: 0
+      C:
+        standard: 194
+        amino_acid_like: 194
+        waters: 0
+        ions: []
+        unrecognized:
+          NAG: 1
+        numbering_gaps: []
+        insertion_codes: 0
+    alternate_location_residues: 1
+    declared_missing_residues: 15
+    connections:
+      covalent: 4
+      disulfide: 7
+      metal_coordination: 3
+    pending_decisions:
+    - '1 résidu(s) à conformations alternatives : en choisir une par résidu avant
+      toute paramétrisation.'
+    - '15 résidu(s) déclaré(s) non observé(s) par le fichier : les reconstruire, ou
+      tronquer et coiffer les extrémités.'
+    - 'Composants non reconnus par la bibliothèque : NAG×4 ; pour chacun, le garder
+      (et le paramétrer) ou le retirer.'
+    - '1 ion(s) : les garder ou les retirer (A:ZN901).'
+    - 'Aucun hydrogène : ils devront être ajoutés selon les états de protonation.'
+    - 'Liaisons déclarées par le fichier (covalent ×4, disulfide ×7, metal_coordination
+      ×3) : à confirmer.'
+  peptides:
+    A:
+      accepted: false
+      junctions_by_category:
+        continuous: 596
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components:
+        A:ZN901: ion
+        A:NAG902: side_chain_modification
+        A:NAG903: side_chain_modification
+        A:NAG904: side_chain_modification
+      waters: 0
+      unobserved_termini: {}
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - side_chain_modification
+    C:
+      accepted: false
+      junctions_by_category:
+        continuous: 193
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components:
+        C:NAG601: side_chain_modification
+      waters: 0
+      unobserved_termini:
+        N: 14
+        C: 1
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - side_chain_modification
+      - unobserved_C
+      - unobserved_N
+- file: 6WQA.cif
+  url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/6WQA.cif
+  exercises: 98 atomes à conformations alternatives ; ligand
+  sha256: 484ff1689177aee680604631b9139199db8064f7de783e267f51cdfdf1769e6f
+  size_bytes: 234669
+  biopython_warnings: []
+  checks:
+  - check: provenance au journal
+    ok: true
+    detail: sha256 484ff1689177..., 234669 octets, gemmi 0.7.5
+  - check: nombre de modèles = Biopython
+    ok: true
+    detail: PepForge 1, Biopython 1
+  - check: atomes identiques à Biopython, pour chaque modèle
+    ok: true
+    detail: 3003 atomes comparés sur 1 modèle(s)
+  - check: résidus non observés = en-tête
+    ok: true
+    detail: PepForge 0, en-tête 0
+  - check: liaisons déclarées = en-tête
+    ok: true
+    detail: PepForge 0, en-tête 0
+  - check: eaux = Biopython
+    ok: true
+    detail: PepForge 0, Biopython 0
+  - check: résidus à conformations alternatives = Biopython
+    ok: true
+    detail: PepForge 6, Biopython 6
+  - check: écriture pdb puis relecture sans perte
+    ok: true
+    detail: 3003 atomes
+  - check: écriture mmcif puis relecture sans perte
+    ok: true
+    detail: 3003 atomes
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['break_undeclared'], attendus ['break_undeclared']
+  inventory:
+    atoms: 3003
+    hydrogens: 0
+    chains:
+      A:
+        standard: 391
+        amino_acid_like: 391
+        waters: 0
+        ions: []
+        unrecognized:
+          ZMA: 1
+        numbering_gaps:
+        - - A:LEU208
+          - A:ALA1001
+        - - A:ALA1043
+          - A:ASP1060
+        - - A:LEU1106
+          - A:GLU219
+        insertion_codes: 0
+    alternate_location_residues: 6
+    declared_missing_residues: 0
+    connections: {}
+    pending_decisions:
+    - '6 résidu(s) à conformations alternatives : en choisir une par résidu avant
+      toute paramétrisation.'
+    - '3 saut(s) de numérotation, qui ne prouvent pas une rupture : le rapport d''extraction
+      (--chain) mesure la liaison C–N de chaque jonction (A:LEU208 → A:ALA1001; A:ALA1043
+      → A:ASP1060; A:LEU1106 → A:GLU219).'
+    - 'Composants non reconnus par la bibliothèque : ZMA×1 ; pour chacun, le garder
+      (et le paramétrer) ou le retirer.'
+    - 'Aucun hydrogène : ils devront être ajoutés selon les états de protonation.'
+  peptides:
+    A:
+      accepted: false
+      junctions_by_category:
+        break_undeclared: 1
+        continuous: 387
+        numbering_discontinuity: 2
+      notable_junctions:
+      - 'A:LEU208 → A:ALA1001 : numbering_discontinuity, 1.355 Å'
+      - 'A:ALA1043 → A:ASP1060 : break_undeclared, 14.081 Å'
+      - 'A:LEU1106 → A:GLU219 : numbering_discontinuity, 1.351 Å'
+      insertion_code_junctions: 0
+      components:
+        A:ZMA1202: unbound_ligand
+      waters: 0
+      unobserved_termini: {}
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes:
+      - break_undeclared
+- file: 4ZHL.cif
+  url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/4ZHL.cif
+  exercises: codes d'insertion (numérotation chymotrypsine) ; chaîne peptidique P
+    de 10 résidus
+  sha256: b40655504ff4982cf8df49911019ada322d410a93d9bf66c65a9000e2531f60f
+  size_bytes: 263982
+  biopython_warnings:
+  - 'WARNING: Chain P is discontinuous at line 2078.'
+  - 'WARNING: Chain U is discontinuous at line 2030.'
+  checks:
+  - check: provenance au journal
+    ok: true
+    detail: sha256 b40655504ff4..., 263982 octets, gemmi 0.7.5
+  - check: nombre de modèles = Biopython
+    ok: true
+    detail: PepForge 1, Biopython 1
+  - check: atomes identiques à Biopython, pour chaque modèle
+    ok: true
+    detail: 2080 atomes comparés sur 1 modèle(s)
+  - check: résidus non observés = en-tête
+    ok: true
+    detail: PepForge 0, en-tête 0
+  - check: liaisons déclarées = en-tête
+    ok: true
+    detail: PepForge 4, en-tête 4
+  - check: eaux = Biopython
+    ok: true
+    detail: PepForge 50, Biopython 50
+  - check: résidus à conformations alternatives = Biopython
+    ok: true
+    detail: PepForge 0, Biopython 0
+  - check: écriture pdb puis relecture sans perte
+    ok: true
+    detail: 2080 atomes
+  - check: écriture mmcif puis relecture sans perte
+    ok: true
+    detail: 2080 atomes
+  - check: séquence de la chaîne U = séquence déclarée (_entity_poly)
+    ok: true
+    detail: lue IIGGEFTTIENQPWFAAIYRRHRGGSVTYVCGGSLISPCWVISATHCFIDYPKKEDYIVYLGRSRLNSNTQGEMKFEVENLILHKDYSADTLAYHNDIALLKIRSKEGRCAQPSRTIQTIALPSMYNDPQFGTSCEITGFGKEQSTDYLYPEQLKMTVVKLISHRECQQPHYYGSEVTTKMLCAADPQWKTDSCQGDSGGPLVCSLQGRMTLTGIVSWGRGCALKDKPGVYTRVSHFLPWIRSHTKE,
+      déclarée IIGGEFTTIENQPWFAAIYRRHRGGSVTYVCGGSLISPCWVISATHCFIDYPKKEDYIVYLGRSRLNSNTQGEMKFEVENLILHKDYSADTLAYHNDIALLKIRSKEGRCAQPSRTIQTIALPSMYNDPQFGTSCEITGFGKEQSTDYLYPEQLKMTVVKLISHRECQQPHYYGSEVTTKMLCAADPQWKTDSCQGDSGGPLVCSLQGRMTLTGIVSWGRGCALKDKPGVYTRVSHFLPWIRSHTKE
+  - check: 'chaîne U : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus aucun (acceptée), attendus []
+  - check: séquence de la chaîne P = séquence déclarée (_entity_poly)
+    ok: true
+    detail: lue CPAYSRYIGC, déclarée CPAYSRYIGC
+  - check: 'chaîne P : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus aucun (acceptée), attendus []
+  inventory:
+    atoms: 2080
+    hydrogens: 0
+    chains:
+      U:
+        standard: 247
+        amino_acid_like: 247
+        waters: 48
+        ions: []
+        unrecognized: {}
+        numbering_gaps:
+        - - U:ARG217
+          - U:GLY219
+        insertion_codes: 19
+      P:
+        standard: 10
+        amino_acid_like: 10
+        waters: 2
+        ions: []
+        unrecognized: {}
+        numbering_gaps: []
+        insertion_codes: 0
+    alternate_location_residues: 0
+    declared_missing_residues: 0
+    connections:
+      disulfide: 4
+    pending_decisions:
+    - '1 saut(s) de numérotation, qui ne prouvent pas une rupture : le rapport d''extraction
+      (--chain) mesure la liaison C–N de chaque jonction (U:ARG217 → U:GLY219).'
+    - '50 molécule(s) d''eau cristallographique : les garder ou les retirer.'
+    - 'Aucun hydrogène : ils devront être ajoutés selon les états de protonation.'
+    - 'Liaisons déclarées par le fichier (disulfide ×4) : à confirmer.'
+  peptides:
+    U:
+      accepted: true
+      junctions_by_category:
+        continuous: 218
+        numbering_discontinuity: 28
+      notable_junctions:
+      - 'U:ARG217 → U:GLY219 : numbering_discontinuity, 1.316 Å'
+      insertion_code_junctions: 27
+      components: {}
+      waters: 48
+      unobserved_termini: {}
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes: []
+      residues: ILE-ILE-GLY-GLY-GLU-PHE-THR-THR-ILE-GLU-ASN-GLN-PRO-TRP-PHE-ALA-ALA-ILE-TYR-ARG-ARG-HIS-ARG-GLY-GLY-SER-VAL-THR-TYR-VAL-CYS-GLY-GLY-SER-LEU-ILE-SER-PRO-CYS-TRP-VAL-ILE-SER-ALA-THR-HIS-CYS-PHE-ILE-ASP-TYR-PRO-LYS-LYS-GLU-ASP-TYR-ILE-VAL-TYR-LEU-GLY-ARG-SER-ARG-LEU-ASN-SER-ASN-THR-GLN-GLY-GLU-MET-LYS-PHE-GLU-VAL-GLU-ASN-LEU-ILE-LEU-HIS-LYS-ASP-TYR-SER-ALA-ASP-THR-LEU-ALA-TYR-HIS-ASN-ASP-ILE-ALA-LEU-LEU-LYS-ILE-ARG-SER-LYS-GLU-GLY-ARG-CYS-ALA-GLN-PRO-SER-ARG-THR-ILE-GLN-THR-ILE-ALA-LEU-PRO-SER-MET-TYR-ASN-ASP-PRO-GLN-PHE-GLY-THR-SER-CYS-GLU-ILE-THR-GLY-PHE-GLY-LYS-GLU-GLN-SER-THR-ASP-TYR-LEU-TYR-PRO-GLU-GLN-LEU-LYS-MET-THR-VAL-VAL-LYS-LEU-ILE-SER-HIS-ARG-GLU-CYS-GLN-GLN-PRO-HIS-TYR-TYR-GLY-SER-GLU-VAL-THR-THR-LYS-MET-LEU-CYS-ALA-ALA-ASP-PRO-GLN-TRP-LYS-THR-ASP-SER-CYS-GLN-GLY-ASP-SER-GLY-GLY-PRO-LEU-VAL-CYS-SER-LEU-GLN-GLY-ARG-MET-THR-LEU-THR-GLY-ILE-VAL-SER-TRP-GLY-ARG-GLY-CYS-ALA-LEU-LYS-ASP-LYS-PRO-GLY-VAL-TYR-THR-ARG-VAL-SER-HIS-PHE-LEU-PRO-TRP-ILE-ARG-SER-HIS-THR-LYS-GLU
+      n_terminus_from_structure: false
+      c_terminus_from_structure: false
+      n_terminus: free_amine
+      c_terminus: free_acid
+      disulfides:
+      - - 31
+        - 47
+      - - 167
+        - 183
+      - - 194
+        - 222
+    P:
+      accepted: true
+      junctions_by_category:
+        continuous: 9
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components: {}
+      waters: 2
+      unobserved_termini: {}
+      declared_missing_atoms: 0
+      absent_backbone_atoms: []
+      refusal_causes: []
+      residues: CYS-PRO-ALA-TYR-SER-ARG-TYR-ILE-GLY-CYS
+      n_terminus_from_structure: false
+      c_terminus_from_structure: false
+      n_terminus: free_amine
+      c_terminus: free_acid
+      disulfides:
+      - - 1
+        - 10
+- file: 4CUP.cif
+  url: https://raw.githubusercontent.com/biopython/biopython/biopython-188/Tests/PDB/4CUP.cif
+  exercises: conformations alternatives ; ligands ; résidus non observés
+  sha256: 847ab687aef01f6bf480b204ac4a29e756bf5fcb4024e2adf4c82e1bfa9951c5
+  size_bytes: 243807
+  biopython_warnings: []
+  checks:
+  - check: provenance au journal
+    ok: true
+    detail: sha256 847ab687aef0..., 243807 octets, gemmi 0.7.5
+  - check: nombre de modèles = Biopython
+    ok: true
+    detail: PepForge 1, Biopython 1
+  - check: atomes identiques à Biopython, pour chaque modèle
+    ok: true
+    detail: 1107 atomes comparés sur 1 modèle(s)
+  - check: résidus non observés = en-tête
+    ok: true
+    detail: PepForge 2, en-tête 2
+  - check: liaisons déclarées = en-tête
+    ok: true
+    detail: PepForge 0, en-tête 0
+  - check: eaux = Biopython
+    ok: true
+    detail: PepForge 146, Biopython 146
+  - check: résidus à conformations alternatives = Biopython
+    ok: true
+    detail: PepForge 2, Biopython 2
+  - check: écriture pdb puis relecture sans perte
+    ok: true
+    detail: 1107 atomes
+  - check: écriture mmcif puis relecture sans perte
+    ok: true
+    detail: 1107 atomes
+  - check: 'chaîne A : motifs de refus attendus par l''analyse'
+    ok: true
+    detail: obtenus ['unobserved_C'], attendus ['unobserved_C']
+  inventory:
+    atoms: 1107
+    hydrogens: 7
+    chains:
+      A:
+        standard: 115
+        amino_acid_like: 115
+        waters: 146
+        ions: []
+        unrecognized:
+          MOH: 3
+          ZYB: 1
+        numbering_gaps: []
+        insertion_codes: 0
+    alternate_location_residues: 2
+    declared_missing_residues: 2
+    connections: {}
+    pending_decisions:
+    - '2 résidu(s) à conformations alternatives : en choisir une par résidu avant
+      toute paramétrisation.'
+    - '2 résidu(s) déclaré(s) non observé(s) par le fichier : les reconstruire, ou
+      tronquer et coiffer les extrémités.'
+    - 'Composants non reconnus par la bibliothèque : MOH×3, ZYB×1 ; pour chacun, le
+      garder (et le paramétrer) ou le retirer.'
+    - '146 molécule(s) d''eau cristallographique : les garder ou les retirer.'
+    - '7 hydrogène(s) présents : vérifier qu''ils correspondent aux états de protonation
+      choisis, ou les retirer pour les reconstruire.'
+  peptides:
+    A:
+      accepted: false
+      junctions_by_category:
+        continuous: 114
+      notable_junctions: []
+      insertion_code_junctions: 0
+      components:
+        A:ZYB2971: unbound_ligand
+        A:MOH2972: unbound_ligand
+        A:MOH2973: unbound_ligand
+        A:MOH2974: unbound_ligand
+      waters: 146
+      unobserved_termini:
+        C: 2
+      declared_missing_atoms: 16
+      absent_backbone_atoms: []
+      refusal_causes:
+      - unobserved_C
+cross_format:
+- entry: 1A8O
+  same_atoms_pdb_vs_mmcif: true
+  atoms:
+  - 644
+  - 644
+  connections_pdb_vs_mmcif:
+  - 7
+  - 7
+  hetero_records_pdb_vs_mmcif:
+  - 120
+  - 88
+- entry: 2XHE
+  same_atoms_pdb_vs_mmcif: true
+  atoms:
+  - 6315
+  - 6315
+  connections_pdb_vs_mmcif:
+  - 0
+  - 0
+  hetero_records_pdb_vs_mmcif:
+  - 48
+  - 48
+- entry: 1LCD
+  same_atoms_pdb_vs_mmcif: true
+  atoms:
+  - 1137
+  - 1137
+  connections_pdb_vs_mmcif:
+  - 4
+  - 31
+  hetero_records_pdb_vs_mmcif:
+  - 148
+  - 148
+summary:
+  checks: 137
+  failed: []

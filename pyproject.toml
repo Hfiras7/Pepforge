@@ -17,6 +17,7 @@ classifiers = [
 ]
 dependencies = [
     "pyyaml>=6.0",
+    "gemmi>=0.7.5,<0.8",
 ]
 
 [project.optional-dependencies]
@@ -26,6 +27,10 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.10",
     "types-PyYAML",
+]
+# Validation scientifique du module 3 : lecteur de référence indépendant (pas une dépendance d'exécution).
+validation = [
+    "biopython==1.88",
 ]
 
 [project.scripts]
@@ -48,8 +53,14 @@ select = ["E", "F", "W", "I", "B", "UP", "N", "SIM", "RUF"]
 # Typographie française (tirets demi-cadratin, signe ×) autorisée dans les textes.
 ignore = ["RUF001", "RUF002", "RUF003"]
 
+[tool.ruff.lint.per-file-ignores]
+# Scripts de validation : motifs de code recopiés tels quels (défauts injectés) et
+# libellés de résultats, plus lisibles sur une ligne.
+"validation/*" = ["E501"]
+
 [tool.mypy]
 python_version = "3.11"
 strict = true
 mypy_path = "src"
 packages = ["pepforge"]
+

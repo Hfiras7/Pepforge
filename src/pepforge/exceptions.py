@@ -70,6 +70,23 @@ class StructureError(PepForgeError):
     """Structure 3D incohérente (atomes manquants, chevauchements, chaîne rompue...)."""
 
 
+class StructureFormatError(StructureError):
+    """Un fichier de structure est mal formé, d'un format non reconnu, ou lu de façon incomplète.
+
+    Exemples : coordonnée illisible ou non finie, format annoncé par l'extension
+    différent du contenu, nombre d'atomes lus différent du nombre d'atomes du
+    fichier, modèle non choisi dans un fichier multi-modèles.
+    """
+
+
+class RetrievalError(StructureError):
+    """Un fichier de structure n'a pas pu être obtenu (disque ou URL), ou il est refusé.
+
+    Exemples : fichier absent, schéma d'URL refusé, délai dépassé, taille au-delà
+    du plafond, réponse HTML, téléchargement tronqué.
+    """
+
+
 class QualityCheckError(PepForgeError):
     """Un contrôle qualité bloquant a échoué à la sortie d'une étape du pipeline."""
 
@@ -78,3 +95,15 @@ class QualityCheckError(PepForgeError):
         self.failures = failures
         details = "; ".join(failures)
         super().__init__(f"Étape « {stage} » : contrôle(s) en échec : {details}")
+
+
+class ExtractionRefusedError(StructureError):
+    """L'extraction d'un peptide depuis une chaîne de structure est refusée.
+
+    Porte le rapport d'extraction complet (`report`), pour que le refus soit
+    expliqué jonction par jonction et composant par composant.
+    """
+
+    def __init__(self, message: str, report: object) -> None:
+        super().__init__(message)
+        self.report = report

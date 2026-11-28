@@ -34,6 +34,12 @@ class ResidueLibrary:
     c_symbols: dict[str, str]
     """Forme écrite de chaque extrémité C, choisie de la même façon."""
 
+    unobserved_terminus: Terminus
+    """Extrémité non chimique (`chemical=False`) d'un segment extrait d'une structure.
+
+    Hors de `n_termini` et `c_termini` : une séquence ne peut pas la déclarer.
+    """
+
     def by_code(self, code: str) -> Residue:
         try:
             return self.residues[code.upper()]
@@ -138,4 +144,18 @@ def load_default_library() -> ResidueLibrary:
         },
         n_symbols=n_symbols,
         c_symbols=c_symbols,
+        unobserved_terminus=_non_chemical(termini["non_chemical_terminus"], n_termini, c_termini),
     )
+
+
+def _non_chemical(
+    entry: dict[str, Any], n_termini: dict[str, Terminus], c_termini: dict[str, Terminus]
+) -> Terminus:
+    """Extrémité non chimique de `termini.yaml`, distincte de toute extrémité chimique."""
+    terminus = Terminus(key=entry["key"], label=entry["label"], chemical=False)
+    if terminus.key in n_termini or terminus.key in c_termini:
+        raise ValueError(
+            f"termini.yaml : l'extrémité non chimique {terminus.key!r} porte la clé "
+            "d'une extrémité chimique"
+        )
+    return terminus

@@ -286,6 +286,11 @@ def _not_writable(peptide: Peptide) -> list[str]:
         for side, terminus in (("N", peptide.n_terminus), ("C", peptide.c_terminus))
         if terminus.protonation is not None
     ]
+    lost += [
+        f"extrémité {side} {terminus.label}, qui n'est pas une extrémité chimique"
+        for side, terminus in (("N", peptide.n_terminus), ("C", peptide.c_terminus))
+        if not terminus.chemical
+    ]
     return lost
 
 
