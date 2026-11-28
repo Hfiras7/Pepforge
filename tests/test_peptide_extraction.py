@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import gzip
 import hashlib
+from dataclasses import replace
 from functools import cache
 from pathlib import Path
 
@@ -83,7 +84,15 @@ def _build(
             x += float(options.get("gap", BOND))  # type: ignore[arg-type]
         names = tuple(options.get("atoms", BACKBONE))  # type: ignore[call-overload]
         names += tuple(options.get("extra", ()))  # type: ignore[call-overload]
-        positions = {"N": (x, 0.0), "CA": (x + 1.0, 0.5), "C": (x + 2.0, 0.0), "O": (x + 2.0, 1.2)}
+        # O à 1,23 Å de C, angle O=C–N de 123° : O(i)–N(i+1) = 2,25 Å, comme dans une
+        # vraie liaison peptidique (avant l'étape C, O était à 1,79 Å du N suivant, ce
+        # que la détection des contacts covalents signale à juste titre).
+        positions = {
+            "N": (x, 0.0),
+            "CA": (x + 1.0, 0.5),
+            "C": (x + 2.0, 0.0),
+            "O": (x + 1.33, 1.03),
+        }
         for offset, atom in enumerate(names):
             serial += 1
             px, py = positions.get(atom, (x + 1.0, 2.0 + offset))
@@ -481,6 +490,18 @@ def _reference(name: str) -> Structure:
     return read_structure(path, journal=Journal())
 
 
+# Contacts SG–SG à distance de liaison, sans liaison déclarée dans ces copies de fichiers
+# (détectés à l'étape C ; le module 3 extrayait ces chaînes sans ces ponts, en silence).
+# Les tests du module 3 qui portent sur autre chose les admettent comme ponts disulfure.
+ZHL_U_CONTACTS = {"U:CYS50–U:CYS111": "disulfide", "U:CYS136–U:CYS201": "disulfide"}
+WQA_A_CONTACTS = {
+    "A:CYS71–A:CYS159": "disulfide",
+    "A:CYS74–A:CYS146": "disulfide",
+    "A:CYS77–A:CYS166": "disulfide",
+    "A:CYS259–A:CYS262": "disulfide",
+}
+
+
 def _junction(report: ExtractionReport, before: str, after: str) -> object:
     (found,) = [j for j in report.junctions if (j.before, j.after) == (before, after)]
     return found
@@ -488,7 +509,12 @@ def _junction(report: ExtractionReport, before: str, after: str) -> object:
 
 def test_4zhl_chymotrypsin_numbering_is_not_a_break() -> None:
     """Défaut 1 : le saut ARG217 → GLY219 était refusé comme « chaîne interrompue »."""
-    result = extract_peptides(_reference("4ZHL.cif.gz"), "U", journal=Journal())
+    result = extract_peptides(
+        _reference("4ZHL.cif.gz"),
+        "U",
+        journal=Journal(),
+        decisions=ExtractionDecisions(contacts=ZHL_U_CONTACTS),
+    )
     report = result.report
     assert report.accepted
     assert len(result.peptides) == 1 and len(result.peptides[0]) == 247
@@ -513,7 +539,9 @@ def test_4zhl_peptide_chain_keeps_its_disulfide() -> None:
 
 def test_6wqa_ligand_no_longer_blocks_and_the_undeclared_break_is_found() -> None:
     """Défaut 2 et lacune : `ZMA` comptait comme résidu, et la rupture n'était pas vue."""
-    report = _refused(_reference("6WQA.cif.gz"))
+    report = _refused(
+        _reference("6WQA.cif.gz"), decisions=ExtractionDecisions(contacts=WQA_A_CONTACTS)
+    )
     (zma,) = [c for c in report.components if c.name == "ZMA"]
     assert zma.category is ComponentCategory.UNBOUND_LIGAND
     assert zma.decision is Decision.EXCLUDE
@@ -534,7 +562,9 @@ def test_6wqa_ligand_no_longer_blocks_and_the_undeclared_break_is_found() -> Non
 
 def test_6wqa_split_cuts_at_the_measured_break_only() -> None:
     report = analyze_chain(
-        _reference("6WQA.cif.gz"), "A", decisions=ExtractionDecisions(breaks=Decision.SPLIT)
+        _reference("6WQA.cif.gz"),
+        "A",
+        decisions=ExtractionDecisions(breaks=Decision.SPLIT, contacts=WQA_A_CONTACTS),
     )
     assert report.accepted
     assert [(s.first, s.last, s.residues) for s in report.segments] == [
@@ -674,7 +704,7 @@ def test_6wqa_split_gives_two_peptides_at_the_undeclared_break() -> None:
         _reference("6WQA.cif.gz"),
         "A",
         journal=Journal(),
-        decisions=ExtractionDecisions(breaks=Decision.SPLIT),
+        decisions=ExtractionDecisions(breaks=Decision.SPLIT, contacts=WQA_A_CONTACTS),
     )
     first, second = result.peptides
     assert (len(first), len(second)) == (254, 137)
@@ -696,7 +726,12 @@ def test_7ddo_observed_segment_does_not_hide_the_glycan() -> None:
 
 
 def test_4zhl_peptide_keeps_the_original_numbering_of_each_position() -> None:
-    (peptide,) = extract_peptides(_reference("4ZHL.cif.gz"), "U", journal=Journal()).peptides
+    (peptide,) = extract_peptides(
+        _reference("4ZHL.cif.gz"),
+        "U",
+        journal=Journal(),
+        decisions=ExtractionDecisions(contacts=ZHL_U_CONTACTS),
+    ).peptides
     original = peptide.metadata[STRUCTURE_RESIDUES].split(",")
     assert len(original) == len(peptide) == 247
     position = original.index("U:ARG217")
@@ -734,7 +769,12 @@ def _two_broken_chains() -> Structure:
     return Structure(
         atoms=(
             *_build((1, "ALA"), (2, "GLY"), (3, "SER", {"gap": 10.0})),
-            *_build((1, "LYS"), (2, "GLY"), (3, "THR", {"gap": 10.0}), chain="B"),
+            # Chaîne B à 20 Å de la chaîne A : avant l'étape C, les deux chaînes étaient
+            # superposées, ce que la détection des contacts entre chaînes signale.
+            *(
+                replace(atom, z=atom.z + 20.0)
+                for atom in _build((1, "LYS"), (2, "GLY"), (3, "THR", {"gap": 10.0}), chain="B")
+            ),
         )
     )
 
@@ -838,6 +878,11 @@ def test_extracted_segment_cannot_be_protonated_or_charged() -> None:
 
 
 def test_4zhl_two_chains_are_extracted_independently() -> None:
-    results = extract_chains(_reference("4ZHL.cif.gz"), ["U", "P"], journal=Journal())
+    results = extract_chains(
+        _reference("4ZHL.cif.gz"),
+        ["U", "P"],
+        journal=Journal(),
+        decisions=ChainDecisions({"U": ExtractionDecisions(contacts=ZHL_U_CONTACTS)}),
+    )
     assert {c: len(r.peptides[0]) for c, r in results.items()} == {"U": 247, "P": 10}
     assert results["P"].report.junctions_by_category() == {"continuous": 9}

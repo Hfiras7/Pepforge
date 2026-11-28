@@ -125,6 +125,27 @@ class Connection:
     first_atom: str
     second: ResidueId
     second_atom: str
+    first_alt_loc: str = ""
+    """Conformation désignée par le fichier pour le premier atome ; vide : toutes."""
+
+    second_alt_loc: str = ""
+    records: tuple[str, ...] = field(default=(), compare=False)
+    """Enregistrements qui déclarent la liaison (`LINK`, `SSBOND`, `struct_conn`, `CONECT`).
+
+    Vide pour une liaison construite par programme. Plusieurs valeurs quand le
+    fichier déclare la même liaison deux fois (LINK et CONECT, par exemple).
+    """
+
+    reported_distance: float | None = field(default=None, compare=False)
+    """Distance écrite dans le fichier (Å), s'il en donne une ; jamais recalculée ici."""
+
+    symmetry_mate: bool = field(default=False, compare=False)
+    """Vrai si la liaison vise une copie de symétrie du second atome (opérateurs différents) :
+    les coordonnées du fichier ne permettent pas de la mesurer.
+
+    La provenance (`records`, `reported_distance`, `symmetry_mate`) n'entre pas dans
+    l'égalité : deux fichiers qui déclarent la même liaison, l'un en PDB et l'autre
+    en mmCIF, déclarent la même liaison."""
 
 
 def _empty_metadata() -> Mapping[str, str]:

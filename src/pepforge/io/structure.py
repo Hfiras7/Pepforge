@@ -50,6 +50,7 @@ from pepforge.core.structure import (
 from pepforge.exceptions import StructureFormatError, UnsupportedFeatureError
 from pepforge.io.retrieval import DownloadLimits, RetrievedFile, download_file, load_local_file
 from pepforge.io.structure_formats import (
+    CONECT_UNRESOLVED,
     GEMMI_VERSION,
     READERS,
     WRITERS,
@@ -58,6 +59,7 @@ from pepforge.io.structure_formats import (
     decode_text,
     detect_format,
     format_from_name,
+    resolve_conect,
 )
 from pepforge.report.journal import Journal
 
@@ -158,12 +160,19 @@ def parse_structure(
     }
     if parsed.declared_model_count is not None:
         metadata[STRUCTURE_DECLARED_MODEL_COUNT] = str(parsed.declared_model_count)
+    conect = resolve_conect(atoms, parsed.conect, parsed.connections)
+    if conect.unresolved:
+        metadata[CONECT_UNRESOLVED] = (
+            f"{len(conect.unresolved)} CONECT non attribuable(s) : "
+            + " ; ".join(conect.unresolved[:5])
+            + (" ..." if len(conect.unresolved) > 5 else "")
+        )
     structure = Structure(
         atoms=atoms,
         source=origin,
         metadata=metadata,
         model=chosen if len(parsed.models) > 1 or model is not None else None,
-        connections=parsed.connections,
+        connections=conect.connections,
         declared_missing_residues=missing,
         declared_missing_atoms=missing_atoms,
     )
@@ -178,7 +187,10 @@ def parse_structure(
         atoms=len(atoms),
         atoms_without_element=parsed.atoms_without_element,
         atoms_without_occupancy=parsed.atoms_without_occupancy,
-        declared_connections=len(parsed.connections),
+        declared_connections=len(conect.connections),
+        conect_pairs=len(parsed.conect),
+        conect_internal_bonds=conect.internal,
+        conect_unresolved=list(conect.unresolved),
         declared_missing_residues=len(missing),
         declared_missing_atoms=len(missing_atoms),
         reader=f"gemmi {GEMMI_VERSION}",
@@ -234,8 +246,12 @@ def _pdb_limits(structure: Structure) -> list[str]:
         problems.append(f"noms d'atome de plus de quatre caractères : {long_atoms}")
     # Le PDB porte les ponts disulfure (SSBOND) et les liaisons covalentes ou de
     # coordination (LINK) ; il n'a pas d'enregistrement pour une liaison hydrogène.
+    # Une liaison connue par CONECT seul se réécrit en CONECT.
     unwritable = Counter(
-        c.kind for c in structure.connections if c.kind not in PDB_CONNECTION_KINDS
+        c.kind
+        for c in structure.connections
+        if c.kind not in PDB_CONNECTION_KINDS
+        and not (c.kind == ConnectionKind.UNKNOWN and c.records == ("CONECT",))
     )
     if unwritable:
         detail = ", ".join(f"{k} ×{v}" for k, v in sorted(unwritable.items()))
@@ -332,10 +348,12 @@ def write_structure(
             raise StructureFormatError(f"{target} : {len(reread.models)} modèles écrits, 1 attendu")
         (written,) = reread.models.values()
         _compare_written(structure.atoms, written, structure_format, str(target))
-        if len(reread.connections) != len(structure.connections):
+        relu = resolve_conect(written, reread.conect, reread.connections)
+        if relu.unresolved or len(relu.connections) != len(structure.connections):
             raise StructureFormatError(
-                f"{target} : {len(reread.connections)} liaisons déclarées relues pour "
+                f"{target} : {len(relu.connections)} liaisons déclarées relues pour "
                 f"{len(structure.connections)} écrites"
+                + (f" ; CONECT non attribuables : {relu.unresolved}" if relu.unresolved else "")
             )
         os.replace(temporary, target)
     except BaseException:

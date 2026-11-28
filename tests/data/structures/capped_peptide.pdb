@@ -1,5 +1,6 @@
 HEADER    TEST PEPTIDE                            27-NOV-26   XTST
 REMARK   1 FICHIER D'ESSAI ECRIT A LA MAIN POUR PEPFORGE (MODULE 3)
+REMARK   1 SOUFRES DEPLACES A L'ETAPE C : AUCUN CONTACT NON DECLARE
 SSBOND   1 CYS A    2    CYS A    4                          1555   1555  2.04
 CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           1
 HETATM    1  C   ACE A   0      -1.200   1.400   0.000  1.00 10.00           C
@@ -16,7 +17,7 @@ ATOM     11  CA  CYS A   2       4.450   3.250   0.000  1.00 11.00           C
 ATOM     12  C   CYS A   2       5.000   4.650   0.000  1.00 11.00           C
 ATOM     13  O   CYS A   2       4.250   5.600   0.000  1.00 11.00           O
 ATOM     14  CB  CYS A   2       4.950   2.450   1.200  1.00 12.00           C
-ATOM     15  SG  CYS A   2       4.500   0.700   1.100  1.00 13.00           S
+ATOM     15  SG  CYS A   2       5.400   1.000   2.400  1.00 13.00           S
 ATOM     16  N   GLY A   3       6.300   4.800   0.000  1.00 11.00           N
 ATOM     17  CA  GLY A   3       6.900   6.100   0.000  1.00 11.00           C
 ATOM     18  C   GLY A   3       8.400   6.000   0.000  1.00 11.00           C
@@ -30,7 +31,7 @@ ATOM     25  CA  CYS A   4      12.850  10.050   0.000  1.00 11.00           C
 ATOM     26  C   CYS A   4      14.350   9.950   0.000  1.00 11.00           C
 ATOM     27  O   CYS A   4      14.950   8.850   0.000  1.00 11.00           O
 ATOM     28  CB  CYS A   4      12.400  10.900   1.200  1.00 12.00           C
-ATOM     29  SG  CYS A   4       6.200   0.900   2.100  1.00 13.00           S
+ATOM     29  SG  CYS A   4       7.440   1.000   2.400  1.00 13.00           S
 HETATM   30  N   NH2 A   5      15.000  11.050   0.000  1.00 11.00           N
 HETATM   31  O   HOH A 101       3.000  -3.000   3.000  1.00 30.00           O
 HETATM   32 ZN    ZN A 201      -4.000   4.000   4.000  1.00 25.00          ZN

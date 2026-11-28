@@ -11,9 +11,16 @@ import yaml
 from pepforge import __version__
 from pepforge.config import PrepConfig
 from pepforge.core import C_TERMINUS_DEFAULTED, N_TERMINUS_DEFAULTED, Peptide
-from pepforge.exceptions import ExtractionRefusedError, PepForgeError, SequenceParseError
+from pepforge.exceptions import (
+    ConfigurationError,
+    ExtractionRefusedError,
+    PepForgeError,
+    SequenceParseError,
+)
 from pepforge.io.peptide_extraction import (
     BREAK_DECISIONS,
+    COMPONENT_DECISIONS,
+    CONTACT_DECISIONS,
     STRUCTURE_SEGMENT,
     UNOBSERVED_TERMINUS_DECISIONS,
     ExtractionDecisions,
@@ -122,6 +129,15 @@ def _extraction_summary(report: ExtractionReport) -> dict[str, object]:
             if c not in waters
         ],
         "eaux": len(waters),
+        "liaisons": [
+            f"{b.first.label()} – {b.second.label()} | "
+            + (f"{b.distance:.3f} Å" if b.distance is not None else "non mesurée")
+            + f" | {b.evidence.value}"
+            + (f" ({'+'.join(b.records)})" if b.records else "")
+            + f" | {b.certainty.value} | {b.status.value} | {b.reason}"
+            for b in report.bonds
+        ],
+        "critère_covalent": data["covalent_criteria"],
         "extrémités_non_observées": data["unobserved_termini"],
         "résidus_déclarés_non_observés": len(report.declared_missing_residues),
         "atomes_déclarés_non_observés": list(report.declared_missing_atoms),
@@ -129,6 +145,19 @@ def _extraction_summary(report: ExtractionReport) -> dict[str, object]:
         "segments": data["segments"],
         "refus": list(report.refusals),
     }
+
+
+def _named(values: Sequence[str] | None, option: str) -> dict[str, str]:
+    """`--component A:DOT201=exclude_as_unbound` répété → tableau ; un doublon est refusé."""
+    named: dict[str, str] = {}
+    for value in values or ():
+        label, sep, decision = value.rpartition("=")
+        if not sep or not label or not decision:
+            raise ConfigurationError(f"{option} {value!r} : forme attendue ÉTIQUETTE=DÉCISION")
+        if label in named:
+            raise ConfigurationError(f"{option} : {label} nommé deux fois")
+        named[label] = decision
+    return named
 
 
 def _cmd_inspect(args: argparse.Namespace) -> int:
@@ -152,8 +181,14 @@ def _cmd_inspect(args: argparse.Namespace) -> int:
         "inventaire": inventory(structure).to_dict(),
     }
     if args.chain:
-        decisions = ExtractionDecisions(
-            breaks=args.breaks, unobserved_termini=args.unobserved_termini
+        decisions = ExtractionDecisions.from_dict(
+            {
+                "breaks": args.breaks,
+                "unobserved_termini": args.unobserved_termini,
+                "components": _named(args.component, "--component"),
+                "contacts": _named(args.contact, "--contact"),
+            },
+            "décisions de la ligne de commande",
         )
         try:
             result = extract_peptides(structure, args.chain, journal=journal, decisions=decisions)
@@ -234,6 +269,21 @@ def build_parser() -> argparse.ArgumentParser:
         choices=[d.value for d in UNOBSERVED_TERMINUS_DECISIONS],
         default="reject",
         help="résidus non observés aux extrémités : refuser (défaut) ou garder le segment observé",
+    )
+    p_inspect.add_argument(
+        "--component",
+        action="append",
+        metavar="ÉTIQUETTE=DÉCISION",
+        help="décision pour un composant nommé, par exemple A:DOT201=exclude_as_unbound "
+        f"(décisions : {', '.join(d.value for d in COMPONENT_DECISIONS)}) ; répétable",
+    )
+    p_inspect.add_argument(
+        "--contact",
+        action="append",
+        metavar="PAIRE=DÉCISION",
+        help="décision pour un contact covalent possible, par exemple "
+        f"'A:CYS3–A:CYS10=disulfide' (décisions : {', '.join(d.value for d in CONTACT_DECISIONS)}) "
+        "; répétable",
     )
     p_inspect.add_argument(
         "--timeout", type=float, default=DownloadLimits.timeout_s, help="délai réseau (s)"
