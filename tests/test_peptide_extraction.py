@@ -494,7 +494,8 @@ def _reference(name: str) -> Structure:
 
 # Contacts SG–SG non déclarés trouvés à l'étape C dans ces copies de fichiers (le module 3
 # extrayait ces chaînes sans les voir). Revue de Firas du 28/11/2026 : ils restent des
-# contacts **possibles**, jamais admis comme ponts disulfure dans les tests ; la chaîne U
+# contacts **possibles**, jamais admis comme ponts disulfure dans les tests (l'entrée
+# originale de 6WQA les déclare, ce que ces copies sans en-tête ne peuvent pas dire) ; la chaîne U
 # de 4ZHL reste refusée (la validation du fichier les classe en « close contact »).
 ZHL_U_CONTACTS = ("U:CYS50:SG–U:CYS111:SG", "U:CYS136:SG–U:CYS201:SG")
 WQA_A_CONTACTS = (

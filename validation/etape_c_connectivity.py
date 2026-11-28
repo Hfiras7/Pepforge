@@ -40,13 +40,20 @@ Puis les vérifications demandées à la revue de Firas du 28 novembre 2026 :
    contacts trop courts entre atomes non liés, et non en ponts ;
 10. Sensibilité à la tolérance : nombre de liaisons possibles par chaîne pour
    une tolérance de 0,30 à 0,80 Å (`sensitivity`), monotone et égal à
-   `EXPECTED_CONTACTS` à 0,45 Å.
+   `EXPECTED_CONTACTS` à 0,45 Å ;
+11. **Entrées originales de la PDB** (6WQA et 4ZHL, révision 1.2, fournies par
+   Firas le 28 novembre 2026, `validation/data/pdb_originaux/`, empreintes
+   SHA-256 vérifiées) : coordonnées comparées atome par atome à la copie de
+   Biopython, déclarations `struct_conn` relues, et extraction relancée.
 
 Les résultats sont écrits dans `validation/results/etape_c_connectivity.yaml`.
 """
 
 from __future__ import annotations
 
+import gzip
+import hashlib
+import math
 import sys
 from dataclasses import replace
 from itertools import pairwise
@@ -82,7 +89,8 @@ MODULE03 = RESULTS / "module03_structures.yaml"
 # Motifs de refus nouveaux, établis après examen de chaque cas (bilan de l'étape C) :
 EXPECTED_NEW: dict[tuple[str, str], list[str]] = {
     # Quatre contacts SG–SG à 2,02–2,03 Å, sans struct_conn : cette copie du fichier ne
-    # contient que _atom_site. Contacts possibles, non tranchés (revue du 28/11/2026).
+    # contient que _atom_site. Contacts possibles sur la copie ; l'entrée originale les
+    # déclare en struct_conn (contrôle 11, `originals`).
     ("6WQA.cif", "A"): ["contact_in_chain"] * 4,
     # Deux contacts SG–SG à 1,51 et 1,64 Å, sans struct_conn, alors que les trois autres
     # ponts de la chaîne sont déclarés ; la validation du fichier les range dans
@@ -497,6 +505,113 @@ def sensitivity(workdir: Path, reference: dict[str, dict[str, Any]]) -> dict[str
     return results
 
 
+ORIGINALS = Path(__file__).parent / "data" / "pdb_originaux"
+# Empreintes SHA-256 du contenu décompressé, tel que reçu de Firas le 28/11/2026.
+ORIGINAL_SHA256 = {
+    "4ZHL.cif.gz": "3cf8b7c41da9de41ffff32fd9415e1f907d0af00e8c7651590e27cc8cb1e432e",
+    "6WQA.cif.gz": "4ec404805b0d961630ab9db57686c5007c64924c404f8f23582842e542b6f80a",
+}
+
+
+def _atom_table(structure: Any) -> dict[tuple[str, str, str], tuple[float, float, float, Any]]:
+    return {
+        (a.residue_id.label(), a.name, a.alt_loc or ""): (a.x, a.y, a.z, a.occupancy)
+        for a in structure.atoms
+    }
+
+
+def originals(workdir: Path) -> dict[str, Any]:
+    """11. Entrées originales de la PDB fournies par Firas, contre les copies de Biopython."""
+    results: dict[str, Any] = {"file": "entrées originales de la PDB", "checks": [], "chains": {}}
+    for name, digest in ORIGINAL_SHA256.items():
+        path = ORIGINALS / name
+        content = gzip.decompress(path.read_bytes())
+        _check(
+            results,
+            f"{name} : empreinte SHA-256 du fichier reçu",
+            hashlib.sha256(content).hexdigest() == digest,
+            digest,
+        )
+        original = read_structure(path, journal=Journal())
+        copy = read_structure(workdir / name.removesuffix(".gz"), journal=Journal())
+        a, b = _atom_table(original), _atom_table(copy)
+        common = a.keys() & b.keys()
+        shift = max(math.dist(a[k][:3], b[k][:3]) for k in common)
+        occupancy = [k for k in common if a[k][3] != b[k][3]]
+        extra = sorted({k[0].split(":")[1].rstrip("0123456789-") for k in a.keys() - b.keys()})
+        _check(
+            results,
+            f"{name} : atomes de la copie de Biopython identiques à l'original",
+            not (b.keys() - a.keys()) and shift == 0.0 and not occupancy,
+            f"{len(a)} atomes dans l'original, {len(b)} dans la copie, {len(common)} communs ; "
+            f"écart maximal {shift:.4f} Å ; occupations différentes : {len(occupancy)} ; "
+            f"résidus présents dans l'original seulement : {extra or 'aucun'}",
+        )
+        declared = sorted(
+            f"{c.first.label()}:{c.first_atom}–{c.second.label()}:{c.second_atom} ({c.kind})"
+            for c in original.connections
+        )
+        results["chains"][name] = {"declared": declared}
+        if name.startswith("6WQA"):
+            report = analyze_chain(original, "A")
+            disulfides = {
+                b.label(): (b.evidence.value, b.certainty.value)
+                for b in report.bonds
+                if b.label() in EXPECTED_CONTACTS["6WQA.cif"]
+            }
+            geometric = [b.label() for b in report.bonds if b.evidence is BondEvidence.GEOMETRIC]
+            ligands = [c.residue for c in report.components if c.category.value == "unbound_ligand"]
+            results["chains"][name].update(
+                {"disulfides": disulfides, "geometric": geometric, "unbound_ligands": ligands}
+            )
+            _check(
+                results,
+                "6WQA original : les quatre ponts sont déclarés (struct_conn) et confirmés",
+                set(disulfides) == EXPECTED_CONTACTS["6WQA.cif"]
+                and set(disulfides.values()) == {("declared", "confirmed")},
+                f"{disulfides}",
+            )
+            _check(
+                results,
+                "6WQA original : aucune liaison possible parmi 26 ligands et lipides non liés",
+                geometric == [] and len(ligands) == 26,
+                f"liaisons possibles {geometric} ; ligands non liés : {len(ligands)}",
+            )
+            _check(
+                results,
+                "6WQA original : refus du module 3 seulement (rupture déclarée, extrémités)",
+                not any("contact covalent possible" in r for r in report.refusals)
+                and len(report.refusals) == 3,
+                f"{[r[:90] for r in report.refusals]}",
+            )
+        else:
+            report = analyze_chain(original, "U")
+            contacts = {
+                b.label(): (b.evidence.value, b.certainty.value, round(b.distance or 0.0, 3))
+                for b in report.bonds
+                if b.label() in EXPECTED_CONTACTS["4ZHL.cif"]
+            }
+            results["chains"][name].update({"contacts_U": contacts})
+            _check(
+                results,
+                "4ZHL original : chaîne U refusée, deux contacts SG–SG non déclarés, possibles",
+                not report.accepted
+                and set(contacts) == EXPECTED_CONTACTS["4ZHL.cif"]
+                and {v[:2] for v in contacts.values()} == {("geometric", "possible")},
+                f"{contacts}",
+            )
+            plain = workdir / "4ZHL_original.cif"
+            plain.write_bytes(content)
+            close = _close_contacts(plain)
+            _check(
+                results,
+                "4ZHL original : les deux paires figurent dans _pdbx_validate_close_contact",
+                all(frozenset(label.split("–")) in close for label in contacts),
+                f"{ {'–'.join(sorted(k)): v for k, v in close.items()} }",
+            )
+    return results
+
+
 def main() -> int:
     reference = _module03()
     out: list[dict[str, Any]] = []
@@ -507,6 +622,7 @@ def main() -> int:
             out.append(validate_file(name, path, reference.get(name, {})))
         out.append(positive_controls(workdir))
         out.append(sensitivity(workdir, reference))
+        out.append(originals(workdir))
     checks = [c for entry in out for c in entry["checks"]]
     failed = [
         f"{entry['file']} : {c['check']}" for entry in out for c in entry["checks"] if not c["ok"]

@@ -2,7 +2,7 @@
 
 > Complément du module 3 ([PLAN-CONSTRUCTION.md](../PLAN-CONSTRUCTION.md), « Étape C »). Bilan établi le 28 novembre 2026. Implémentation approuvée par Firas le 28 novembre 2026 à 9 h 24 UTC, d'après la proposition architecturale remise le 27 novembre. Branche `claude/etape-c-liaisons-covalentes`, PR distincte empilée sur la PR #3 (module 3), qui n'est pas modifiée. Rien n'est fusionné.
 
-**Statut final : TERMINÉ MAIS NON VALIDÉ.** Le code, les tests et la validation sur structures réelles sont faits. Revue de Firas du 28 novembre 2026 : architecture satisfaisante, tolérance de 0,45 Å validée **provisoirement**, vérifications demandées sur la tolérance, 6WQA et 4ZHL. Elles sont faites et rapportées en section 9 ; la vérification sur les coordonnées des entrées originales n'a pu être faite qu'en partie (section 9.4).
+**Statut final : TERMINÉ MAIS NON VALIDÉ.** Le code, les tests et la validation sur structures réelles sont faits. Revue de Firas du 28 novembre 2026 : architecture satisfaisante, tolérance de 0,45 Å validée **provisoirement**, vérifications demandées sur la tolérance, 6WQA et 4ZHL. Elles sont faites et rapportées en section 9, y compris sur les entrées originales de la PDB fournies par Firas (section 9.4).
 
 ---
 
@@ -154,7 +154,7 @@ Résultats du 28 novembre 2026, Python 3.13, gemmi 0.7.5 :
 
 ## 6. Validation scientifique et références
 
-Les fichiers sont les 14 structures du module 3 (copies de la suite de tests de Biopython 1.88) : 10 lisibles en un seul modèle, plus 1LCD.pdb lu au modèle 1. Le script est `validation/etape_c_connectivity.py`. Résultat : **129 contrôles, 0 échec** (107 avant la revue). Le module 3 garde **136 contrôles, 0 échec** ; il en avait 137, voir la section 7.
+Les fichiers sont les 14 structures du module 3 (copies de la suite de tests de Biopython 1.88) : 10 lisibles en un seul modèle, plus 1LCD.pdb lu au modèle 1. Le script est `validation/etape_c_connectivity.py`. Résultat : **138 contrôles, 0 échec** (107 avant la revue, 129 avant les entrées originales). Le module 3 garde **136 contrôles, 0 échec** ; il en avait 137, voir la section 7.
 
 - **Pas de faux positif systématique** : toutes les liaisons possibles trouvées par la géométrie sont listées une à une et comparées à une table établie à la main (`EXPECTED_CONTACTS`). Il n'y en a aucune hors de 6WQA et 4ZHL.
 - **Liaisons déclarées** : toutes celles qui touchent une chaîne peptidique sont confirmées par les coordonnées.
@@ -235,7 +235,7 @@ Validée provisoirement comme convention algorithmique de détection. Elle reste
   - après une décision `disulfide`, le rapport garde le contact en `geometric / possible`, et la structure ne gagne aucune `Connection`. Le pont n'existe que dans le peptide, par décision nommée.
 - **Mutants ajoutés**, tous tués : fenêtre ouverte côté géométrie, fenêtre ouverte côté déclaré, minimum ouvert, géométrie notée « confirmée », tolérance doublée.
 
-### 9.2 6WQA, chaîne A : quatre contacts laissés possibles
+### 9.2 6WQA, chaîne A : quatre contacts possibles dans la copie, déclarés dans l'original
 
 Les données structurales, relevées dans la copie de Biopython, sont dans le tableau ci-dessous. Le seuil de la fenêtre S–S est de 2,55 Å.
 
@@ -248,8 +248,8 @@ Les données structurales, relevées dans la copie de Biopython, sont dans le ta
 
 - Aucune des huit cystéines n'a de conformation alternative ni d'occupation partielle, sur aucun atome. Le fichier contient 98 atomes en conformation alternative, tous ailleurs.
 - **Résultat géométrique, pas déclaration expérimentale** : la copie de Biopython ne contient **que** `_atom_site`. On n'y trouve ni `struct_conn`, ni méthode, ni résolution. L'absence de déclaration ne dit donc rien de l'entrée de la PDB.
-- **Entrée originale** : l'en-tête RCSB (`files.rcsb.org/header/6WQA.cif`) a été lu par un outil de lecture web. Il donne un dépôt le 28 avril 2020, des révisions 1.0, 1.1 et 1.2 (18 novembre 2020, 18 octobre 2023, 13 novembre 2024), et ne contient pas de `struct_conn`. Mais il ne contient pas non plus de méthode ni de résolution, et sa lecture s'arrête au milieu d'une ligne. Il est donc probablement incomplet : **la question de savoir si l'entrée déclare ces ponts n'est pas tranchée**.
-- Les contacts restent `possible`, l'extraction reste refusée sans décision, et aucun test ni contrôle ne les admet comme ponts.
+- **Entrée originale** : elle **déclare** les quatre ponts (`struct_conn` `disulf1` à `disulf4`, distances déclarées 2,028, 2,016, 2,022 et 2,019 Å), voir la section 9.4. Lu sur l'original, PepForge les classe en `declared / confirmed` sans aucune décision. Lus sur la copie, ils restent `possible`, ce qui est juste puisque la copie ne déclare rien.
+- Sur la copie, les contacts restent `possible`, l'extraction reste refusée sans décision, et aucun test ni contrôle ne les admet comme ponts.
 
 ### 9.3 4ZHL, chaîne U : refus maintenu
 
@@ -259,8 +259,28 @@ Les données structurales, relevées dans la copie de Biopython, sont dans le ta
 - **Entrée originale** : l'en-tête RCSB actuel (révision 1.2 du 16 octobre 2024, la copie de Biopython étant la version 4.0001 de 2015) a été lu en entier. Il donne la même méthode, la même résolution, les mêmes quatre `struct_conn` (dont P:CYS1–P:CYS10) et les mêmes trois lignes `_pdbx_validate_close_contact`, avec les distances 1,51 et 1,64 Å. Les deux paires n'y sont donc pas déclarées comme ponts.
 - Conséquence : extraction de la chaîne U refusée ; aucun test ne l'accepte. Les tests du module 3 qui portent sur autre chose (numérotation, décisions par chaîne) travaillent sur une copie d'essai privée des deux SG en cause (`_without_sg`), décrite comme telle : aucun pont n'y est admis.
 
-### 9.4 Ce qui n'a pas pu être vérifié
+### 9.4 Entrées originales de la PDB, fournies par Firas
 
-- **Coordonnées des entrées originales** : le réseau de l'environnement cloud refuse les serveurs de la PDB (`files.rcsb.org`, wwPDB, PDBe, PDBj : erreur 403 du proxy, le 28 novembre 2026). Le serveur de coordonnées `models.rcsb.org` refuse les lecteurs automatiques (robots.txt). Seuls les en-têtes RCSB ont pu être lus, et seulement par un outil de lecture web dont le texte a été recopié ; la comparaison n'a donc pas été refaite par PepForge sur le fichier lui-même.
-- Pour 4ZHL, la concordance des distances 1,51 et 1,64 Å entre l'en-tête actuel et la copie de 2015 suggère des coordonnées inchangées, sans le prouver atome par atome. Pour 6WQA, rien n'a pu être recoupé.
-- Pour lever ce point, il faut l'un des deux : Firas fournit les deux fichiers mmCIF téléchargés depuis la PDB, ou l'accès réseau à `files.rcsb.org` est ajouté à l'environnement cloud.
+Firas a fourni les deux fichiers mmCIF le 28 novembre 2026 : révision 1.2 pour les deux entrées, soit le 16 octobre 2024 pour 4ZHL et le 13 novembre 2024 pour 6WQA. Ils sont versionnés dans `validation/data/pdb_originaux/` (compressés, empreintes SHA-256 du contenu vérifiées par la validation) ; ce sont des données de la PDB, sous licence CC0. Le réseau de l'environnement cloud refuse toujours les serveurs de la PDB : sans ces fichiers, la comparaison n'aurait pas pu se faire.
+
+| | 4ZHL | 6WQA |
+|---|---|---|
+| Méthode, résolution | diffraction X, 2,06 Å | diffraction X, 2,00 Å (R = 0,193, Rfree = 0,216) |
+| Atomes : original / copie / communs | 2 080 / 2 080 / 2 080 | 3 500 / 3 003 / 3 003 |
+| Écart de coordonnées sur les atomes communs | 0,0000 Å | 0,0000 Å |
+| Occupations différentes | 0 | 0 |
+| Seulement dans l'original | rien | eaux, Na⁺, lipides et additifs (CLR, OLA, OLB, OLC, GOL) |
+| `struct_conn` | 4 ponts, dont P:CYS1–P:CYS10 ; aucun pour 50–111 ni 136–201 | 4 ponts (71–159, 74–146, 77–166, 259–262) et 5 coordinations du Na⁺ |
+| `_pdbx_validate_close_contact` | 136–201 à 1,51 Å, 50–111 à 1,64 Å | aucune ligne |
+
+Ce que PepForge en tire, relancé sur les originaux (`originals` dans la validation, 9 contrôles) :
+
+- **4ZHL** : la copie est l'original, atome par atome. Chaîne U refusée, deux contacts `geometric / possible`, recoupés avec `_pdbx_validate_close_contact`. Chaîne P acceptée avec son pont déclaré et confirmé. **Le refus de la chaîne U est confirmé sur l'entrée originale.**
+- **6WQA** : les coordonnées de la copie sont celles de l'original, mais la copie a perdu tout l'en-tête et 497 atomes. Sur l'original :
+  - les quatre ponts sont déclarés et confirmés ;
+  - **aucune liaison possible n'est détectée**, parmi 26 ligands et lipides non liés (ZMA et 25 que la copie n'avait pas), dont le plus proche (CLR1216) est à 2,75 Å de la chaîne. C'est un contrôle de faux positifs plus dur que la copie ;
+  - les coordinations du Na⁺, déclarées en `metalc`, sont rapportées `not_assessed` ; l'ion reste un ion ;
+  - la chaîne A n'est refusée que pour des motifs du module 3 : la rupture 1043 → 1060, maintenant déclarée par l'en-tête (16 résidus non observés), et les extrémités non observées (22 résidus en N, 34 en C).
+  - La copie avait fait passer cette rupture pour « non déclarée », faute d'en-tête : c'est une limite de la copie, pas du code.
+
+Ce qui reste non vérifié : rien sur ces deux entrées. La validation des 12 autres fichiers repose toujours sur les copies de Biopython.

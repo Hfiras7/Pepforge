@@ -305,7 +305,7 @@ files:
   checks:
   - check: lecture
     ok: true
-    detail: 'lecture refusée (/tmp/tmp687w6fq7/2BEG.pdb : l''en-tête NUMMDL annonce 10 modèle(s), le fichier en contient 1 (fichier tronqué ou en-tête incohérent)) ; module 3 : refusée aussi'
+    detail: 'lecture refusée (/tmp/tmpogap9mos/2BEG.pdb : l''en-tête NUMMDL annonce 10 modèle(s), le fichier en contient 1 (fichier tronqué ou en-tête incohérent)) ; module 3 : refusée aussi'
   chains: {}
 - file: 1AS5.cif
   checks:
@@ -347,7 +347,7 @@ files:
   checks:
   - check: lecture
     ok: true
-    detail: 'lecture refusée (/tmp/tmp687w6fq7/2n0n_M1.pdb : l''en-tête NUMMDL annonce 20 modèle(s), le fichier en contient 1 (fichier tronqué ou en-tête incohérent)) ; module 3 : refusée aussi'
+    detail: 'lecture refusée (/tmp/tmpogap9mos/2n0n_M1.pdb : l''en-tête NUMMDL annonce 20 modèle(s), le fichier en contient 1 (fichier tronqué ou en-tête incohérent)) ; module 3 : refusée aussi'
   chains: {}
 - file: 7DDO.pdb
   checks:
@@ -951,7 +951,104 @@ files:
       '0.60': 0
       '0.70': 0
       '0.80': 0
+- file: entrées originales de la PDB
+  checks:
+  - check: '4ZHL.cif.gz : empreinte SHA-256 du fichier reçu'
+    ok: true
+    detail: 3cf8b7c41da9de41ffff32fd9415e1f907d0af00e8c7651590e27cc8cb1e432e
+  - check: '4ZHL.cif.gz : atomes de la copie de Biopython identiques à l''original'
+    ok: true
+    detail: '2080 atomes dans l''original, 2080 dans la copie, 2080 communs ; écart maximal 0.0000 Å ; occupations différentes : 0 ; résidus présents dans l''original seulement : aucun'
+  - check: '4ZHL original : chaîne U refusée, deux contacts SG–SG non déclarés, possibles'
+    ok: true
+    detail: '{''U:CYS50:SG–U:CYS111:SG'': (''geometric'', ''possible'', 1.637), ''U:CYS136:SG–U:CYS201:SG'': (''geometric'', ''possible'', 1.515)}'
+  - check: '4ZHL original : les deux paires figurent dans _pdbx_validate_close_contact'
+    ok: true
+    detail: '{''U:CYS136:SG–U:CYS201:SG'': 1.51, ''U:CYS111:SG–U:CYS50:SG'': 1.64, ''U:ARG36:NH2–U:GLU62:O'': 2.17}'
+  - check: '6WQA.cif.gz : empreinte SHA-256 du fichier reçu'
+    ok: true
+    detail: 4ec404805b0d961630ab9db57686c5007c64924c404f8f23582842e542b6f80a
+  - check: '6WQA.cif.gz : atomes de la copie de Biopython identiques à l''original'
+    ok: true
+    detail: '3500 atomes dans l''original, 3003 dans la copie, 3003 communs ; écart maximal 0.0000 Å ; occupations différentes : 0 ; résidus présents dans l''original seulement : [''CLR'', ''GOL'', ''HOH'', ''NA'', ''OLA'', ''OLB'', ''OLC'']'
+  - check: '6WQA original : les quatre ponts sont déclarés (struct_conn) et confirmés'
+    ok: true
+    detail: '{''A:CYS71:SG–A:CYS159:SG'': (''declared'', ''confirmed''), ''A:CYS74:SG–A:CYS146:SG'': (''declared'', ''confirmed''), ''A:CYS77:SG–A:CYS166:SG'': (''declared'', ''confirmed''), ''A:CYS259:SG–A:CYS262:SG'': (''declared'', ''confirmed'')}'
+  - check: '6WQA original : aucune liaison possible parmi 26 ligands et lipides non liés'
+    ok: true
+    detail: 'liaisons possibles [] ; ligands non liés : 26'
+  - check: '6WQA original : refus du module 3 seulement (rupture déclarée, extrémités)'
+    ok: true
+    detail: '[''jonction A:ALA1043 → A:ASP1060 : break_declared (géométrie : C–N 14.081 Å > 1.8 Å ; en-têt'', "22 résidu(s) non observé(s) à l''extrémité N (A:MET-24, A:LYS-23, A:THR-22, A:ILE-21, A:ILE", "34 résidu(s) non observé(s) à l''extrémité C (A:THR1044, A:PRO1045, A:PRO1046, A:LYS1047, A"]'
+  chains:
+    4ZHL.cif.gz:
+      declared:
+      - P:CYS1:SG–P:CYS10:SG (disulfide)
+      - U:CYS168:SG–U:CYS182:SG (disulfide)
+      - U:CYS191:SG–U:CYS220:SG (disulfide)
+      - U:CYS42:SG–U:CYS58:SG (disulfide)
+      contacts_U:
+        U:CYS50:SG–U:CYS111:SG:
+        - geometric
+        - possible
+        - 1.637
+        U:CYS136:SG–U:CYS201:SG:
+        - geometric
+        - possible
+        - 1.515
+    6WQA.cif.gz:
+      declared:
+      - A:ASP52:OD1–A:NA1201:NA (metal_coordination)
+      - A:CYS259:SG–A:CYS262:SG (disulfide)
+      - A:CYS71:SG–A:CYS159:SG (disulfide)
+      - A:CYS74:SG–A:CYS146:SG (disulfide)
+      - A:CYS77:SG–A:CYS166:SG (disulfide)
+      - A:NA1201:NA–A:HOH1334:O (metal_coordination)
+      - A:NA1201:NA–A:HOH1359:O (metal_coordination)
+      - A:NA1201:NA–A:HOH1365:O (metal_coordination)
+      - A:SER91:OG–A:NA1201:NA (metal_coordination)
+      disulfides:
+        A:CYS71:SG–A:CYS159:SG:
+        - declared
+        - confirmed
+        A:CYS74:SG–A:CYS146:SG:
+        - declared
+        - confirmed
+        A:CYS77:SG–A:CYS166:SG:
+        - declared
+        - confirmed
+        A:CYS259:SG–A:CYS262:SG:
+        - declared
+        - confirmed
+      geometric: []
+      unbound_ligands:
+      - A:ZMA1202
+      - A:CLR1203
+      - A:OLA1204
+      - A:OLA1205
+      - A:OLA1206
+      - A:OLA1207
+      - A:OLA1208
+      - A:OLA1209
+      - A:OLA1210
+      - A:OLC1211
+      - A:OLA1212
+      - A:GOL1213
+      - A:OLA1214
+      - A:OLC1215
+      - A:CLR1216
+      - A:CLR1217
+      - A:OLC1218
+      - A:OLA1219
+      - A:OLA1220
+      - A:OLA1221
+      - A:OLA1222
+      - A:OLB1223
+      - A:OLA1224
+      - A:OLA1225
+      - A:OLC1226
+      - A:OLC1227
 summary:
-  checks: 129
+  checks: 138
   failed: 0
   failures: []
