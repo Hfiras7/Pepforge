@@ -13,7 +13,9 @@ ligands non liés, ions, liaisons déclarées (LINK, CONECT) ou non, cas ambigus
 from __future__ import annotations
 
 import ast
+import math
 from dataclasses import replace
+from itertools import pairwise
 from pathlib import Path
 
 import pytest
@@ -38,7 +40,7 @@ from pepforge.io.connectivity import assess_declared, find_contacts
 from pepforge.io.peptide_extraction import STRUCTURE_SET_ASIDE, ComponentCategory
 from pepforge.io.structure_formats import CONECT_UNRESOLVED
 from pepforge.report.journal import Journal
-from pepforge.residues.structure_components import load_covalent_criteria
+from pepforge.residues.structure_components import CovalentCriteria, load_covalent_criteria
 
 CRITERIA = load_covalent_criteria()
 STEP = 3.33
@@ -323,7 +325,11 @@ def test_declared_bond_to_a_metal_is_never_assessed_as_covalent() -> None:
 
 
 def _pair(
-    distance: float, first: str = "N", second: str = "C", alt: tuple[str, str] = ("", "")
+    distance: float,
+    first: str = "N",
+    second: str = "C",
+    alt: tuple[str, str] = ("", ""),
+    criteria: CovalentCriteria = CRITERIA,
 ) -> list:  # type: ignore[type-arg]
     a = Atom(1, first, first, "LYS", 1, "A", 0.0, 0.0, 0.0, alt_loc=alt[0] or None)
     b = Atom(
@@ -339,7 +345,7 @@ def _pair(
         alt_loc=alt[1] or None,
         hetero=True,
     )
-    return find_contacts([a], [a, b], CRITERIA)
+    return find_contacts([a], [a, b], criteria)
 
 
 @pytest.mark.parametrize(
@@ -728,3 +734,125 @@ def test_refused_extraction_names_every_uncertain_bond() -> None:
     report = info.value.report
     # Les deux extrémités sont rangées par identifiant de résidu (chaîne puis numéro).
     assert [b.label() for b in report.uncertain_bonds()] == ["A:LYS2:NZ–A:DOT101:C1"]  # type: ignore[union-attr]
+
+
+# --- Tolérance de 0,45 Å : bornes exactes et sensibilité (revue de Firas du 28/11/2026) ---
+#
+# La tolérance est une convention de détection (Open Babel), validée provisoirement par
+# Firas. Ces tests fixent le comportement aux bornes de la fenêtre, montrent comment le
+# résultat varie autour de 0,45 Å, et vérifient qu'aucune valeur n'est lue ailleurs que
+# dans `covalent_geometry.yaml`.
+
+HEAVY_PAIRS = [("N", "C"), ("C", "C"), ("O", "C"), ("S", "S"), ("S", "C"), ("P", "O"), ("SE", "C")]
+
+
+@pytest.mark.parametrize(("first", "second"), HEAVY_PAIRS)
+def test_window_bounds_are_inclusive_for_every_element_pair(first: str, second: str) -> None:
+    """Fenêtre fermée : d = limite est une liaison possible, le flottant suivant ne l'est plus."""
+    limit = CRITERIA.max_distance(first, second)
+    assert limit == pytest.approx(
+        CRITERIA.radii[first] + CRITERIA.radii[second] + CRITERIA.tolerance
+    )
+    (at_limit,) = _pair(limit, first, second)
+    assert at_limit.status is BondStatus.POSSIBLE
+    assert at_limit.max_distance == pytest.approx(limit)
+    assert _pair(math.nextafter(limit, math.inf), first, second) == []
+    (at_minimum,) = _pair(CRITERIA.min_distance, first, second)
+    assert at_minimum.status is BondStatus.POSSIBLE
+    (below,) = _pair(math.nextafter(CRITERIA.min_distance, 0.0), first, second)
+    assert below.certainty is Certainty.OVERLAP
+
+
+@pytest.mark.parametrize(
+    ("offset", "expected"),
+    [
+        (-0.001, BondStatus.ACCEPTED),
+        (0.0, BondStatus.ACCEPTED),
+        (0.001, BondStatus.INCOMPATIBLE),
+    ],
+)
+def test_declared_bond_follows_the_same_window(offset: float, expected: BondStatus) -> None:
+    """Une liaison déclarée est confirmée dans la fenêtre, contredite juste au-delà."""
+    limit = CRITERIA.max_distance("N", "C")
+    atoms = _chain(side=LYS_NZ) + _het("DOT", 101, (NZ[0], NZ[1] - limit - offset, 0.0), (0, -1, 0))
+    assessment = assess_declared(_nz_link(), _by_residue(atoms), CRITERIA)
+    assert assessment.status is expected
+    assert assessment.distance == pytest.approx(limit + offset, abs=1e-6)
+
+
+def test_declared_bond_under_the_minimum_distance_is_contradicted() -> None:
+    below = CRITERIA.min_distance - 0.01
+    atoms = _chain(side=LYS_NZ) + _het("DOT", 101, (NZ[0], NZ[1] - below, 0.0), (0, -1, 0))
+    assessment = assess_declared(_nz_link(), _by_residue(atoms), CRITERIA)
+    assert assessment.status is BondStatus.INCOMPATIBLE
+    assert assessment.certainty is Certainty.CONTRADICTED
+
+
+SENSITIVITY = (0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60)
+
+
+def test_detection_widens_monotonically_with_the_tolerance() -> None:
+    """Sensibilité : un contact trouvé à une tolérance l'est encore à toute tolérance plus large."""
+    distances = [round(1.40 + 0.02 * k, 2) for k in range(41)]  # 1,40 à 2,20 Å, paire N–C
+    found: list[set[float]] = []
+    for tolerance in SENSITIVITY:
+        criteria = replace(CRITERIA, tolerance=tolerance)
+        found.append({d for d in distances if _pair(d, criteria=criteria)})
+    for narrower, wider in pairwise(found):
+        assert narrower <= wider
+    limit_045 = CRITERIA.radii["N"] + CRITERIA.radii["C"] + 0.45
+    assert max(found[SENSITIVITY.index(0.45)]) <= limit_045
+    assert found[0] != found[-1]  # la tolérance change bien le résultat : elle n'est pas ignorée
+
+
+@pytest.mark.parametrize("tolerance", SENSITIVITY)
+def test_contact_exactly_at_the_reference_limit_depends_only_on_the_tolerance(
+    tolerance: float,
+) -> None:
+    """Un contact à r1 + r2 + 0,45 Å n'est vu que si la tolérance atteint 0,45 Å."""
+    distance = CRITERIA.radii["S"] + CRITERIA.radii["S"] + 0.45
+    contacts = _pair(distance, "S", "S", criteria=replace(CRITERIA, tolerance=tolerance))
+    assert bool(contacts) is (tolerance >= 0.45 - 1e-9)
+
+
+@pytest.mark.parametrize("tolerance", SENSITIVITY)
+def test_a_chelator_at_a_normal_bond_length_is_caught_whatever_the_tolerance(
+    tolerance: float,
+) -> None:
+    """Le chélateur d'essai, à 1,45 Å de NZ, reste possibly_bound sur toute la plage étudiée."""
+    atoms = _chain(side=LYS_NZ) + _het("DOT", 101, BELOW_NZ, (0, -1, 0))
+    report = analyze_chain(
+        Structure(atoms=tuple(atoms)), "A", covalent=replace(CRITERIA, tolerance=tolerance)
+    )
+    assert _component(report, "A:DOT101").category is ComponentCategory.POSSIBLY_BOUND  # type: ignore[attr-defined]
+    assert not report.accepted
+
+
+@pytest.mark.parametrize(("first", "second"), HEAVY_PAIRS)
+def test_a_geometric_contact_is_never_confirmed_at_any_distance(first: str, second: str) -> None:
+    """Balayage de 0,05 à 3,00 Å : la géométrie seule ne donne jamais « confirmée »."""
+    for step in range(1, 61):
+        for contact in _pair(0.05 * step, first, second):
+            assert contact.evidence is BondEvidence.GEOMETRIC
+            assert contact.certainty in (Certainty.POSSIBLE, Certainty.OVERLAP)
+            assert contact.certainty is not Certainty.CONFIRMED
+
+
+def test_a_disulfide_decision_does_not_make_the_geometric_contact_confirmed() -> None:
+    """La décision ajoute un pont au peptide ; le rapport garde la preuve : géométrie seule."""
+    structure = _undeclared_disulfide()
+    decisions = ExtractionDecisions(contacts={"A:CYS2–A:CYS5": "disulfide"})
+    result = extract_peptides(structure, "A", journal=Journal(), decisions=decisions)
+    (contact,) = [b for b in result.report.bonds if b.label() == "A:CYS2:SG–A:CYS5:SG"]
+    assert contact.evidence is BondEvidence.GEOMETRIC
+    assert contact.certainty is Certainty.POSSIBLE
+    assert structure.connections == ()  # rien n'est déclaré à la place du fichier
+
+
+def test_the_tolerance_is_read_from_the_data_file_only() -> None:
+    """La valeur vient de `covalent_geometry.yaml` (le code n'a aucune constante décimale)."""
+    path = Path(__file__).resolve().parents[1] / "src/pepforge/residues/data/covalent_geometry.yaml"
+    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    assert CRITERIA.tolerance == raw["detection"]["tolerance"] == 0.45
+    assert CRITERIA.min_distance == raw["detection"]["min_distance"]
+    assert "Open Babel" in CRITERIA.tolerance_source

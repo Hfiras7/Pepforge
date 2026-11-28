@@ -2,7 +2,7 @@
 
 > Complément du module 3 ([PLAN-CONSTRUCTION.md](../PLAN-CONSTRUCTION.md), « Étape C »). Bilan établi le 28 novembre 2026. Implémentation approuvée par Firas le 28 novembre 2026 à 9 h 24 UTC, d'après la proposition architecturale remise le 27 novembre. Branche `claude/etape-c-liaisons-covalentes`, PR distincte empilée sur la PR #3 (module 3), qui n'est pas modifiée. Rien n'est fusionné.
 
-**Statut final : TERMINÉ MAIS NON VALIDÉ.** Le code, les tests et la validation sur structures réelles sont faits. La validation scientifique attend la revue de Firas sur trois points : la tolérance de 0,45 Å, les deux contacts SG–SG anormalement courts de 4ZHL, et les changements de comportement du module 3 listés en section 7.
+**Statut final : TERMINÉ MAIS NON VALIDÉ.** Le code, les tests et la validation sur structures réelles sont faits. Revue de Firas du 28 novembre 2026 : architecture satisfaisante, tolérance de 0,45 Å validée **provisoirement**, vérifications demandées sur la tolérance, 6WQA et 4ZHL. Elles sont faites et rapportées en section 9 ; la vérification sur les coordonnées des entrées originales n'a pu être faite qu'en partie (section 9.4).
 
 ---
 
@@ -117,7 +117,7 @@ Les cas sont examinés dans cet ordre :
 | `src/pepforge/core/structure.py` | `Connection` : cinq champs de provenance avec valeur par défaut |
 | `src/pepforge/cli/main.py` | `--component`, `--contact`, résumé |
 | `tests/test_connectivity.py` | nouveau, 51 tests |
-| `tests/test_peptide_extraction.py`, `tests/data/structures/capped_peptide.{pdb,cif}` | géométries d'essai corrigées, décisions `disulfide` pour 4ZHL et 6WQA |
+| `tests/test_peptide_extraction.py`, `tests/data/structures/capped_peptide.{pdb,cif}` | géométries d'essai corrigées ; 4ZHL U et 6WQA A restent refusées, aucun contact admis comme pont (section 9) |
 | `validation/etape_c_connectivity.py`, `validation/results/etape_c_connectivity.yaml` | nouveau : validation sur structures réelles |
 | `validation/module03_structures.py`, `validation/results/module03_structures.yaml` | motifs de refus attendus mis à jour (section 7) |
 | `docs/ARCHITECTURE.md`, `docs/PLAN-CONSTRUCTION.md`, `CLAUDE.md` | contrat de `io` et de `Connection`, étape C, commandes |
@@ -128,7 +128,7 @@ Aucune dépendance ajoutée : gemmi, déjà retenu au module 3, fournit `conect_
 
 Résultats du 28 novembre 2026, Python 3.13, gemmi 0.7.5 :
 
-- **`pytest` : 673 tests passent**. Le module 3 en avait 621 : il y en a 51 nouveaux dans `test_connectivity.py` et 1 dans `test_peptide_extraction.py`.
+- **`pytest` : 709 tests passent**. Le module 3 en avait 621 : il y en a 86 dans `test_connectivity.py` (dont 35 ajoutés après la revue, section 9.1) et 2 de plus dans `test_peptide_extraction.py`.
 - **`ruff check .` et `ruff format --check .`** : propres.
 - **`mypy --python-version 3.13`** : aucune erreur sur 42 fichiers. Lancé sans cette option, le poste local échoue sur les stubs de numpy, et non sur le code de PepForge : la CI le confirmera.
 - **Tests synthétiques demandés par Firas** :
@@ -140,7 +140,7 @@ Résultats du 28 novembre 2026, Python 3.13, gemmi 0.7.5 :
   - conformations alternatives, copie de symétrie, recouvrement, élément sans rayon ;
   - `CONECT` par modèle et non attribuables ;
   - relecture après écriture en PDB et en mmCIF.
-- **Mutants faits à la main** : 11 sur 11 tués, chacun défaisant une règle :
+- **Mutants faits à la main** : 16 sur 16 tués (11 avant la revue, 5 ajoutés en section 9.1), chacun défaisant une règle :
   - `CONECT` ignorés ;
   - autres chaînes non examinées ;
   - `asu` ignoré ;
@@ -154,7 +154,7 @@ Résultats du 28 novembre 2026, Python 3.13, gemmi 0.7.5 :
 
 ## 6. Validation scientifique et références
 
-Les fichiers sont les 14 structures du module 3 (copies de la suite de tests de Biopython 1.88) : 10 lisibles en un seul modèle, plus 1LCD.pdb lu au modèle 1. Le script est `validation/etape_c_connectivity.py`. Résultat : **107 contrôles, 0 échec**. Le module 3 garde **136 contrôles, 0 échec** ; il en avait 137, voir la section 7.
+Les fichiers sont les 14 structures du module 3 (copies de la suite de tests de Biopython 1.88) : 10 lisibles en un seul modèle, plus 1LCD.pdb lu au modèle 1. Le script est `validation/etape_c_connectivity.py`. Résultat : **129 contrôles, 0 échec** (107 avant la revue). Le module 3 garde **136 contrôles, 0 échec** ; il en avait 137, voir la section 7.
 
 - **Pas de faux positif systématique** : toutes les liaisons possibles trouvées par la géométrie sont listées une à une et comparées à une table établie à la main (`EXPECTED_CONTACTS`). Il n'y en a aucune hors de 6WQA et 4ZHL.
 - **Liaisons déclarées** : toutes celles qui touchent une chaîne peptidique sont confirmées par les coordonnées.
@@ -165,13 +165,12 @@ Les fichiers sont les 14 structures du module 3 (copies de la suite de tests de 
 - **Contrôles positifs** : on retire une information d'un fichier réel et on vérifie que rien n'est perdu.
   - 7DDO sans `LINK` : les glycanes restent rattachés, par `CONECT`.
   - 7DDO sans `LINK` ni `CONECT` : ils deviennent `possibly_bound` et l'extraction est refusée. `exclude_as_unbound` les laisse hors du peptide, et le peptide le dit.
-  - 6WQA avec `disulfide` : les quatre ponts entrent dans le peptide.
-  - 4ZHL U avec `disulfide` : la séquence lue est celle de `_entity_poly`, et les deux ponts admis s'ajoutent aux trois ponts déclarés de la chaîne U.
+  - *Retirés après la revue de Firas* : les contrôles qui admettaient les contacts de 6WQA et de 4ZHL comme ponts. Ils sont remplacés par ceux de la section 9.
 
 **Constats réels sur ces fichiers**, que le module 3 ne voyait pas :
 
-- **6WQA, chaîne A** : quatre contacts SG–SG non déclarés, à 2,02–2,03 Å, entre les cystéines 71–159, 74–146, 77–166 et 259–262. La distance est celle d'un pont disulfure. La copie de Biopython ne les déclare pas ; il n'a pas été vérifié si l'entrée de la PDB les déclare.
-- **4ZHL, chaîne U** : deux contacts SG–SG non déclarés, 50–111 à 1,64 Å et 136–201 à 1,51 Å. C'est **nettement plus court** que la somme des rayons covalents du soufre (2,10 Å). Ces contacts sont dans la fenêtre (au-dessus de 0,63 Å), donc rapportés comme possibles, mais une telle distance n'est pas celle d'un pont normal. La cause n'est pas déterminée : modèle, conformations, ou copie tronquée. Les tests utilisent la décision `disulfide` comme exemple de mécanisme, **pas comme une conclusion scientifique**.
+- **6WQA, chaîne A** : quatre contacts SG–SG non déclarés, à 2,02–2,03 Å, entre les cystéines 71–159, 74–146, 77–166 et 259–262. La distance est celle d'un pont disulfure. La copie de Biopython ne contient que `_atom_site` : elle ne déclare aucune liaison, ni ces ponts ni d'autres (section 9.2).
+- **4ZHL, chaîne U** : deux contacts SG–SG non déclarés, 50–111 à 1,64 Å et 136–201 à 1,51 Å. C'est **nettement plus court** que la somme des rayons covalents du soufre (2,10 Å). Ces contacts sont dans la fenêtre (au-dessus de 0,63 Å), donc rapportés comme possibles, mais une telle distance n'est pas celle d'un pont normal. La validation du fichier lui-même les classe en `_pdbx_validate_close_contact` (section 9.3). Refus maintenu, aucun pont admis.
 - **1A8O.pdb** : 8 `CONECT` ne peuvent pas être attribués, parce que la copie de Biopython a renuméroté les atomes. L'extraction de la chaîne A est donc refusée tant que le fichier n'est pas corrigé ; la version mmCIF n'est pas touchée.
 
 Références :
@@ -188,7 +187,7 @@ Références :
    - 4ZHL U, acceptée au module 3, est maintenant refusée sans décision.
    - 6WQA A et 1A8O.pdb A gagnent chacune un motif de refus.
    - Les motifs attendus de `validation/module03_structures.py` ont été mis à jour en conséquence, avec un commentaire qui renvoie ici.
-   - Le contrôle de séquence de 4ZHL U ne peut plus s'y faire sans décision : il est passé dans le script de l'étape C, avec la décision `disulfide`. C'est pourquoi le module 3 compte 136 contrôles au lieu de 137.
+   - Le contrôle de séquence de 4ZHL U ne peut plus se faire, puisque la chaîne est refusée. C'est pourquoi le module 3 compte 136 contrôles au lieu de 137. Il n'est pas remplacé : le refaire demanderait d'admettre les contacts, ce que Firas a exclu.
    - Les géométries d'essai synthétiques ont dû être corrigées : un O(i) était à 1,79 Å de N(i+1), des SG étaient placés hors de toute géométrie physique, et deux chaînes se chevauchaient. La détection les signalait à juste titre.
 4. **Provenance après écriture en mmCIF** : une liaison connue par `CONECT` seul revient en `struct_conn` de type inconnu. Sa nature est conservée, mais sa source affichée change.
 5. **Ce que l'étape ne fait pas** :
@@ -212,3 +211,56 @@ Points attendus de Firas :
 - la fusion de la PR, qui attend sa validation explicite.
 
 Les étapes A et B ne commencent pas sans son instruction.
+
+## 9. Revue de Firas du 28 novembre 2026 : vérifications demandées
+
+### 9.1 Tolérance de 0,45 Å
+
+Validée provisoirement comme convention algorithmique de détection. Elle reste dans `covalent_geometry.yaml` et nulle part ailleurs : un test relit le fichier, et un autre vérifie que les modules de détection n'ont aucune constante décimale.
+
+- **Bornes** : la fenêtre est fermée des deux côtés. Pour sept paires d'éléments (N–C, C–C, O–C, S–S, S–C, P–O, Se–C) :
+  - une distance égale à la limite est une liaison possible, et le flottant suivant ne l'est plus ;
+  - à 0,63 Å exactement, la liaison est possible ; juste en dessous, c'est un recouvrement.
+  - Une liaison déclarée suit la même fenêtre : confirmée à la limite, contredite 0,001 Å au-delà et sous 0,63 Å.
+- **Sensibilité** (tests synthétiques, tolérance de 0,30 à 0,60 Å) :
+  - la détection s'élargit de façon monotone ;
+  - un contact placé à r1 + r2 + 0,45 Å n'est vu qu'à partir de 0,45 Å ;
+  - le chélateur d'essai, à 1,45 Å de NZ, reste `possibly_bound` sur toute la plage.
+- **Sensibilité sur les 14 fichiers réels**, de 0,30 à 0,80 Å (`sensitivity` dans les résultats de validation) :
+  - le résultat est **identique de 0,30 à 0,70 Å** pour toutes les chaînes : 4 contacts dans 6WQA A, 2 dans 4ZHL U, aucun ailleurs ;
+  - les premiers contacts qui ne sont pas des liaisons apparaissent à 0,80 Å (2XHE A ; 4ZHL U passe de 2 à 4). Ce sont des paires voisines de la chaîne, comme O(i)–N(i+1), à environ r1 + r2 + 0,75 Å ;
+  - le choix entre 0,30 et 0,70 Å ne change donc rien sur ces fichiers, et 0,45 Å garde environ 0,3 Å de marge avant les premières fausses détections. Ce constat ne vaut que pour ces 14 fichiers.
+- **Une liaison géométrique n'est jamais confirmée** :
+  - un balayage de 0,05 à 3,00 Å sur les sept paires ne donne jamais que `possible` ou `overlap` ;
+  - après une décision `disulfide`, le rapport garde le contact en `geometric / possible`, et la structure ne gagne aucune `Connection`. Le pont n'existe que dans le peptide, par décision nommée.
+- **Mutants ajoutés**, tous tués : fenêtre ouverte côté géométrie, fenêtre ouverte côté déclaré, minimum ouvert, géométrie notée « confirmée », tolérance doublée.
+
+### 9.2 6WQA, chaîne A : quatre contacts laissés possibles
+
+Les données structurales, relevées dans la copie de Biopython, sont dans le tableau ci-dessous. Le seuil de la fenêtre S–S est de 2,55 Å.
+
+| Paire | Distance SG–SG | Conformation | Occupation | Facteur B |
+|---|---|---|---|---|
+| CYS71–CYS159 | 2,028 Å | aucune | 1,00 / 1,00 | 45,2 / 46,0 |
+| CYS74–CYS146 | 2,016 Å | aucune | 1,00 / 1,00 | 40,0 / 39,9 |
+| CYS77–CYS166 | 2,022 Å | aucune | 1,00 / 1,00 | 32,1 / 31,9 |
+| CYS259–CYS262 | 2,019 Å | aucune | 1,00 / 1,00 | 38,2 / 38,3 |
+
+- Aucune des huit cystéines n'a de conformation alternative ni d'occupation partielle, sur aucun atome. Le fichier contient 98 atomes en conformation alternative, tous ailleurs.
+- **Résultat géométrique, pas déclaration expérimentale** : la copie de Biopython ne contient **que** `_atom_site`. On n'y trouve ni `struct_conn`, ni méthode, ni résolution. L'absence de déclaration ne dit donc rien de l'entrée de la PDB.
+- **Entrée originale** : l'en-tête RCSB (`files.rcsb.org/header/6WQA.cif`) a été lu par un outil de lecture web. Il donne un dépôt le 28 avril 2020, des révisions 1.0, 1.1 et 1.2 (18 novembre 2020, 18 octobre 2023, 13 novembre 2024), et ne contient pas de `struct_conn`. Mais il ne contient pas non plus de méthode ni de résolution, et sa lecture s'arrête au milieu d'une ligne. Il est donc probablement incomplet : **la question de savoir si l'entrée déclare ces ponts n'est pas tranchée**.
+- Les contacts restent `possible`, l'extraction reste refusée sans décision, et aucun test ni contrôle ne les admet comme ponts.
+
+### 9.3 4ZHL, chaîne U : refus maintenu
+
+- Les deux paires : CYS50–CYS111 à 1,637 Å, et CYS136–CYS201 à 1,515 Å. Aucune conformation alternative ; occupation de 1,00 ; facteurs B de 49,0 / 49,1 et 45,6 / 49,6. Le fichier n'a aucun atome en conformation alternative. Méthode : diffraction X à 2,06 Å, R = 0,220, Rfree = 0,262.
+- **La validation de la PDB incluse dans le fichier tranche** : `_pdbx_validate_close_contact` range précisément ces deux paires dans les contacts trop courts entre atomes **non liés**, à 1,51 et 1,64 Å. Les distances mesurées par PepForge concordent à 0,005 Å près, ce qu'un contrôle de la validation vérifie.
+- Les trois autres ponts de la chaîne U (42–58, 168–182, 191–220) sont, eux, déclarés dans `struct_conn`.
+- **Entrée originale** : l'en-tête RCSB actuel (révision 1.2 du 16 octobre 2024, la copie de Biopython étant la version 4.0001 de 2015) a été lu en entier. Il donne la même méthode, la même résolution, les mêmes quatre `struct_conn` (dont P:CYS1–P:CYS10) et les mêmes trois lignes `_pdbx_validate_close_contact`, avec les distances 1,51 et 1,64 Å. Les deux paires n'y sont donc pas déclarées comme ponts.
+- Conséquence : extraction de la chaîne U refusée ; aucun test ne l'accepte. Les tests du module 3 qui portent sur autre chose (numérotation, décisions par chaîne) travaillent sur une copie d'essai privée des deux SG en cause (`_without_sg`), décrite comme telle : aucun pont n'y est admis.
+
+### 9.4 Ce qui n'a pas pu être vérifié
+
+- **Coordonnées des entrées originales** : le réseau de l'environnement cloud refuse les serveurs de la PDB (`files.rcsb.org`, wwPDB, PDBe, PDBj : erreur 403 du proxy, le 28 novembre 2026). Le serveur de coordonnées `models.rcsb.org` refuse les lecteurs automatiques (robots.txt). Seuls les en-têtes RCSB ont pu être lus, et seulement par un outil de lecture web dont le texte a été recopié ; la comparaison n'a donc pas été refaite par PepForge sur le fichier lui-même.
+- Pour 4ZHL, la concordance des distances 1,51 et 1,64 Å entre l'en-tête actuel et la copie de 2015 suggère des coordonnées inchangées, sans le prouver atome par atome. Pour 6WQA, rien n'a pu être recoupé.
+- Pour lever ce point, il faut l'un des deux : Firas fournit les deux fichiers mmCIF téléchargés depuis la PDB, ou l'accès réseau à `files.rcsb.org` est ajouté à l'environnement cloud.

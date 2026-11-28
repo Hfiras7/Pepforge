@@ -305,7 +305,7 @@ files:
   checks:
   - check: lecture
     ok: true
-    detail: 'lecture refusée (/tmp/tmph88mx9xd/2BEG.pdb : l''en-tête NUMMDL annonce 10 modèle(s), le fichier en contient 1 (fichier tronqué ou en-tête incohérent)) ; module 3 : refusée aussi'
+    detail: 'lecture refusée (/tmp/tmp687w6fq7/2BEG.pdb : l''en-tête NUMMDL annonce 10 modèle(s), le fichier en contient 1 (fichier tronqué ou en-tête incohérent)) ; module 3 : refusée aussi'
   chains: {}
 - file: 1AS5.cif
   checks:
@@ -347,7 +347,7 @@ files:
   checks:
   - check: lecture
     ok: true
-    detail: 'lecture refusée (/tmp/tmph88mx9xd/2n0n_M1.pdb : l''en-tête NUMMDL annonce 20 modèle(s), le fichier en contient 1 (fichier tronqué ou en-tête incohérent)) ; module 3 : refusée aussi'
+    detail: 'lecture refusée (/tmp/tmp687w6fq7/2n0n_M1.pdb : l''en-tête NUMMDL annonce 20 modèle(s), le fichier en contient 1 (fichier tronqué ou en-tête incohérent)) ; module 3 : refusée aussi'
   chains: {}
 - file: 7DDO.pdb
   checks:
@@ -535,16 +535,423 @@ files:
   - check: '6WQA sans décision : refusée'
     ok: true
     detail: contacts SG–SG non déclarés
-  - check: '6WQA avec la décision disulfide : quatre ponts dans les peptides'
+  - check: '6WQA : quatre contacts SG–SG, géométrie seule, certitude « possible »'
     ok: true
-    detail: '[''pont disulfure 74–162'', ''pont disulfure 77–149'', ''pont disulfure 80–169'', ''pont disulfure 88–91'']'
-  - check: '4ZHL U avec la décision disulfide : séquence lue = séquence déclarée (_entity_poly)'
+    detail: '[(''A:CYS259:SG–A:CYS262:SG'', 2.019, ''possible''), (''A:CYS71:SG–A:CYS159:SG'', 2.028, ''possible''), (''A:CYS74:SG–A:CYS146:SG'', 2.016, ''possible''), (''A:CYS77:SG–A:CYS166:SG'', 2.022, ''possible'')]'
+  - check: '6WQA : aucune conformation alternative ni occupation partielle sur les huit SG'
     ok: true
-    detail: 247 résidus lus, 247 déclarés
-  - check: '4ZHL U : trois ponts déclarés (module 3) + deux admis par décision'
+    detail: '[(''A:CYS259:SG'', '''', 1.0), (''A:CYS262:SG'', '''', 1.0), (''A:CYS71:SG'', '''', 1.0), (''A:CYS159:SG'', '''', 1.0), (''A:CYS74:SG'', '''', 1.0), (''A:CYS146:SG'', '''', 1.0), (''A:CYS77:SG'', '''', 1.0), (''A:CYS166:SG'', '''', 1.0)]'
+  - check: '6WQA : la copie de Biopython ne porte que _atom_site (aucune déclaration à lire)'
     ok: true
-    detail: '[''pont disulfure 31–47'', ''pont disulfure 39–110'', ''pont disulfure 135–204'', ''pont disulfure 167–183'', ''pont disulfure 194–222'']'
+    detail: 'catégories : [''_atom_site'']'
+  - check: '4ZHL U sans décision : refusée'
+    ok: true
+    detail: contacts SG–SG non déclarés
+  - check: '4ZHL U : les deux contacts figurent dans _pdbx_validate_close_contact du fichier'
+    ok: true
+    detail: 'mesuré / déclaré close contact : [(''U:CYS136:SG–U:CYS201:SG'', 1.515, 1.51), (''U:CYS50:SG–U:CYS111:SG'', 1.637, 1.64)]'
+  sg_pairs_6WQA:
+  - pair: A:CYS259:SG–A:CYS262:SG
+    distance: 2.019
+    max_distance: 2.55
+    evidence: geometric
+    certainty: possible
+    ends:
+    - atom: A:CYS259:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 38.23
+      xyz:
+      - 4.135
+      - 166.219
+      - 19.401
+    - atom: A:CYS262:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 38.32
+      xyz:
+      - 4.561
+      - 166.317
+      - 17.43
+  - pair: A:CYS71:SG–A:CYS159:SG
+    distance: 2.028
+    max_distance: 2.55
+    evidence: geometric
+    certainty: possible
+    ends:
+    - atom: A:CYS71:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 45.23
+      xyz:
+      - 34.79
+      - 160.004
+      - 20.108
+    - atom: A:CYS159:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 45.99
+      xyz:
+      - 33.358
+      - 159.5
+      - 21.452
+  - pair: A:CYS74:SG–A:CYS146:SG
+    distance: 2.016
+    max_distance: 2.55
+    evidence: geometric
+    certainty: possible
+    ends:
+    - atom: A:CYS74:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 39.96
+      xyz:
+      - 29.241
+      - 166.24
+      - 28.57
+    - atom: A:CYS146:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 39.9
+      xyz:
+      - 28.701
+      - 167.302
+      - 30.196
+  - pair: A:CYS77:SG–A:CYS166:SG
+    distance: 2.022
+    max_distance: 2.55
+    evidence: geometric
+    certainty: possible
+    ends:
+    - atom: A:CYS77:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 32.12
+      xyz:
+      - 29.838
+      - 168.372
+      - 23.278
+    - atom: A:CYS166:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 31.88
+      xyz:
+      - 30.535
+      - 168.608
+      - 21.395
+  sg_pairs_4ZHL:
+  - pair: U:CYS136:SG–U:CYS201:SG
+    distance: 1.515
+    max_distance: 2.55
+    evidence: geometric
+    certainty: possible
+    ends:
+    - atom: U:CYS136:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 45.64
+      xyz:
+      - -2.11
+      - -47.225
+      - -14.492
+    - atom: U:CYS201:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 49.59
+      xyz:
+      - -1.498
+      - -46.727
+      - -13.199
+  - pair: U:CYS50:SG–U:CYS111:SG
+    distance: 1.637
+    max_distance: 2.55
+    evidence: geometric
+    certainty: possible
+    ends:
+    - atom: U:CYS50:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 48.95
+      xyz:
+      - -0.374
+      - -27.057
+      - 3.754
+    - atom: U:CYS111:SG
+      alt_loc: ''
+      occupancy: 1.0
+      b_factor: 49.12
+      xyz:
+      - -1.46
+      - -25.845
+      - 3.581
+  close_contacts_4ZHL:
+    U:CYS136:SG–U:CYS201:SG: 1.51
+    U:CYS111:SG–U:CYS50:SG: 1.64
+    U:ARG36:NH2–U:GLU62:O: 2.17
+- file: sensibilité à la tolérance
+  checks:
+  - check: '1A8O.pdb A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '1A8O.cif A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '2XHE.pdb A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 1}'
+  - check: '2XHE.pdb B : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '2XHE.cif A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 1}'
+  - check: '2XHE.cif B : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '1LCD.pdb A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '1LCD.cif A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '2BEG.cif A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '2BEG.cif B : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '2BEG.cif C : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '2BEG.cif D : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '2BEG.cif E : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '1AS5.cif A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '7DDO.pdb A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '7DDO.pdb C : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '6WQA.cif A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 4, ''0.35'': 4, ''0.40'': 4, ''0.45'': 4, ''0.50'': 4, ''0.55'': 4, ''0.60'': 4, ''0.70'': 4, ''0.80'': 4}'
+  - check: '4ZHL.cif U : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 2, ''0.35'': 2, ''0.40'': 2, ''0.45'': 2, ''0.50'': 2, ''0.55'': 2, ''0.60'': 2, ''0.70'': 2, ''0.80'': 4}'
+  - check: '4ZHL.cif P : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  - check: '4CUP.cif A : détection monotone, et égale à la table attendue à 0,45 Å'
+    ok: true
+    detail: '{''0.30'': 0, ''0.35'': 0, ''0.40'': 0, ''0.45'': 0, ''0.50'': 0, ''0.55'': 0, ''0.60'': 0, ''0.70'': 0, ''0.80'': 0}'
+  table:
+    1A8O.pdb A:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    1A8O.cif A:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    2XHE.pdb A:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 1
+    2XHE.pdb B:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    2XHE.cif A:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 1
+    2XHE.cif B:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    1LCD.pdb A:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    1LCD.cif A:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    2BEG.cif A:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    2BEG.cif B:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    2BEG.cif C:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    2BEG.cif D:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    2BEG.cif E:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    1AS5.cif A:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    7DDO.pdb A:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    7DDO.pdb C:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    6WQA.cif A:
+      '0.30': 4
+      '0.35': 4
+      '0.40': 4
+      '0.45': 4
+      '0.50': 4
+      '0.55': 4
+      '0.60': 4
+      '0.70': 4
+      '0.80': 4
+    4ZHL.cif U:
+      '0.30': 2
+      '0.35': 2
+      '0.40': 2
+      '0.45': 2
+      '0.50': 2
+      '0.55': 2
+      '0.60': 2
+      '0.70': 2
+      '0.80': 4
+    4ZHL.cif P:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
+    4CUP.cif A:
+      '0.30': 0
+      '0.35': 0
+      '0.40': 0
+      '0.45': 0
+      '0.50': 0
+      '0.55': 0
+      '0.60': 0
+      '0.70': 0
+      '0.80': 0
 summary:
-  checks: 107
+  checks: 129
   failed: 0
   failures: []

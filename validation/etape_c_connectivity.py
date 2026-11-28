@@ -30,12 +30,17 @@ information du fichier et on vérifie que le composant n'est pas perdu) :
 6. 7DDO sans LINK (CONECT gardés) : les glycanes restent rattachés, par CONECT ;
 7. 7DDO sans LINK ni CONECT : les glycanes deviennent `possibly_bound`, refusés ;
    la décision `exclude_as_unbound` les laisse hors du peptide, et le dit ;
-8. 6WQA avec la décision `disulfide` : les quatre ponts entrent dans le peptide ;
-9. 4ZHL chaîne U avec la décision `disulfide` : l'extraction redevient acceptée,
-   la séquence lue est celle de `_entity_poly` (contrôle que le module 3 faisait
-   avant que l'étape C refuse cette chaîne sans décision), et les deux ponts
-   s'ajoutent aux trois ponts de la chaîne U déclarés par le fichier (le
-   quatrième pont déclaré, CYS1–CYS10, appartient à la chaîne P).
+Puis les vérifications demandées à la revue de Firas du 28 novembre 2026 :
+
+8. 6WQA : les quatre contacts SG–SG restent des contacts **possibles**, jamais
+   admis comme ponts ; conformations, occupations et facteurs B des huit SG
+   sont relevés (`sg_pairs` dans le fichier de résultats) ;
+9. 4ZHL chaîne U : refus maintenu ; les deux contacts sont recoupés avec
+   `_pdbx_validate_close_contact` du fichier lui-même, où la PDB les classe en
+   contacts trop courts entre atomes non liés, et non en ponts ;
+10. Sensibilité à la tolérance : nombre de liaisons possibles par chaîne pour
+   une tolérance de 0,30 à 0,80 Å (`sensitivity`), monotone et égal à
+   `EXPECTED_CONTACTS` à 0,45 Å.
 
 Les résultats sont écrits dans `validation/results/etape_c_connectivity.yaml`.
 """
@@ -43,15 +48,18 @@ Les résultats sont écrits dans `validation/results/etape_c_connectivity.yaml`.
 from __future__ import annotations
 
 import sys
+from dataclasses import replace
+from itertools import pairwise
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 
 import yaml
+from Bio.PDB.MMCIF2Dict import MMCIF2Dict
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from module03_structures import BASE, FILES, _entity_sequence
+from module03_structures import BASE, FILES
 
 from pepforge.exceptions import ExtractionRefusedError, PepForgeError, StructureError
 from pepforge.io import (
@@ -66,17 +74,19 @@ from pepforge.io import (
 from pepforge.io.peptide_extraction import STRUCTURE_SET_ASIDE
 from pepforge.io.retrieval import download_file
 from pepforge.report.journal import Journal
+from pepforge.residues.structure_components import load_covalent_criteria
 
 RESULTS = Path(__file__).parent / "results"
 MODULE03 = RESULTS / "module03_structures.yaml"
 
 # Motifs de refus nouveaux, établis après examen de chaque cas (bilan de l'étape C) :
 EXPECTED_NEW: dict[tuple[str, str], list[str]] = {
-    # Quatre contacts SG–SG à 2,02–2,03 Å, sans struct_conn dans cette copie du fichier :
-    # des ponts disulfure que le module 3 ignorait en silence.
+    # Quatre contacts SG–SG à 2,02–2,03 Å, sans struct_conn : cette copie du fichier ne
+    # contient que _atom_site. Contacts possibles, non tranchés (revue du 28/11/2026).
     ("6WQA.cif", "A"): ["contact_in_chain"] * 4,
     # Deux contacts SG–SG à 1,51 et 1,64 Å, sans struct_conn, alors que les trois autres
-    # ponts de la chaîne sont déclarés : à trancher (pont non déclaré ou géométrie fautive).
+    # ponts de la chaîne sont déclarés ; la validation du fichier les range dans
+    # _pdbx_validate_close_contact. Refus maintenu (revue du 28/11/2026).
     ("4ZHL.cif", "U"): ["contact_in_chain"] * 2,
     # Huit CONECT de cette copie désignent des numéros de série absents (les atomes de
     # MSE151 ont été renumérotés dans la copie de Biopython) : connectivité incertaine.
@@ -94,14 +104,9 @@ EXPECTED_CONTACTS: dict[str, set[str]] = {
     "4ZHL.cif": {"U:CYS50:SG–U:CYS111:SG", "U:CYS136:SG–U:CYS201:SG"},
 }
 
-WQA_DISULFIDES = {
-    "A:CYS71–A:CYS159": "disulfide",
-    "A:CYS74–A:CYS146": "disulfide",
-    "A:CYS77–A:CYS166": "disulfide",
-    "A:CYS259–A:CYS262": "disulfide",
-}
-
-ZHL_DISULFIDES = {"U:CYS50–U:CYS111": "disulfide", "U:CYS136–U:CYS201": "disulfide"}
+# 0,70 et 0,80 Å montrent où apparaissent les premiers contacts qui ne sont pas des liaisons
+# (O(i)–N(i+1) d'une même chaîne, vers r1 + r2 + 0,75 Å).
+SENSITIVITY = (0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.70, 0.80)
 
 
 def _new_causes(report: ExtractionReport) -> list[str]:
@@ -325,50 +330,170 @@ def positive_controls(workdir: Path) -> dict[str, Any]:
         marked,
     )
 
-    # 8. 6WQA avec les ponts admis.
-    wqa = read_structure(workdir / "6WQA.cif", journal=Journal())
+    # 8. 6WQA : contacts laissés possibles, données structurales des huit SG.
+    wqa_path = workdir / "6WQA.cif"
+    wqa = read_structure(wqa_path, journal=Journal())
     try:
         extract_peptides(wqa, "A", journal=Journal())
         refused = False
     except ExtractionRefusedError:
         refused = True
     _check(results, "6WQA sans décision : refusée", refused, "contacts SG–SG non déclarés")
-    split = extract_peptides(
-        wqa,
-        "A",
-        journal=Journal(),
-        decisions=ExtractionDecisions(breaks="split", contacts=WQA_DISULFIDES),
-    )
-    links = [link.describe() for p in split.peptides for link in p.links]
+    report = analyze_chain(wqa, "A")
+    pairs = _sg_pairs(wqa, report, EXPECTED_CONTACTS["6WQA.cif"])
+    results["sg_pairs_6WQA"] = pairs
     _check(
         results,
-        "6WQA avec la décision disulfide : quatre ponts dans les peptides",
-        len(links) == 4,
-        f"{links}",
+        "6WQA : quatre contacts SG–SG, géométrie seule, certitude « possible »",
+        len(pairs) == 4
+        and all(p["evidence"] == "geometric" and p["certainty"] == "possible" for p in pairs),
+        f"{[(p['pair'], p['distance'], p['certainty']) for p in pairs]}",
+    )
+    _check(
+        results,
+        "6WQA : aucune conformation alternative ni occupation partielle sur les huit SG",
+        all(not end["alt_loc"] and end["occupancy"] == 1.0 for p in pairs for end in p["ends"]),
+        f"{[(end['atom'], end['alt_loc'], end['occupancy']) for p in pairs for end in p['ends']]}",
+    )
+    categories = _mmcif_categories(wqa_path)
+    _check(
+        results,
+        "6WQA : la copie de Biopython ne porte que _atom_site (aucune déclaration à lire)",
+        categories == ["_atom_site"],
+        f"catégories : {categories}",
     )
 
-    # 9. 4ZHL chaîne U avec les deux ponts admis.
+    # 9. 4ZHL chaîne U : refus maintenu, recoupement avec la validation du fichier.
     zhl_path = workdir / "4ZHL.cif"
     zhl = read_structure(zhl_path, journal=Journal())
-    chain_u = extract_peptides(
-        zhl, "U", journal=Journal(), decisions=ExtractionDecisions(contacts=ZHL_DISULFIDES)
-    )
-    (peptide,) = chain_u.peptides
-    read = "".join(r.one_letter or "?" for r in peptide.residues)
-    declared = _entity_sequence(zhl_path, "U")
+    try:
+        extract_peptides(zhl, "U", journal=Journal())
+        refused = False
+    except ExtractionRefusedError:
+        refused = True
+    _check(results, "4ZHL U sans décision : refusée", refused, "contacts SG–SG non déclarés")
+    report = analyze_chain(zhl, "U")
+    pairs = _sg_pairs(zhl, report, EXPECTED_CONTACTS["4ZHL.cif"])
+    results["sg_pairs_4ZHL"] = pairs
+    close = _close_contacts(zhl_path)
+    results["close_contacts_4ZHL"] = {"–".join(sorted(k)): v for k, v in close.items()}
+    matched = {p["pair"]: close.get(frozenset(e["atom"] for e in p["ends"])) for p in pairs}
     _check(
         results,
-        "4ZHL U avec la décision disulfide : séquence lue = séquence déclarée (_entity_poly)",
-        chain_u.report.accepted and read == declared,
-        f"{len(read)} résidus lus, {len(declared or '')} déclarés",
+        "4ZHL U : les deux contacts figurent dans _pdbx_validate_close_contact du fichier",
+        all(
+            value is not None and abs(value - p["distance"]) < 0.006
+            for p, value in zip(pairs, matched.values(), strict=True)
+        ),
+        f"mesuré / déclaré close contact : "
+        f"{[(p['pair'], p['distance'], matched[p['pair']]) for p in pairs]}",
     )
-    _check(
-        results,
-        "4ZHL U : trois ponts déclarés (module 3) + deux admis par décision",
-        {link.positions for link in peptide.links}
-        == {(31, 47), (167, 183), (194, 222), (39, 110), (135, 204)},
-        f"{[link.describe() for link in peptide.links]}",
+    return results
+
+
+def _sg_pairs(structure: Any, report: ExtractionReport, labels: set[str]) -> list[dict[str, Any]]:
+    """Données structurales de chaque contact SG–SG : atomes, conformation, occupation, B."""
+    atoms = {
+        f"{a.residue_id.label()}:{a.name}" + (f":{a.alt_loc}" if a.alt_loc else ""): a
+        for a in structure.atoms
+    }
+    out = []
+    for bond in sorted(report.bonds, key=lambda b: b.label()):
+        if bond.label() not in labels:
+            continue
+        ends = []
+        for ref in (bond.first, bond.second):
+            atom = atoms[ref.label()]
+            ends.append(
+                {
+                    "atom": ref.label(),
+                    "alt_loc": atom.alt_loc or "",
+                    "occupancy": atom.occupancy,
+                    "b_factor": atom.b_factor,
+                    "xyz": [atom.x, atom.y, atom.z],
+                }
+            )
+        out.append(
+            {
+                "pair": bond.label(),
+                "distance": round(bond.distance or 0.0, 3),
+                "max_distance": round(bond.max_distance or 0.0, 3),
+                "evidence": bond.evidence.value,
+                "certainty": bond.certainty.value,
+                "ends": ends,
+            }
+        )
+    return out
+
+
+def _mmcif_categories(path: Path) -> list[str]:
+    data = MMCIF2Dict(str(path))
+    return sorted({key.split(".")[0] for key in data if key.startswith("_")})
+
+
+def _close_contacts(path: Path) -> dict[frozenset[str], float]:
+    """`_pdbx_validate_close_contact` du fichier : paires d'atomes et distance déclarée."""
+    data = MMCIF2Dict(str(path))
+    prefix = "_pdbx_validate_close_contact."
+    if prefix + "id" not in data:
+        return {}
+    rows = zip(
+        data[prefix + "auth_asym_id_1"],
+        data[prefix + "auth_comp_id_1"],
+        data[prefix + "auth_seq_id_1"],
+        data[prefix + "auth_atom_id_1"],
+        data[prefix + "auth_asym_id_2"],
+        data[prefix + "auth_comp_id_2"],
+        data[prefix + "auth_seq_id_2"],
+        data[prefix + "auth_atom_id_2"],
+        data[prefix + "dist"],
+        strict=True,
     )
+    return {
+        frozenset({f"{c1}:{n1}{s1}:{a1}", f"{c2}:{n2}{s2}:{a2}"}): float(d)
+        for c1, n1, s1, a1, c2, n2, s2, a2, d in rows
+    }
+
+
+def sensitivity(workdir: Path, reference: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    """10. Nombre de liaisons possibles par chaîne selon la tolérance (0,30 à 0,80 Å)."""
+    results: dict[str, Any] = {"file": "sensibilité à la tolérance", "checks": [], "table": {}}
+    base = load_covalent_criteria()
+    for name in FILES:
+        chains = [
+            c
+            for c, v in (reference.get(name, {}).get("peptides") or {}).items()
+            if not isinstance(v, str)
+        ]
+        if not chains:
+            continue
+        structure = _read(workdir / name)
+        for chain in chains:
+            counts = []
+            for tolerance in SENSITIVITY:
+                report = analyze_chain(
+                    structure, chain, covalent=replace(base, tolerance=tolerance)
+                )
+                counts.append(
+                    sorted(b.label() for b in report.bonds if b.evidence is BondEvidence.GEOMETRIC)
+                )
+            key = f"{name} {chain}"
+            results["table"][key] = {
+                f"{t:.2f}": len(c) for t, c in zip(SENSITIVITY, counts, strict=True)
+            }
+            monotone = all(set(a) <= set(b) for a, b in pairwise(counts))
+            at_ref = set(counts[SENSITIVITY.index(0.45)])
+            expected = {
+                label
+                for label in EXPECTED_CONTACTS.get(name, set())
+                if label.startswith(f"{chain}:")
+            }
+            _check(
+                results,
+                f"{key} : détection monotone, et égale à la table attendue à 0,45 Å",
+                monotone and at_ref == expected,
+                f"{results['table'][key]}",
+            )
     return results
 
 
@@ -381,6 +506,7 @@ def main() -> int:
             path = _download(name, workdir)
             out.append(validate_file(name, path, reference.get(name, {})))
         out.append(positive_controls(workdir))
+        out.append(sensitivity(workdir, reference))
     checks = [c for entry in out for c in entry["checks"]]
     failed = [
         f"{entry['file']} : {c['check']}" for entry in out for c in entry["checks"] if not c["ok"]

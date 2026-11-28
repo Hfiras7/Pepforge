@@ -211,7 +211,8 @@ flowchart LR
 - [x] Chaque liaison rapportée avec composants, atomes, chaînes, distance, source et certitude.
 - [x] Aucun composant écarté sans décision explicite et nommée.
 - [x] Pas de faux positif systématique sur les 14 fichiers réels ; ligands non liés et ions inchangés.
-- [ ] Tolérance de 0,45 Å confirmée par Firas.
+- [x] Tolérance de 0,45 Å validée provisoirement par Firas (28/11/2026) ; bornes et sensibilité testées.
+- [ ] Coordonnées des entrées originales 6WQA et 4ZHL comparées (serveurs de la PDB inaccessibles depuis le cloud).
 
 ---
 

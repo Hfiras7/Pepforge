@@ -32,6 +32,8 @@ from pepforge.exceptions import (
     UnsupportedFeatureError,
 )
 from pepforge.io import (
+    BondEvidence,
+    Certainty,
     ChainDecisions,
     Decision,
     ExtractionDecisions,
@@ -490,16 +492,42 @@ def _reference(name: str) -> Structure:
     return read_structure(path, journal=Journal())
 
 
-# Contacts SG–SG à distance de liaison, sans liaison déclarée dans ces copies de fichiers
-# (détectés à l'étape C ; le module 3 extrayait ces chaînes sans ces ponts, en silence).
-# Les tests du module 3 qui portent sur autre chose les admettent comme ponts disulfure.
-ZHL_U_CONTACTS = {"U:CYS50–U:CYS111": "disulfide", "U:CYS136–U:CYS201": "disulfide"}
-WQA_A_CONTACTS = {
-    "A:CYS71–A:CYS159": "disulfide",
-    "A:CYS74–A:CYS146": "disulfide",
-    "A:CYS77–A:CYS166": "disulfide",
-    "A:CYS259–A:CYS262": "disulfide",
-}
+# Contacts SG–SG non déclarés trouvés à l'étape C dans ces copies de fichiers (le module 3
+# extrayait ces chaînes sans les voir). Revue de Firas du 28/11/2026 : ils restent des
+# contacts **possibles**, jamais admis comme ponts disulfure dans les tests ; la chaîne U
+# de 4ZHL reste refusée (la validation du fichier les classe en « close contact »).
+ZHL_U_CONTACTS = ("U:CYS50:SG–U:CYS111:SG", "U:CYS136:SG–U:CYS201:SG")
+WQA_A_CONTACTS = (
+    "A:CYS71:SG–A:CYS159:SG",
+    "A:CYS74:SG–A:CYS146:SG",
+    "A:CYS77:SG–A:CYS166:SG",
+    "A:CYS259:SG–A:CYS262:SG",
+)
+
+
+def _contact_refusals(report: ExtractionReport, contacts: tuple[str, ...]) -> list[str]:
+    """Les refus de contacts possibles du rapport, un par contact attendu, dans l'ordre."""
+    return [
+        next(r for r in report.refusals if contact in r and "contact covalent possible" in r)
+        for contact in contacts
+    ]
+
+
+def _without_sg(structure: Structure, residues: tuple[str, ...]) -> Structure:
+    """Copie d'essai sans l'atome SG des résidus nommés.
+
+    Sert seulement à isoler un autre mécanisme du module 3 (numérotation, rupture,
+    décisions par chaîne) des contacts SG–SG non tranchés : aucun pont n'est admis,
+    l'atome retiré est rapporté comme absent. Ce n'est jamais une préparation.
+    """
+    removed = [a for a in structure.atoms if a.name == "SG" and a.residue_id.label() in residues]
+    assert len(removed) == len(residues)
+    kept = tuple(a for a in structure.atoms if a not in removed)
+    return replace(structure, atoms=kept)
+
+
+ZHL_U_SG_REMOVED = ("U:CYS111", "U:CYS201")
+WQA_A_SG_REMOVED = ("A:CYS159", "A:CYS146", "A:CYS166", "A:CYS262")
 
 
 def _junction(report: ExtractionReport, before: str, after: str) -> object:
@@ -509,15 +537,10 @@ def _junction(report: ExtractionReport, before: str, after: str) -> object:
 
 def test_4zhl_chymotrypsin_numbering_is_not_a_break() -> None:
     """Défaut 1 : le saut ARG217 → GLY219 était refusé comme « chaîne interrompue »."""
-    result = extract_peptides(
-        _reference("4ZHL.cif.gz"),
-        "U",
-        journal=Journal(),
-        decisions=ExtractionDecisions(contacts=ZHL_U_CONTACTS),
-    )
-    report = result.report
-    assert report.accepted
-    assert len(result.peptides) == 1 and len(result.peptides[0]) == 247
+    report = _refused(_reference("4ZHL.cif.gz"), "U")
+    # Seuls les deux contacts SG–SG non tranchés bloquent (revue de Firas, 28/11/2026).
+    assert sorted(report.refusals) == sorted(_contact_refusals(report, ZHL_U_CONTACTS))
+    assert len(report.residues) == 247
     jump = _junction(report, "U:ARG217", "U:GLY219")
     assert jump.category is JunctionCategory.NUMBERING_DISCONTINUITY  # type: ignore[attr-defined]
     assert jump.numbering_step == 2  # type: ignore[attr-defined]
@@ -527,6 +550,20 @@ def test_4zhl_chymotrypsin_numbering_is_not_a_break() -> None:
     assert len(with_icode) == 27
     assert all(j.category is JunctionCategory.NUMBERING_DISCONTINUITY for j in with_icode)
     assert max(j.distance or 0 for j in report.junctions) < 1.8
+
+
+def test_4zhl_chain_u_stays_refused_and_its_contacts_stay_possible() -> None:
+    """Revue de Firas : refus maintenu, les deux contacts ne sont pas des ponts."""
+    report = _refused(_reference("4ZHL.cif.gz"), "U")
+    contacts = {b.label(): b for b in report.bonds if b.label() in ZHL_U_CONTACTS}
+    assert set(contacts) == set(ZHL_U_CONTACTS)
+    assert {label: round(b.distance or 0, 3) for label, b in contacts.items()} == {
+        "U:CYS50:SG–U:CYS111:SG": 1.637,
+        "U:CYS136:SG–U:CYS201:SG": 1.515,
+    }
+    for bond in contacts.values():
+        assert bond.evidence is BondEvidence.GEOMETRIC
+        assert bond.certainty is Certainty.POSSIBLE
 
 
 def test_4zhl_peptide_chain_keeps_its_disulfide() -> None:
@@ -539,15 +576,15 @@ def test_4zhl_peptide_chain_keeps_its_disulfide() -> None:
 
 def test_6wqa_ligand_no_longer_blocks_and_the_undeclared_break_is_found() -> None:
     """Défaut 2 et lacune : `ZMA` comptait comme résidu, et la rupture n'était pas vue."""
-    report = _refused(
-        _reference("6WQA.cif.gz"), decisions=ExtractionDecisions(contacts=WQA_A_CONTACTS)
-    )
+    report = _refused(_reference("6WQA.cif.gz"))
     (zma,) = [c for c in report.components if c.name == "ZMA"]
     assert zma.category is ComponentCategory.UNBOUND_LIGAND
     assert zma.decision is Decision.EXCLUDE
     assert zma.min_distance_to_chain == pytest.approx(2.834, abs=1e-3)
     assert "A:ZMA1202" not in report.residues
-    (reason,) = report.refusals  # seule la rupture bloque
+    # La rupture, puis les quatre contacts SG–SG laissés possibles (revue du 28/11/2026).
+    contacts = _contact_refusals(report, WQA_A_CONTACTS)
+    (reason,) = [r for r in report.refusals if r not in contacts]
     assert "A:ALA1043 → A:ASP1060" in reason
     gap = _junction(report, "A:ALA1043", "A:ASP1060")
     assert gap.category is JunctionCategory.BREAK_UNDECLARED  # type: ignore[attr-defined]
@@ -562,11 +599,9 @@ def test_6wqa_ligand_no_longer_blocks_and_the_undeclared_break_is_found() -> Non
 
 def test_6wqa_split_cuts_at_the_measured_break_only() -> None:
     report = analyze_chain(
-        _reference("6WQA.cif.gz"),
-        "A",
-        decisions=ExtractionDecisions(breaks=Decision.SPLIT, contacts=WQA_A_CONTACTS),
+        _reference("6WQA.cif.gz"), "A", decisions=ExtractionDecisions(breaks=Decision.SPLIT)
     )
-    assert report.accepted
+    assert sorted(report.refusals) == sorted(_contact_refusals(report, WQA_A_CONTACTS))
     assert [(s.first, s.last, s.residues) for s in report.segments] == [
         ("A:ASP-2", "A:ALA1043", 254),
         ("A:ASP1060", "A:LEU308", 137),
@@ -701,10 +736,10 @@ def test_split_refuses_a_disulfide_across_two_segments() -> None:
 
 def test_6wqa_split_gives_two_peptides_at_the_undeclared_break() -> None:
     result = extract_peptides(
-        _reference("6WQA.cif.gz"),
+        _without_sg(_reference("6WQA.cif.gz"), WQA_A_SG_REMOVED),
         "A",
         journal=Journal(),
-        decisions=ExtractionDecisions(breaks=Decision.SPLIT, contacts=WQA_A_CONTACTS),
+        decisions=ExtractionDecisions(breaks=Decision.SPLIT),
     )
     first, second = result.peptides
     assert (len(first), len(second)) == (254, 137)
@@ -727,10 +762,7 @@ def test_7ddo_observed_segment_does_not_hide_the_glycan() -> None:
 
 def test_4zhl_peptide_keeps_the_original_numbering_of_each_position() -> None:
     (peptide,) = extract_peptides(
-        _reference("4ZHL.cif.gz"),
-        "U",
-        journal=Journal(),
-        decisions=ExtractionDecisions(contacts=ZHL_U_CONTACTS),
+        _without_sg(_reference("4ZHL.cif.gz"), ZHL_U_SG_REMOVED), "U", journal=Journal()
     ).peptides
     original = peptide.metadata[STRUCTURE_RESIDUES].split(",")
     assert len(original) == len(peptide) == 247
@@ -879,10 +911,10 @@ def test_extracted_segment_cannot_be_protonated_or_charged() -> None:
 
 def test_4zhl_two_chains_are_extracted_independently() -> None:
     results = extract_chains(
-        _reference("4ZHL.cif.gz"),
+        _without_sg(_reference("4ZHL.cif.gz"), ZHL_U_SG_REMOVED),
         ["U", "P"],
         journal=Journal(),
-        decisions=ChainDecisions({"U": ExtractionDecisions(contacts=ZHL_U_CONTACTS)}),
+        decisions=ChainDecisions({"U": ExtractionDecisions()}),
     )
     assert {c: len(r.peptides[0]) for c, r in results.items()} == {"U": 247, "P": 10}
     assert results["P"].report.junctions_by_category() == {"continuous": 9}
