@@ -2,7 +2,9 @@
 
 > Étape 3 de [PLAN-CONSTRUCTION.md](../PLAN-CONSTRUCTION.md). Bilan établi le 27 novembre 2026, selon le modèle de la méthode de travail imposée. Livré sur une branche et une PR dédiées, partie de la branche par défaut (modules 1 et 2 fusionnés).
 
-**Statut final : TERMINÉ MAIS NON VALIDÉ.** Revue de Firas du 27 novembre 2026 : gemmi **validé**, structures de validation en **validation provisoire**, extraction d'un peptide **à corriger**. La correction est livrée (section 9) : rapport d'extraction par jonction, trois défauts corrigés, tests sur 4ZHL, 6WQA et 7DDO. L'extrémité non chimique décidée par Firas est livrée (section 9.6). Le module reste non validé tant que Firas n'a pas donné sa validation finale, requise avant la fusion de la PR #3.
+**Statut final : TERMINÉ ET VALIDÉ** (28 novembre 2026). Validation technique acceptée par Firas à l'audit final du 27 novembre ; fusion de la PR #3 autorisée par Firas le 28 novembre (11 h 07 UTC) et faite le même jour (commit `3e98201` de la branche par défaut). Historique des revues, conservé :
+
+> Statut précédent : TERMINÉ MAIS NON VALIDÉ. Revue de Firas du 27 novembre 2026 : gemmi **validé**, structures de validation en **validation provisoire**, extraction d'un peptide **à corriger**. La correction est livrée (section 9) : rapport d'extraction par jonction, trois défauts corrigés, tests sur 4ZHL, 6WQA et 7DDO. L'extrémité non chimique décidée par Firas est livrée (section 9.6). Le module reste non validé tant que Firas n'a pas donné sa validation finale, requise avant la fusion de la PR #3.
 
 ---
 

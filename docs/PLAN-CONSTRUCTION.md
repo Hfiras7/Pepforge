@@ -169,7 +169,7 @@ flowchart LR
 
 ## Étape 3 — Lecture et écriture PDB / mmCIF, inventaire
 
-**Statut : TERMINÉ MAIS NON VALIDÉ** (27 novembre 2026). Revue de Firas du 27 novembre : gemmi **validé** (encapsulé dans `io`) ; structures de validation : **validation provisoire** ; extraction d'un peptide : **à corriger**, orientations validées (seuil C–N de 1,8 Å, classement des jonctions et des composants, mode strict, décisions `reject`, `split`, `observed_segment`). Correction livrée sur la PR #3 : `io/peptide_extraction.py`, rapport d'extraction par jonction, trois défauts corrigés (4ZHL, 6WQA, 7DDO). Extrémité non chimique `unobserved` décidée par Firas le même jour et livrée (petite modification du module 2 : refus explicite). Bilan complet : [bilans/module-03-structures.md](bilans/module-03-structures.md).
+**Statut : TERMINÉ ET VALIDÉ** (28 novembre 2026) : validation technique acceptée par Firas le 27 novembre, PR #3 fusionnée le 28 novembre sur son autorisation (commit `3e98201`). Historique : revue de Firas du 27 novembre : gemmi **validé** (encapsulé dans `io`) ; structures de validation : **validation provisoire** ; extraction d'un peptide : **à corriger**, orientations validées (seuil C–N de 1,8 Å, classement des jonctions et des composants, mode strict, décisions `reject`, `split`, `observed_segment`). Correction livrée sur la PR #3 : `io/peptide_extraction.py`, rapport d'extraction par jonction, trois défauts corrigés (4ZHL, 6WQA, 7DDO). Extrémité non chimique `unobserved` décidée par Firas le même jour et livrée (petite modification du module 2 : refus explicite). Bilan complet : [bilans/module-03-structures.md](bilans/module-03-structures.md).
 
 **Objectif** : importer une structure (expérimentale ou issue de docking) et en dresser l'inventaire, sans la modifier.
 
@@ -198,7 +198,7 @@ flowchart LR
 
 ## Étape C — Liaisons covalentes entre résidus d'une structure importée
 
-**Statut : TERMINÉ MAIS NON VALIDÉ** (28 novembre 2026), en attente de la revue de Firas. Complément du module 3, approuvé par Firas le 28 novembre 2026 (ordre C, puis A, puis B ; A et B non commencés). Branche `claude/etape-c-liaisons-covalentes`, PR distincte empilée sur celle du module 3. Bilan : [docs/bilans/etape-c-liaisons-covalentes.md](bilans/etape-c-liaisons-covalentes.md).
+**Statut : TERMINÉ ET VALIDÉ** (28 novembre 2026) : implémentation validée par Firas à la revue finale, PR #4 fusionnée après la PR #3 (commit `b1690b8`). Complément du module 3, approuvé par Firas le 28 novembre 2026 (ordre C, puis A, puis B ; B non commencé, A au stade de l'audit). Branche `claude/etape-c-liaisons-covalentes`. Bilan : [docs/bilans/etape-c-liaisons-covalentes.md](bilans/etape-c-liaisons-covalentes.md).
 
 **Objectif** : ne perdre aucun composant lié de façon covalente à un peptide importé, sans jamais prendre une proximité pour une preuve de liaison.
 
